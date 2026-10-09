@@ -48,7 +48,7 @@ class ModuloCurso extends Model
      */
     public function modulo(): BelongsTo
     {
-        return $this->belongsTo(Modulo::class, 'modulo_id');
+        return $this->belongsTo(Modulo::class);
     }
 
     /**
@@ -56,6 +56,6 @@ class ModuloCurso extends Model
      */
     public function curso(): BelongsTo
     {
-        return $this->belongsTo(Curso::class, 'curso_id');
+        return $this->belongsTo(Curso::class);
     }
 }

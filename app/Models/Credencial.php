@@ -71,6 +71,6 @@ class Credencial extends Authenticatable
      */
     public function cliente(): BelongsTo
     {
-        return $this->belongsTo(Cliente::class, 'cliente_id');
+        return $this->belongsTo(Cliente::class);
     }
 }

@@ -57,7 +57,7 @@ class EstudianteCarrera extends Model
      */
     public function estudiante(): BelongsTo
     {
-        return $this->belongsTo(Cliente::class, 'estudiante_id');
+        return $this->belongsTo(Cliente::class);
     }
 
     /**
@@ -65,7 +65,7 @@ class EstudianteCarrera extends Model
      */
     public function carrera(): BelongsTo
     {
-        return $this->belongsTo(Carrera::class, 'carrera_id');
+        return $this->belongsTo(Carrera::class);
     }
 
     /**
@@ -73,6 +73,6 @@ class EstudianteCarrera extends Model
      */
     public function matriculas(): HasMany
     {
-        return $this->hasMany(Matricula::class, 'estudiante_carrera_id');
+        return $this->hasMany(Matricula::class);
     }
 }

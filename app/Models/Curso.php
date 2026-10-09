@@ -38,7 +38,7 @@ class Curso extends Model
      */
     public function modulosCursos(): HasMany
     {
-        return $this->hasMany(ModuloCurso::class, 'curso_id');
+        return $this->hasMany(ModuloCurso::class);
     }
 
     /**
@@ -46,7 +46,7 @@ class Curso extends Model
      */
     public function modulos(): BelongsToMany
     {
-        return $this->belongsToMany(Modulo::class, 'modulos_cursos', 'curso_id', 'modulo_id')
+        return $this->belongsToMany(Modulo::class, 'modulos_cursos')
             ->withPivot(['id']);
     }
 
@@ -55,6 +55,6 @@ class Curso extends Model
      */
     public function cursosProgramados(): HasMany
     {
-        return $this->hasMany(CursoProgramado::class, 'curso_id');
+        return $this->hasMany(CursoProgramado::class);
     }
 }

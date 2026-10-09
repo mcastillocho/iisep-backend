@@ -51,7 +51,7 @@ class CarreraModulo extends Model
      */
     public function carrera(): BelongsTo
     {
-        return $this->belongsTo(Carrera::class, 'carrera_id');
+        return $this->belongsTo(Carrera::class);
     }
 
     /**
@@ -59,6 +59,6 @@ class CarreraModulo extends Model
      */
     public function modulo(): BelongsTo
     {
-        return $this->belongsTo(Modulo::class, 'modulo_id');
+        return $this->belongsTo(Modulo::class);
     }
 }

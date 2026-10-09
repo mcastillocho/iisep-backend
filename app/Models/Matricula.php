@@ -62,7 +62,7 @@ class Matricula extends Model
      */
     public function cursoProgramado(): BelongsTo
     {
-        return $this->belongsTo(CursoProgramado::class, 'curso_programado_id');
+        return $this->belongsTo(CursoProgramado::class);
     }
 
     /**
@@ -70,7 +70,7 @@ class Matricula extends Model
      */
     public function estudiante(): BelongsTo
     {
-        return $this->belongsTo(Cliente::class, 'estudiante_id');
+        return $this->belongsTo(Cliente::class);
     }
 
     /**
@@ -78,7 +78,7 @@ class Matricula extends Model
      */
     public function estudianteCarrera(): BelongsTo
     {
-        return $this->belongsTo(EstudianteCarrera::class, 'estudiante_carrera_id');
+        return $this->belongsTo(EstudianteCarrera::class);
     }
 
     /**
@@ -86,6 +86,6 @@ class Matricula extends Model
      */
     public function apoderado(): BelongsTo
     {
-        return $this->belongsTo(Cliente::class, 'apoderado_id');
+        return $this->belongsTo(Cliente::class);
     }
 }

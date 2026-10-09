@@ -60,7 +60,7 @@ class Asistencia extends Model
      */
     public function cursoProgramado(): BelongsTo
     {
-        return $this->belongsTo(CursoProgramado::class, 'curso_programado_id');
+        return $this->belongsTo(CursoProgramado::class);
     }
 
     /**
@@ -68,7 +68,7 @@ class Asistencia extends Model
      */
     public function cliente(): BelongsTo
     {
-        return $this->belongsTo(Cliente::class, 'cliente_id');
+        return $this->belongsTo(Cliente::class);
     }
 
     /**
@@ -76,6 +76,6 @@ class Asistencia extends Model
      */
     public function cursoProgramadoOrigen(): BelongsTo
     {
-        return $this->belongsTo(CursoProgramado::class, 'curso_programado_origen_id');
+        return $this->belongsTo(CursoProgramado::class);
     }
 }

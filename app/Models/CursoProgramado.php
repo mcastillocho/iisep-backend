@@ -56,7 +56,7 @@ class CursoProgramado extends Model
      */
     public function curso(): BelongsTo
     {
-        return $this->belongsTo(Curso::class, 'curso_id');
+        return $this->belongsTo(Curso::class);
     }
 
     /**
@@ -64,7 +64,7 @@ class CursoProgramado extends Model
      */
     public function profesor(): BelongsTo
     {
-        return $this->belongsTo(Profesor::class, 'profesor_id');
+        return $this->belongsTo(Profesor::class);
     }
 
     /**
@@ -72,7 +72,7 @@ class CursoProgramado extends Model
      */
     public function horarios(): HasMany
     {
-        return $this->hasMany(HorarioCurso::class, 'curso_programado_id');
+        return $this->hasMany(HorarioCurso::class);
     }
 
     /**
@@ -80,7 +80,7 @@ class CursoProgramado extends Model
      */
     public function matriculas(): HasMany
     {
-        return $this->hasMany(Matricula::class, 'curso_programado_id');
+        return $this->hasMany(Matricula::class);
     }
 
     /**
@@ -88,7 +88,7 @@ class CursoProgramado extends Model
      */
     public function asistencias(): HasMany
     {
-        return $this->hasMany(Asistencia::class, 'curso_programado_id');
+        return $this->hasMany(Asistencia::class);
     }
 
     /**

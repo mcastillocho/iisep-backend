@@ -41,6 +41,6 @@ class Profesor extends Model
      */
     public function cursosProgramados(): HasMany
     {
-        return $this->hasMany(CursoProgramado::class, 'profesor_id');
+        return $this->hasMany(CursoProgramado::class);
     }
 }

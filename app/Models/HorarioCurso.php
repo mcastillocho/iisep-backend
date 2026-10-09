@@ -56,7 +56,7 @@ class HorarioCurso extends Model
      */
     public function cursoProgramado(): BelongsTo
     {
-        return $this->belongsTo(CursoProgramado::class, 'curso_programado_id');
+        return $this->belongsTo(CursoProgramado::class);
     }
 
     /**
@@ -64,6 +64,6 @@ class HorarioCurso extends Model
      */
     public function aula(): BelongsTo
     {
-        return $this->belongsTo(Aula::class, 'aula_id');
+        return $this->belongsTo(Aula::class);
     }
 }

@@ -66,7 +66,7 @@ class Cliente extends Model
      */
     public function credencial(): HasOne
     {
-        return $this->hasOne(Credencial::class, 'cliente_id');
+        return $this->hasOne(Credencial::class);
     }
 
     /**
@@ -107,6 +107,6 @@ class Cliente extends Model
      */
     public function asistencias(): HasMany
     {
-        return $this->hasMany(Asistencia::class, 'cliente_id');
+        return $this->hasMany(Asistencia::class);
     }
 }
