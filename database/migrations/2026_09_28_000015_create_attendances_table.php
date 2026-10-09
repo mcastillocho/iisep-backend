@@ -22,6 +22,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->foreignId('origin_scheduled_course_id')->nullable()->index()->constrained('scheduled_courses');
             $table->timestamps();
+            $table->softDeletes();
 
             $table->unique(['scheduled_course_id', 'client_id', 'date'], 'uq_daily_attendance');
         });

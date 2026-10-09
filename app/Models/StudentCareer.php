@@ -8,6 +8,7 @@ use App\Enums\StudentCareerStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
@@ -18,9 +19,12 @@ use Illuminate\Support\Carbon;
  * @property StudentCareerStatus $status
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  */
 class StudentCareer extends Model
 {
+    use SoftDeletes;
+
     /**
      * @var list<string>
      */

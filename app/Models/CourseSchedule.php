@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\DayOfWeek;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
@@ -18,9 +19,12 @@ use Illuminate\Support\Carbon;
  * @property string $end_time
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  */
 class CourseSchedule extends Model
 {
+    use SoftDeletes;
+
     /**
      * @var list<string>
      */

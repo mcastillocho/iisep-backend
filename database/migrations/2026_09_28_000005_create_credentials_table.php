@@ -19,6 +19,7 @@ return new class extends Migration
             $table->text('username')->unique();
             $table->text('password_hash');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

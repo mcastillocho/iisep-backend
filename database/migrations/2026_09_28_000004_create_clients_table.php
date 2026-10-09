@@ -26,6 +26,7 @@ return new class extends Migration
             $table->text('email')->nullable();
             $table->text('phone')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->unique(['document_type', 'document'], 'uq_client_document');
         });
