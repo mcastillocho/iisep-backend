@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('course_module', function (Blueprint $table) {
             $table->id();
             $table->foreignId('course_id')->constrained('courses')->cascadeOnDelete();
-            $table->foreignId('module_id')->constrained('modules')->cascadeOnDelete();
+            $table->foreignId('module_id')->index()->constrained('modules')->cascadeOnDelete();
 
             $table->unique(['course_id', 'module_id'], 'uq_course_module');
         });

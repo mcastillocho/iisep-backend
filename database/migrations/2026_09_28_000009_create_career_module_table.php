@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('career_module', function (Blueprint $table) {
             $table->id();
             $table->foreignId('career_id')->constrained('careers')->cascadeOnDelete();
-            $table->foreignId('module_id')->constrained('modules')->cascadeOnDelete();
+            $table->foreignId('module_id')->index()->constrained('modules')->cascadeOnDelete();
             $table->integer('order')->default(1);
 
             $table->unique(['career_id', 'module_id'], 'uq_career_module');

@@ -17,7 +17,7 @@ return new class extends Migration
         Schema::create('student_careers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('student_id')->constrained('clients')->cascadeOnDelete();
-            $table->foreignId('career_id')->constrained('careers');
+            $table->foreignId('career_id')->index()->constrained('careers');
             $table->date('admission_date')->useCurrent();
             $table->pgEnum('status', 'enum_student_career_status', array_column(StudentCareerStatus::cases(), 'value'))->default('activo');
 

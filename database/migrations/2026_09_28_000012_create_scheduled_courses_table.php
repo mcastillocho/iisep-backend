@@ -15,8 +15,8 @@ return new class extends Migration
     {
         Schema::create('scheduled_courses', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('course_id')->constrained('courses');
-            $table->foreignId('teacher_id')->nullable()->constrained('teachers');
+            $table->foreignId('course_id')->index()->constrained('courses');
+            $table->foreignId('teacher_id')->nullable()->index()->constrained('teachers');
             $table->date('start_date');
             $table->date('end_date');
         });

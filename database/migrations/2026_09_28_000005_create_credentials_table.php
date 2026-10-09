@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::create('credentials', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('client_id')->constrained('clients')->cascadeOnDelete();
+            $table->foreignId('client_id')->unique()->constrained('clients')->cascadeOnDelete();
             $table->text('username')->unique();
             $table->text('password_hash');
             $table->timestampTz('created_at')->useCurrent();

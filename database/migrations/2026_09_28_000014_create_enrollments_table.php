@@ -17,9 +17,9 @@ return new class extends Migration
         Schema::create('enrollments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('scheduled_course_id')->constrained('scheduled_courses');
-            $table->foreignId('student_id')->constrained('clients');
-            $table->foreignId('student_career_id')->nullable()->constrained('student_careers');
-            $table->foreignId('guardian_id')->nullable()->constrained('clients');
+            $table->foreignId('student_id')->index()->constrained('clients');
+            $table->foreignId('student_career_id')->nullable()->index()->constrained('student_careers');
+            $table->foreignId('guardian_id')->nullable()->index()->constrained('clients');
             $table->date('enrollment_date')->useCurrent();
             $table->pgEnum('status', 'enum_enrollment_status', array_column(EnrollmentStatus::cases(), 'value'))->default('preinscrito');
 
