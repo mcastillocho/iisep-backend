@@ -18,6 +18,7 @@ return new class extends Migration
             $table->foreignId('career_id')->constrained('careers')->cascadeOnDelete();
             $table->foreignId('module_id')->index()->constrained('modules')->cascadeOnDelete();
             $table->integer('order')->default(1);
+            $table->timestamps();
 
             $table->unique(['career_id', 'module_id'], 'uq_career_module');
         });

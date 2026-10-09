@@ -7,19 +7,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property string $name
  * @property string|null $description
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class Career extends Model
 {
-    /**
-     * @var bool
-     */
-    public $timestamps = false;
-
     /**
      * @var list<string>
      */
@@ -35,6 +33,7 @@ class Career extends Model
     {
         return $this->belongsToMany(Module::class)
             ->withPivot(['id', 'order'])
+            ->withTimestamps()
             ->orderByPivot('order');
     }
 
@@ -52,6 +51,7 @@ class Career extends Model
     public function students(): BelongsToMany
     {
         return $this->belongsToMany(Client::class, 'student_careers', 'career_id', 'student_id')
-            ->withPivot(['id', 'admission_date', 'status']);
+            ->withPivot(['id', 'admission_date', 'status'])
+            ->withTimestamps();
     }
 }

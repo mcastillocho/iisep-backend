@@ -20,6 +20,7 @@ return new class extends Migration
             $table->foreignId('career_id')->index()->constrained('careers');
             $table->date('admission_date')->useCurrent();
             $table->pgEnum('status', 'enum_student_career_status', array_column(StudentCareerStatus::cases(), 'value'))->default('activo');
+            $table->timestamps();
 
             $table->unique(['student_id', 'career_id'], 'uq_student_career');
         });

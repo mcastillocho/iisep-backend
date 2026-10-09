@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('client_id')->unique()->constrained('clients')->cascadeOnDelete();
             $table->text('username')->unique();
             $table->text('password_hash');
-            $table->timestampTz('created_at')->useCurrent();
+            $table->timestamps();
         });
     }
 

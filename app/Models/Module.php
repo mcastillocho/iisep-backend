@@ -6,19 +6,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property string $name
  * @property string|null $description
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class Module extends Model
 {
-    /**
-     * @var bool
-     */
-    public $timestamps = false;
-
     /**
      * @var list<string>
      */
@@ -33,7 +31,8 @@ class Module extends Model
     public function careers(): BelongsToMany
     {
         return $this->belongsToMany(Career::class)
-            ->withPivot(['id', 'order']);
+            ->withPivot(['id', 'order'])
+            ->withTimestamps();
     }
 
     /**
@@ -42,6 +41,7 @@ class Module extends Model
     public function courses(): BelongsToMany
     {
         return $this->belongsToMany(Course::class)
-            ->withPivot(['id']);
+            ->withPivot(['id'])
+            ->withTimestamps();
     }
 }

@@ -16,14 +16,11 @@ use Illuminate\Support\Carbon;
  * @property bool $attended
  * @property string|null $notes
  * @property int|null $origin_scheduled_course_id
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class Attendance extends Model
 {
-    /**
-     * @var bool
-     */
-    public $timestamps = false;
-
     /**
      * @var list<string>
      */

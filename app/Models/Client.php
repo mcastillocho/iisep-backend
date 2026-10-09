@@ -22,14 +22,11 @@ use Illuminate\Support\Carbon;
  * @property DocumentType $document_type
  * @property string|null $email
  * @property string|null $phone
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class Client extends Model
 {
-    /**
-     * @var bool
-     */
-    public $timestamps = false;
-
     /**
      * @var list<string>
      */
@@ -78,7 +75,8 @@ class Client extends Model
     public function careers(): BelongsToMany
     {
         return $this->belongsToMany(Career::class, 'student_careers', 'student_id', 'career_id')
-            ->withPivot(['id', 'admission_date', 'status']);
+            ->withPivot(['id', 'admission_date', 'status'])
+            ->withTimestamps();
     }
 
     /**

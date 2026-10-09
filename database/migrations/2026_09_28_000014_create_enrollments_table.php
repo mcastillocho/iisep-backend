@@ -22,6 +22,7 @@ return new class extends Migration
             $table->foreignId('guardian_id')->nullable()->index()->constrained('clients');
             $table->date('enrollment_date')->useCurrent();
             $table->pgEnum('status', 'enum_enrollment_status', array_column(EnrollmentStatus::cases(), 'value'))->default('preinscrito');
+            $table->timestamps();
 
             $table->unique(['scheduled_course_id', 'student_id'], 'uq_enrollment_student_course');
         });

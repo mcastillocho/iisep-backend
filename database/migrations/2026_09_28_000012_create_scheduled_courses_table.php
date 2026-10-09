@@ -19,6 +19,7 @@ return new class extends Migration
             $table->foreignId('teacher_id')->nullable()->index()->constrained('teachers');
             $table->date('start_date');
             $table->date('end_date');
+            $table->timestamps();
         });
     }
 

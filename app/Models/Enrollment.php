@@ -17,14 +17,11 @@ use Illuminate\Support\Carbon;
  * @property int|null $guardian_id
  * @property Carbon $enrollment_date
  * @property EnrollmentStatus $status
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class Enrollment extends Model
 {
-    /**
-     * @var bool
-     */
-    public $timestamps = false;
-
     /**
      * @var list<string>
      */

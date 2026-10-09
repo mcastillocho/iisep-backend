@@ -16,14 +16,11 @@ use Illuminate\Support\Carbon;
  * @property int $career_id
  * @property Carbon $admission_date
  * @property StudentCareerStatus $status
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class StudentCareer extends Model
 {
-    /**
-     * @var bool
-     */
-    public $timestamps = false;
-
     /**
      * @var list<string>
      */

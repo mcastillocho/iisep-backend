@@ -17,6 +17,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('course_id')->constrained('courses')->cascadeOnDelete();
             $table->foreignId('module_id')->index()->constrained('modules')->cascadeOnDelete();
+            $table->timestamps();
 
             $table->unique(['course_id', 'module_id'], 'uq_course_module');
         });

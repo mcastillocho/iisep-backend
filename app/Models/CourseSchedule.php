@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\DayOfWeek;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -15,14 +16,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property DayOfWeek $day_of_week
  * @property string $start_time
  * @property string $end_time
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class CourseSchedule extends Model
 {
-    /**
-     * @var bool
-     */
-    public $timestamps = false;
-
     /**
      * @var list<string>
      */

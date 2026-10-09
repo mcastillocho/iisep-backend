@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -13,14 +14,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $last_name
  * @property string|null $email
  * @property string|null $phone
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class Teacher extends Model
 {
-    /**
-     * @var bool
-     */
-    public $timestamps = false;
-
     /**
      * @var list<string>
      */

@@ -25,6 +25,7 @@ return new class extends Migration
             $table->pgEnum('document_type', 'enum_document_type', array_column(DocumentType::cases(), 'value'));
             $table->text('email')->nullable();
             $table->text('phone')->nullable();
+            $table->timestamps();
 
             $table->unique(['document_type', 'document'], 'uq_client_document');
         });

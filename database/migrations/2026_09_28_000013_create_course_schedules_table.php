@@ -21,6 +21,7 @@ return new class extends Migration
             $table->pgEnum('day_of_week', 'enum_day_of_week', array_column(DayOfWeek::cases(), 'value'));
             $table->time('start_time');
             $table->time('end_time');
+            $table->timestamps();
         });
     }
 

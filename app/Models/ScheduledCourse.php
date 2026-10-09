@@ -15,14 +15,11 @@ use Illuminate\Support\Carbon;
  * @property int|null $teacher_id
  * @property Carbon $start_date
  * @property Carbon $end_date
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class ScheduledCourse extends Model
 {
-    /**
-     * @var bool
-     */
-    public $timestamps = false;
-
     /**
      * @var list<string>
      */

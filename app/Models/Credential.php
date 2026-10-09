@@ -14,16 +14,12 @@ use Illuminate\Support\Carbon;
  * @property int $client_id
  * @property string $username
  * @property string $password_hash
- * @property Carbon $created_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class Credential extends Authenticatable
 {
     use Notifiable;
-
-    /**
-     * @var bool
-     */
-    public $timestamps = false;
 
     /**
      * @var list<string>
@@ -32,7 +28,6 @@ class Credential extends Authenticatable
         'client_id',
         'username',
         'password_hash',
-        'created_at',
     ];
 
     /**
@@ -49,7 +44,7 @@ class Credential extends Authenticatable
     {
         return [
             'client_id' => 'integer',
-            'created_at' => 'datetime',
+            'password_hash' => 'hashed',
         ];
     }
 
