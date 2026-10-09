@@ -71,6 +71,6 @@ class Attendance extends Model
      */
     public function originScheduledCourse(): BelongsTo
     {
-        return $this->belongsTo(ScheduledCourse::class, 'origin_scheduled_course_id');
+        return $this->belongsTo(ScheduledCourse::class);
     }
 }

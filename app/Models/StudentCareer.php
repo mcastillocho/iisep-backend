@@ -52,7 +52,7 @@ class StudentCareer extends Model
      */
     public function student(): BelongsTo
     {
-        return $this->belongsTo(Client::class, 'student_id');
+        return $this->belongsTo(Client::class);
     }
 
     /**
@@ -60,7 +60,7 @@ class StudentCareer extends Model
      */
     public function career(): BelongsTo
     {
-        return $this->belongsTo(Career::class, 'career_id');
+        return $this->belongsTo(Career::class);
     }
 
     /**
@@ -68,6 +68,6 @@ class StudentCareer extends Model
      */
     public function enrollments(): HasMany
     {
-        return $this->hasMany(Enrollment::class, 'student_career_id');
+        return $this->hasMany(Enrollment::class);
     }
 }

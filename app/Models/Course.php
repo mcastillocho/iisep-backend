@@ -29,19 +29,11 @@ class Course extends Model
     ];
 
     /**
-     * @return HasMany<ModuleCourse, $this>
-     */
-    public function moduleCourses(): HasMany
-    {
-        return $this->hasMany(ModuleCourse::class, 'course_id');
-    }
-
-    /**
      * @return BelongsToMany<Module, $this>
      */
     public function modules(): BelongsToMany
     {
-        return $this->belongsToMany(Module::class, 'module_courses', 'course_id', 'module_id')
+        return $this->belongsToMany(Module::class)
             ->withPivot(['id']);
     }
 
@@ -50,6 +42,6 @@ class Course extends Model
      */
     public function scheduledCourses(): HasMany
     {
-        return $this->hasMany(ScheduledCourse::class, 'course_id');
+        return $this->hasMany(ScheduledCourse::class);
     }
 }

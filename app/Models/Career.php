@@ -29,19 +29,11 @@ class Career extends Model
     ];
 
     /**
-     * @return HasMany<CareerModule, $this>
-     */
-    public function careerModules(): HasMany
-    {
-        return $this->hasMany(CareerModule::class, 'career_id');
-    }
-
-    /**
      * @return BelongsToMany<Module, $this>
      */
     public function modules(): BelongsToMany
     {
-        return $this->belongsToMany(Module::class, 'career_modules', 'career_id', 'module_id')
+        return $this->belongsToMany(Module::class)
             ->withPivot(['id', 'order'])
             ->orderByPivot('order');
     }
@@ -51,7 +43,7 @@ class Career extends Model
      */
     public function studentCareers(): HasMany
     {
-        return $this->hasMany(StudentCareer::class, 'career_id');
+        return $this->hasMany(StudentCareer::class);
     }
 
     /**

@@ -65,7 +65,7 @@ class Enrollment extends Model
      */
     public function student(): BelongsTo
     {
-        return $this->belongsTo(Client::class, 'student_id');
+        return $this->belongsTo(Client::class);
     }
 
     /**
@@ -73,7 +73,7 @@ class Enrollment extends Model
      */
     public function studentCareer(): BelongsTo
     {
-        return $this->belongsTo(StudentCareer::class, 'student_career_id');
+        return $this->belongsTo(StudentCareer::class);
     }
 
     /**
@@ -81,6 +81,6 @@ class Enrollment extends Model
      */
     public function guardian(): BelongsTo
     {
-        return $this->belongsTo(Client::class, 'guardian_id');
+        return $this->belongsTo(Client::class);
     }
 }
