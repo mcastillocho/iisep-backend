@@ -17,7 +17,8 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->text('first_name');
-            $table->text('last_name');
+            $table->text('paternal_surname');
+            $table->text('maternal_surname')->nullable();
             $table->text('document');
             $table->pgEnum('document_type', 'enum_document_type', array_column(DocumentType::cases(), 'value'));
             $table->date('birth_date')->nullable();

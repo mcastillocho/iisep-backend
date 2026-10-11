@@ -20,7 +20,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read User|null $user
  * @property-read string|null $first_name
- * @property-read string|null $last_name
+ * @property-read string|null $paternal_surname
+ * @property-read string|null $maternal_surname
  * @property-read string|null $full_name
  * @property-read string|null $document
  * @property-read DocumentType|null $document_type

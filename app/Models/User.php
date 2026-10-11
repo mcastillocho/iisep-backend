@@ -16,7 +16,8 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property string $first_name
- * @property string $last_name
+ * @property string $paternal_surname
+ * @property string|null $maternal_surname
  * @property string $document
  * @property DocumentType $document_type
  * @property Carbon|null $birth_date
@@ -44,7 +45,8 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'first_name',
-        'last_name',
+        'paternal_surname',
+        'maternal_surname',
         'document',
         'document_type',
         'birth_date',
@@ -146,7 +148,7 @@ class User extends Authenticatable
 
     public function getFullNameAttribute(): string
     {
-        return "{$this->first_name} {$this->last_name}";
+        return trim("{$this->first_name} {$this->paternal_surname} ".($this->maternal_surname ?? ''));
     }
 
     public function hasRole(string $role): bool

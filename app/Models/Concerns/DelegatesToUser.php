@@ -12,7 +12,8 @@ use Illuminate\Support\Carbon;
 /**
  * @property-read User|null $user
  * @property-read string|null $first_name
- * @property-read string|null $last_name
+ * @property-read string|null $paternal_surname
+ * @property-read string|null $maternal_surname
  * @property-read string|null $full_name
  * @property-read string|null $document
  * @property-read DocumentType|null $document_type
@@ -36,9 +37,14 @@ trait DelegatesToUser
         return $this->user?->first_name;
     }
 
-    public function getLastNameAttribute(): ?string
+    public function getPaternalSurnameAttribute(): ?string
     {
-        return $this->user?->last_name;
+        return $this->user?->paternal_surname;
+    }
+
+    public function getMaternalSurnameAttribute(): ?string
+    {
+        return $this->user?->maternal_surname;
     }
 
     public function getFullNameAttribute(): ?string
