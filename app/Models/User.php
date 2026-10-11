@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\ClientType;
 use App\Enums\DocumentType;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -28,9 +29,10 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read list<string> $roles
  * @property-read string $full_name
- * @property-read Client|null $client
+ * @property-read Student|null $student
  * @property-read Teacher|null $teacher
  * @property-read Staff|null $staff
+ * @property-read Collection<int, Enrollment> $guardianEnrollments
  */
 class User extends Authenticatable
 {
@@ -81,11 +83,11 @@ class User extends Authenticatable
     }
 
     /**
-     * @return HasOne<Client, $this>
+     * @return HasOne<Student, $this>
      */
-    public function client(): HasOne
+    public function student(): HasOne
     {
-        return $this->hasOne(Client::class);
+        return $this->hasOne(Student::class);
     }
 
     /**
@@ -105,18 +107,23 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasMany<Enrollment, $this>
+     */
+    public function guardianEnrollments(): HasMany
+    {
+        return $this->hasMany(Enrollment::class, 'guardian_id');
+    }
+
+    /**
      * @return list<string>
      */
     public function getRolesAttribute(): array
     {
         $roles = [];
 
-        if ($this->client !== null) {
-            $roles[] = 'client';
-            $roles[] = $this->client->client_type->value;
-            if ($this->client->client_type === ClientType::ESTUDIANTE) {
-                $roles[] = 'student';
-            }
+        if ($this->student !== null) {
+            $roles[] = 'student';
+            $roles[] = 'estudiante';
         }
 
         if ($this->teacher !== null) {
@@ -127,6 +134,11 @@ class User extends Authenticatable
         if ($this->staff !== null) {
             $roles[] = 'staff';
             $roles[] = 'administrativo';
+        }
+
+        if ($this->relationLoaded('guardianEnrollments') ? $this->guardianEnrollments->isNotEmpty() : $this->guardianEnrollments()->exists()) {
+            $roles[] = 'guardian';
+            $roles[] = 'apoderado';
         }
 
         return array_values(array_unique($roles));
@@ -142,6 +154,11 @@ class User extends Authenticatable
         return in_array($role, $this->roles, true);
     }
 
+    public function isStudent(): bool
+    {
+        return $this->student !== null;
+    }
+
     public function isTeacher(): bool
     {
         return $this->teacher !== null;
@@ -152,13 +169,10 @@ class User extends Authenticatable
         return $this->staff !== null;
     }
 
-    public function isClient(): bool
+    public function isGuardian(): bool
     {
-        return $this->client !== null;
-    }
-
-    public function isStudent(): bool
-    {
-        return $this->client?->client_type === ClientType::ESTUDIANTE;
+        return $this->relationLoaded('guardianEnrollments')
+            ? $this->guardianEnrollments->isNotEmpty()
+            : $this->guardianEnrollments()->exists();
     }
 }

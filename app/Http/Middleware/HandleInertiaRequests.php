@@ -39,7 +39,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $request->user()?->loadMissing(['client', 'teacher', 'staff']),
+                'user' => $request->user()?->loadMissing(['student', 'teacher', 'staff', 'guardianEnrollments']),
             ],
         ];
     }

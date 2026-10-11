@@ -50,11 +50,11 @@ class Career extends Model
     }
 
     /**
-     * @return BelongsToMany<Client, $this>
+     * @return BelongsToMany<Student, $this>
      */
     public function students(): BelongsToMany
     {
-        return $this->belongsToMany(Client::class, 'student_careers', 'career_id', 'student_id')
+        return $this->belongsToMany(Student::class, 'student_careers', 'career_id', 'student_id')
             ->withPivot(['id', 'admission_date', 'status'])
             ->withTimestamps();
     }

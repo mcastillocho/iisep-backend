@@ -62,11 +62,11 @@ class Enrollment extends Model
     }
 
     /**
-     * @return BelongsTo<Client, $this>
+     * @return BelongsTo<Student, $this>
      */
     public function student(): BelongsTo
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Student::class);
     }
 
     /**
@@ -78,10 +78,10 @@ class Enrollment extends Model
     }
 
     /**
-     * @return BelongsTo<Client, $this>
+     * @return BelongsTo<User, $this>
      */
     public function guardian(): BelongsTo
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(User::class);
     }
 }

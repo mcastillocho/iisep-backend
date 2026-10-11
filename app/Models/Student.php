@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\ClientType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -15,13 +14,12 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $user_id
- * @property ClientType $client_type
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  * @property-read User $user
  */
-class Client extends Model
+class Student extends Model
 {
     use SoftDeletes;
 
@@ -30,7 +28,6 @@ class Client extends Model
      */
     protected $fillable = [
         'user_id',
-        'client_type',
     ];
 
     /**
@@ -40,7 +37,6 @@ class Client extends Model
     {
         return [
             'user_id' => 'integer',
-            'client_type' => ClientType::class,
         ];
     }
 
@@ -79,18 +75,10 @@ class Client extends Model
     }
 
     /**
-     * @return HasMany<Enrollment, $this>
-     */
-    public function guardianEnrollments(): HasMany
-    {
-        return $this->hasMany(Enrollment::class, 'guardian_id');
-    }
-
-    /**
      * @return HasMany<Attendance, $this>
      */
     public function attendances(): HasMany
     {
-        return $this->hasMany(Attendance::class);
+        return $this->hasMany(Attendance::class, 'student_id');
     }
 }

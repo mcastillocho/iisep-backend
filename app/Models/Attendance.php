@@ -12,7 +12,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $scheduled_course_id
- * @property int $client_id
+ * @property int $student_id
  * @property Carbon $date
  * @property bool $attended
  * @property string|null $notes
@@ -20,6 +20,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
+ * @property-read ScheduledCourse $scheduledCourse
+ * @property-read Student $student
+ * @property-read ScheduledCourse|null $originScheduledCourse
  */
 class Attendance extends Model
 {
@@ -30,7 +33,7 @@ class Attendance extends Model
      */
     protected $fillable = [
         'scheduled_course_id',
-        'client_id',
+        'student_id',
         'date',
         'attended',
         'notes',
@@ -44,7 +47,7 @@ class Attendance extends Model
     {
         return [
             'scheduled_course_id' => 'integer',
-            'client_id' => 'integer',
+            'student_id' => 'integer',
             'date' => 'date',
             'attended' => 'boolean',
             'origin_scheduled_course_id' => 'integer',
@@ -60,11 +63,11 @@ class Attendance extends Model
     }
 
     /**
-     * @return BelongsTo<Client, $this>
+     * @return BelongsTo<Student, $this>
      */
-    public function client(): BelongsTo
+    public function student(): BelongsTo
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Student::class);
     }
 
     /**

@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('attendances', function (Blueprint $table) {
             $table->id();
             $table->foreignId('scheduled_course_id')->constrained('scheduled_courses');
-            $table->foreignId('client_id')->index()->constrained('clients');
+            $table->foreignId('student_id')->index()->constrained('students');
             $table->date('date');
             $table->boolean('attended');
             $table->text('notes')->nullable();
@@ -24,7 +24,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->unique(['scheduled_course_id', 'client_id', 'date'], 'uq_daily_attendance');
+            $table->unique(['scheduled_course_id', 'student_id', 'date'], 'uq_daily_attendance');
         });
     }
 

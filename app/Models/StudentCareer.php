@@ -49,11 +49,11 @@ class StudentCareer extends Model
     }
 
     /**
-     * @return BelongsTo<Client, $this>
+     * @return BelongsTo<Student, $this>
      */
     public function student(): BelongsTo
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Student::class);
     }
 
     /**

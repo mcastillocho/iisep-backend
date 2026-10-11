@@ -14,9 +14,6 @@ return new class extends Migration
     {
         if (DB::getDriverName() === 'pgsql') {
             DB::statement("DO \$\$ BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'enum_client_type') THEN
-                    CREATE TYPE enum_client_type AS ENUM ('estudiante', 'apoderado', 'docente', 'particular');
-                END IF;
                 IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'enum_document_type') THEN
                     CREATE TYPE enum_document_type AS ENUM ('dni', 'ce', 'pasaporte', 'ruc');
                 END IF;
@@ -43,7 +40,6 @@ return new class extends Migration
             DB::statement('DROP TYPE IF EXISTS enum_enrollment_status');
             DB::statement('DROP TYPE IF EXISTS enum_day_of_week');
             DB::statement('DROP TYPE IF EXISTS enum_document_type');
-            DB::statement('DROP TYPE IF EXISTS enum_client_type');
         }
     }
 };
