@@ -5,27 +5,21 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\ClientType;
-use App\Enums\DocumentType;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
- * @property string $first_name
- * @property string $last_name
- * @property Carbon|null $birth_date
+ * @property int $user_id
  * @property ClientType $client_type
- * @property string $document
- * @property DocumentType $document_type
- * @property string|null $email
- * @property string|null $phone
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
+ * @property-read User $user
  */
 class Client extends Model
 {
@@ -35,14 +29,8 @@ class Client extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'first_name',
-        'last_name',
-        'birth_date',
+        'user_id',
         'client_type',
-        'document',
-        'document_type',
-        'email',
-        'phone',
     ];
 
     /**
@@ -51,18 +39,17 @@ class Client extends Model
     protected function casts(): array
     {
         return [
-            'birth_date' => 'date',
+            'user_id' => 'integer',
             'client_type' => ClientType::class,
-            'document_type' => DocumentType::class,
         ];
     }
 
     /**
-     * @return HasOne<Credential, $this>
+     * @return BelongsTo<User, $this>
      */
-    public function credential(): HasOne
+    public function user(): BelongsTo
     {
-        return $this->hasOne(Credential::class);
+        return $this->belongsTo(User::class);
     }
 
     /**
