@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\EnrollmentStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -24,9 +25,9 @@ return new class extends Migration
             $table->pgEnum('status', 'enum_enrollment_status', array_column(EnrollmentStatus::cases(), 'value'))->default('preinscrito');
             $table->timestamps();
             $table->softDeletes();
-
-            $table->unique(['scheduled_course_id', 'student_id'], 'uq_enrollment_student_course');
         });
+
+        DB::statement('CREATE UNIQUE INDEX uq_enrollment_student_course ON enrollments (scheduled_course_id, student_id) WHERE deleted_at IS NULL');
     }
 
     /**
