@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\DocumentType;
+use App\Models\Concerns\DelegatesToUser;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -17,10 +18,20 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
- * @property-read User $user
+ * @property-read User|null $user
+ * @property-read string|null $first_name
+ * @property-read string|null $last_name
+ * @property-read string|null $full_name
+ * @property-read string|null $document
+ * @property-read DocumentType|null $document_type
+ * @property-read Carbon|null $birth_date
+ * @property-read string|null $email
+ * @property-read string|null $phone
+ * @property-read string|null $username
  */
 class Student extends Model
 {
+    use DelegatesToUser;
     use SoftDeletes;
 
     /**
@@ -38,14 +49,6 @@ class Student extends Model
         return [
             'user_id' => 'integer',
         ];
-    }
-
-    /**
-     * @return BelongsTo<User, $this>
-     */
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
     }
 
     /**
