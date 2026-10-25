@@ -21,7 +21,7 @@ return new class extends Migration
                     CREATE TYPE enum_day_of_week AS ENUM ('lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo');
                 END IF;
                 IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'enum_enrollment_status') THEN
-                    CREATE TYPE enum_enrollment_status AS ENUM ('preinscrito', 'activo', 'completado', 'retirado', 'anulado');
+                    CREATE TYPE enum_enrollment_status AS ENUM ('preinscrito', 'activo', 'completado', 'convalidado', 'retirado', 'anulado');
                 END IF;
                 IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'enum_student_career_status') THEN
                     CREATE TYPE enum_student_career_status AS ENUM ('activo', 'egresado', 'titulado', 'en_reserva', 'retirado');

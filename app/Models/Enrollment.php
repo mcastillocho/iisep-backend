@@ -100,4 +100,14 @@ class Enrollment extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function isApproved(): bool
+    {
+        return in_array($this->status, [EnrollmentStatus::COMPLETADO, EnrollmentStatus::CONVALIDADO], true);
+    }
+
+    public function isConvalidated(): bool
+    {
+        return $this->status === EnrollmentStatus::CONVALIDADO;
+    }
 }

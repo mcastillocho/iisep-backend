@@ -391,6 +391,17 @@ class DatabaseSeeder extends Seeder
             'status' => EnrollmentStatus::ACTIVO,
         ]);
 
+        // 10.4 Valeria Rios: tiene convalidado Excel Avanzado por estudios previos
+        Enrollment::create([
+            'scheduled_course_id' => $progExcelComas->id,
+            'student_id' => $studentValeria->id,
+            'student_career_id' => $scValeria->id,
+            'module_id' => $moduloOfimatica->id,
+            'guardian_id' => null,
+            'enrollment_date' => Carbon::parse('2026-03-05'),
+            'status' => EnrollmentStatus::CONVALIDADO,
+        ]);
+
         // 11. Registro de Asistencias (Attendances)
         // Sesión 1: 2026-10-05 (Lunes) en Lab Comas
         Attendance::create([

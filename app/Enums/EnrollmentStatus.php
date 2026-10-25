@@ -9,6 +9,7 @@ enum EnrollmentStatus: string
     case PREINSCRITO = 'preinscrito';
     case ACTIVO = 'activo';
     case COMPLETADO = 'completado';
+    case CONVALIDADO = 'convalidado';
     case RETIRADO = 'retirado';
     case ANULADO = 'anulado';
 }
