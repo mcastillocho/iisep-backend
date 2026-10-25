@@ -53,13 +53,11 @@ class Module extends Model
     }
 
     /**
-     * @return BelongsToMany<Course, $this>
+     * @return HasMany<Course, $this>
      */
-    public function courses(): BelongsToMany
+    public function courses(): HasMany
     {
-        return $this->belongsToMany(Course::class)
-            ->withPivot(['id'])
-            ->withTimestamps();
+        return $this->hasMany(Course::class);
     }
 
     /**

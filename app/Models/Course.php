@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
+ * @property int|null $module_id
  * @property string $name
  * @property string|null $description
  * @property int|null $duration_in_weeks
@@ -19,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
+ * @property-read Module|null $module
  */
 class Course extends Model
 {
@@ -28,6 +30,7 @@ class Course extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'module_id',
         'name',
         'description',
         'duration_in_weeks',
@@ -40,19 +43,18 @@ class Course extends Model
     protected function casts(): array
     {
         return [
+            'module_id' => 'integer',
             'duration_in_weeks' => 'integer',
             'is_workshop' => 'boolean',
         ];
     }
 
     /**
-     * @return BelongsToMany<Module, $this>
+     * @return BelongsTo<Module, $this>
      */
-    public function modules(): BelongsToMany
+    public function module(): BelongsTo
     {
-        return $this->belongsToMany(Module::class)
-            ->withPivot(['id'])
-            ->withTimestamps();
+        return $this->belongsTo(Module::class);
     }
 
     /**

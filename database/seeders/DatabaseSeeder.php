@@ -129,6 +129,7 @@ class DatabaseSeeder extends Seeder
 
         // 5. Cursos y Talleres (unidades atómicas con duración y bandera is_workshop)
         $cursoExcel = Course::create([
+            'module_id' => $moduloOfimatica->id,
             'name' => 'Excel Avanzado y Macros',
             'description' => 'Fórmulas lógicas, tablas dinámicas, dashboards y automatización VBA.',
             'duration_in_weeks' => 4,
@@ -136,6 +137,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $cursoHardware = Course::create([
+            'module_id' => $moduloEnsamblaje->id,
             'name' => 'Arquitectura de Hardware y Diagnóstico',
             'description' => 'Detección de fallas en placas, memorias, fuentes y almacenamiento.',
             'duration_in_weeks' => 4,
@@ -144,6 +146,7 @@ class DatabaseSeeder extends Seeder
 
         // Talleres cortos independientes
         $tallerBarber = Course::create([
+            'module_id' => null,
             'name' => 'Taller de Barber Shop y Cortes Urbanos',
             'description' => 'Técnicas de degradado, fade, afeitado tradicional y perfilado de barba.',
             'duration_in_weeks' => 6,
@@ -151,6 +154,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $tallerUnas = Course::create([
+            'module_id' => null,
             'name' => 'Taller de Uñas Acrílicas y Polygel',
             'description' => 'Esculpido en acrílico, encapsulados, mano alzada y 3D.',
             'duration_in_weeks' => 4,
@@ -158,15 +162,12 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $tallerCelulares = Course::create([
+            'module_id' => null,
             'name' => 'Taller de Reparación de Celulares y Tablets',
             'description' => 'Cambio de pantallas, micro-soldadura, diagnóstico de placas y flasheo.',
             'duration_in_weeks' => 8,
             'is_workshop' => true,
         ]);
-
-        // Asociar cursos a módulos
-        $moduloOfimatica->courses()->attach([$cursoExcel->id]);
-        $moduloEnsamblaje->courses()->attach([$cursoHardware->id]);
 
         // 6. Usuarios e Identidades
         // 6.1 Personal Administrativo / Staff de Sede Comas
