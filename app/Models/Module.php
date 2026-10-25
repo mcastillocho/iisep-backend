@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -13,6 +14,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $name
  * @property string|null $description
+ * @property int|null $duration_in_weeks
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
@@ -27,7 +29,18 @@ class Module extends Model
     protected $fillable = [
         'name',
         'description',
+        'duration_in_weeks',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'duration_in_weeks' => 'integer',
+        ];
+    }
 
     /**
      * @return BelongsToMany<Career, $this>
@@ -47,5 +60,13 @@ class Module extends Model
         return $this->belongsToMany(Course::class)
             ->withPivot(['id'])
             ->withTimestamps();
+    }
+
+    /**
+     * @return HasMany<Enrollment, $this>
+     */
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(Enrollment::class);
     }
 }

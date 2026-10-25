@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
+ * @property int $branch_id
  * @property int $course_id
  * @property int|null $teacher_id
  * @property Carbon $start_date
@@ -19,6 +20,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
+ * @property-read Branch $branch
+ * @property-read Course $course
+ * @property-read Teacher|null $teacher
  */
 class ScheduledCourse extends Model
 {
@@ -28,6 +32,7 @@ class ScheduledCourse extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'branch_id',
         'course_id',
         'teacher_id',
         'start_date',
@@ -40,11 +45,20 @@ class ScheduledCourse extends Model
     protected function casts(): array
     {
         return [
+            'branch_id' => 'integer',
             'course_id' => 'integer',
             'teacher_id' => 'integer',
             'start_date' => 'date',
             'end_date' => 'date',
         ];
+    }
+
+    /**
+     * @return BelongsTo<Branch, $this>
+     */
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     /**

@@ -9,6 +9,7 @@ use App\Enums\DocumentType;
 use App\Enums\EnrollmentStatus;
 use App\Enums\StudentCareerStatus;
 use App\Models\Attendance;
+use App\Models\Branch;
 use App\Models\Career;
 use App\Models\Classroom;
 use App\Models\Course;
@@ -31,77 +32,145 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Aulas y Laboratorios
-        $aula101 = Classroom::create(['name' => 'Aula 101 - Pabellón A', 'capacity' => 35]);
-        $aula202 = Classroom::create(['name' => 'Aula 202 - Pabellón B', 'capacity' => 30]);
-        $lab1 = Classroom::create(['name' => 'Laboratorio de Cómputo 1', 'capacity' => 24]);
-
-        // 2. Carreras Profesionales
-        $carreraSistemas = Career::create([
-            'name' => 'Desarrollo de Sistemas de Información',
-            'description' => 'Carrera profesional técnica enfocada en ingeniería de software, arquitectura cloud y bases de datos.',
+        // 1. Sedes Institucionales (CETPRO IISEP)
+        $sedeComas = Branch::create([
+            'name' => 'Sede Comas',
+            'code' => 'COM',
+            'address' => 'Av. Túpac Amaru 3850 - La Pascana (Costado Plaza Vea)',
+            'phone' => '970518364',
+            'is_active' => true,
         ]);
 
-        $carreraAdmin = Career::create([
-            'name' => 'Administración y Gestión de Empresas',
-            'description' => 'Carrera enfocada en finanzas, liderazgo empresarial, contabilidad y gestión de proyectos.',
+        $sedePuentePiedra = Branch::create([
+            'name' => 'Sede Puente Piedra',
+            'code' => 'PUP',
+            'address' => 'Jr. Ricardo Palma 241 (2° piso de la RENIEC)',
+            'phone' => '987710344',
+            'is_active' => true,
         ]);
 
-        // 3. Módulos Formativos
-        $moduloSoftware = Module::create([
-            'name' => 'Desarrollo de Software y Base de Datos',
-            'description' => 'Módulo formativo enfocado en programación estructurada y bases de datos relacionales.',
+        // 2. Aulas y Laboratorios por Sede
+        $aula101Comas = Classroom::create([
+            'branch_id' => $sedeComas->id,
+            'name' => 'Aula 101 - Teoría',
+            'capacity' => 35,
+        ]);
+        $lab1Comas = Classroom::create([
+            'branch_id' => $sedeComas->id,
+            'name' => 'Laboratorio de Cómputo 1',
+            'capacity' => 24,
+        ]);
+        $aula201PuentePiedra = Classroom::create([
+            'branch_id' => $sedePuentePiedra->id,
+            'name' => 'Aula 201 - Multiusos',
+            'capacity' => 30,
+        ]);
+        $tallerBellezaPuentePiedra = Classroom::create([
+            'branch_id' => $sedePuentePiedra->id,
+            'name' => 'Taller de Estética y Cosmetología',
+            'capacity' => 20,
         ]);
 
-        $moduloInfra = Module::create([
-            'name' => 'Infraestructura, Servidores y Redes',
-            'description' => 'Módulo formativo sobre conectividad, topologías y seguridad de red.',
+        // 3. Carreras Técnicas Profesionales (con duración en semanas)
+        $carreraComputacion = Career::create([
+            'name' => 'Computación e Informática',
+            'description' => 'Carrera técnica profesional de desarrollo de software, administración de redes y soporte.',
+            'duration_in_weeks' => 104, // 2 años lectivos
         ]);
 
-        $moduloFinanzas = Module::create([
-            'name' => 'Gestión Financiera y Contable',
-            'description' => 'Módulo enfocado en balances contables y finanzas corporativas.',
+        $carreraLogistica = Career::create([
+            'name' => 'Logística y Almacenes',
+            'description' => 'Especialista en administración de inventarios, cadena de suministro y comercio.',
+            'duration_in_weeks' => 104,
         ]);
 
-        // Asociar módulos a carreras con su orden
-        $carreraSistemas->modules()->attach([
-            $moduloSoftware->id => ['order' => 1],
-            $moduloInfra->id => ['order' => 2],
+        $carreraGastronomia = Career::create([
+            'name' => 'Gastronomía y Arte Culinario',
+            'description' => 'Formación integral en técnicas culinarias nacionales e internacionales y gestión de restaurantes.',
+            'duration_in_weeks' => 104,
         ]);
 
-        $carreraAdmin->modules()->attach([
-            $moduloFinanzas->id => ['order' => 1],
+        // 4. Módulos Formativos (pueden ser de carreras o llevarse de forma independiente)
+        $moduloOfimatica = Module::create([
+            'name' => 'Ofimática Empresarial',
+            'description' => 'Word, Excel avanzado, PowerPoint y gestión de documentos en la nube.',
+            'duration_in_weeks' => 8, // 2 meses
         ]);
 
-        // 4. Cursos
-        $cursoBD = Course::create([
-            'name' => 'Modelamiento y Administración de Bases de Datos',
-            'description' => 'Diseño ER, normalización y SQL avanzado en PostgreSQL.',
+        $moduloEnsamblaje = Module::create([
+            'name' => 'Ensamblaje y Mantenimiento de PC',
+            'description' => 'Diagnóstico de hardware, armado de computadoras, instalación de SO y redes LAN.',
+            'duration_in_weeks' => 8,
         ]);
 
-        $cursoLaravel = Course::create([
-            'name' => 'Desarrollo Backend con PHP y Laravel',
-            'description' => 'Arquitectura MVC, Eloquent ORM, migraciones y APIs REST.',
+        $moduloCajero = Module::create([
+            'name' => 'Cajero Bancario y Comercial',
+            'description' => 'Detección de billetes, sistemas financieros, arqueo de caja y servicio al cliente.',
+            'duration_in_weeks' => 8,
         ]);
 
-        $cursoRedes = Course::create([
-            'name' => 'Redes de Computadoras y Conectividad',
-            'description' => 'Modelo OSI, subnetting, enrutamiento y conmutación.',
+        $moduloPasteleria = Module::create([
+            'name' => 'Pastelería y Repostería Fina',
+            'description' => 'Técnicas de masas, horneado, decoración y postres internacionales.',
+            'duration_in_weeks' => 12, // 3 meses
         ]);
 
-        $cursoConta = Course::create([
-            'name' => 'Contabilidad Financiera y Costos',
-            'description' => 'Estados financieros, balance general y contabilidad de costos.',
+        // Asociar módulos a carreras
+        $carreraComputacion->modules()->attach([
+            $moduloOfimatica->id => ['order' => 1],
+            $moduloEnsamblaje->id => ['order' => 2],
+        ]);
+        $carreraLogistica->modules()->attach([
+            $moduloCajero->id => ['order' => 1],
+        ]);
+        $carreraGastronomia->modules()->attach([
+            $moduloPasteleria->id => ['order' => 1],
+        ]);
+
+        // 5. Cursos y Talleres (unidades atómicas con duración y bandera is_workshop)
+        $cursoExcel = Course::create([
+            'name' => 'Excel Avanzado y Macros',
+            'description' => 'Fórmulas lógicas, tablas dinámicas, dashboards y automatización VBA.',
+            'duration_in_weeks' => 4,
+            'is_workshop' => false,
+        ]);
+
+        $cursoHardware = Course::create([
+            'name' => 'Arquitectura de Hardware y Diagnóstico',
+            'description' => 'Detección de fallas en placas, memorias, fuentes y almacenamiento.',
+            'duration_in_weeks' => 4,
+            'is_workshop' => false,
+        ]);
+
+        // Talleres cortos independientes
+        $tallerBarber = Course::create([
+            'name' => 'Taller de Barber Shop y Cortes Urbanos',
+            'description' => 'Técnicas de degradado, fade, afeitado tradicional y perfilado de barba.',
+            'duration_in_weeks' => 6,
+            'is_workshop' => true,
+        ]);
+
+        $tallerUnas = Course::create([
+            'name' => 'Taller de Uñas Acrílicas y Polygel',
+            'description' => 'Esculpido en acrílico, encapsulados, mano alzada y 3D.',
+            'duration_in_weeks' => 4,
+            'is_workshop' => true,
+        ]);
+
+        $tallerCelulares = Course::create([
+            'name' => 'Taller de Reparación de Celulares y Tablets',
+            'description' => 'Cambio de pantallas, micro-soldadura, diagnóstico de placas y flasheo.',
+            'duration_in_weeks' => 8,
+            'is_workshop' => true,
         ]);
 
         // Asociar cursos a módulos
-        $moduloSoftware->courses()->attach([$cursoBD->id, $cursoLaravel->id]);
-        $moduloInfra->courses()->attach([$cursoRedes->id]);
-        $moduloFinanzas->courses()->attach([$cursoConta->id]);
+        $moduloOfimatica->courses()->attach([$cursoExcel->id]);
+        $moduloEnsamblaje->courses()->attach([$cursoHardware->id]);
 
-        // 5. Usuarios e Identidades
-        // 5.1 Personal Administrativo / Staff
-        $userStaff = User::create([
+        // 6. Usuarios e Identidades
+        // 6.1 Personal Administrativo / Staff de Sede Comas
+        $userStaffComas = User::create([
             'first_name' => 'Sofia',
             'paternal_surname' => 'Torres',
             'maternal_surname' => 'Castro',
@@ -109,16 +178,17 @@ class DatabaseSeeder extends Seeder
             'document_type' => DocumentType::DNI,
             'birth_date' => Carbon::parse('1988-04-12'),
             'email' => 'sofia.torres@iisep.edu.pe',
-            'phone' => '987111222',
+            'phone' => '970518364',
             'username' => 'storres',
             'password' => 'admin123',
         ]);
         Staff::create([
-            'user_id' => $userStaff->id,
-            'position' => 'Coordinadora Académica General',
+            'user_id' => $userStaffComas->id,
+            'branch_id' => $sedeComas->id,
+            'position' => 'Coordinadora Académica - Sede Comas',
         ]);
 
-        // 5.2 Docente 1 (Profesor principal de software)
+        // 6.2 Docente 1 (Profesor de Computación y Hardware)
         $userDocente1 = User::create([
             'first_name' => 'Marco Antonio',
             'paternal_surname' => 'Rojas',
@@ -133,10 +203,10 @@ class DatabaseSeeder extends Seeder
         ]);
         $teacherRojas = Teacher::create([
             'user_id' => $userDocente1->id,
-            'specialty' => 'Ingeniería de Software y Arquitectura PostgreSQL',
+            'specialty' => 'Ingeniería de Sistemas y Soporte Técnico',
         ]);
 
-        // 5.3 Docente 2 (Docente de redes que además es alumno en Laravel)
+        // 6.3 Docente 2 (Instructor de Barbería que además estudia Excel en Comas)
         $userDocente2 = User::create([
             'first_name' => 'Carlos Alberto',
             'paternal_surname' => 'Gomez',
@@ -151,13 +221,13 @@ class DatabaseSeeder extends Seeder
         ]);
         $teacherGomez = Teacher::create([
             'user_id' => $userDocente2->id,
-            'specialty' => 'Telecomunicaciones y Seguridad de Redes',
+            'specialty' => 'Estilismo Masculino y Barbería Profesional',
         ]);
         $studentGomez = Student::create([
             'user_id' => $userDocente2->id,
         ]);
 
-        // 5.4 Apoderado (Padre de familia)
+        // 6.4 Apoderado (Padre de familia en Sede Comas)
         $userPadre = User::create([
             'first_name' => 'Juan Carlos',
             'paternal_surname' => 'Mendoza',
@@ -171,7 +241,7 @@ class DatabaseSeeder extends Seeder
             'password' => 'padre123',
         ]);
 
-        // 5.5 Alumno 1 (Hijo menor con tutor/apoderado)
+        // 6.5 Alumno 1 (Hijo menor inscrito en carrera completa en Sede Comas)
         $userDiego = User::create([
             'first_name' => 'Diego',
             'paternal_surname' => 'Mendoza',
@@ -188,7 +258,7 @@ class DatabaseSeeder extends Seeder
             'user_id' => $userDiego->id,
         ]);
 
-        // 5.6 Alumna 2 (Mayor de edad, independiente)
+        // 6.6 Alumna 2 (Mayor de edad, inscrita en Sede Puente Piedra)
         $userValeria = User::create([
             'first_name' => 'Valeria',
             'paternal_surname' => 'Rios',
@@ -205,149 +275,154 @@ class DatabaseSeeder extends Seeder
             'user_id' => $userValeria->id,
         ]);
 
-        // 6. Admisión a Carreras (StudentCareers)
+        // 7. Admisión a Carreras (vinculadas a la sede de estudio)
         $scDiego = StudentCareer::create([
             'student_id' => $studentDiego->id,
-            'career_id' => $carreraSistemas->id,
+            'career_id' => $carreraComputacion->id,
+            'branch_id' => $sedeComas->id,
             'admission_date' => Carbon::parse('2026-03-01'),
             'status' => StudentCareerStatus::ACTIVO,
         ]);
 
         $scValeria = StudentCareer::create([
             'student_id' => $studentValeria->id,
-            'career_id' => $carreraSistemas->id,
+            'career_id' => $carreraComputacion->id,
+            'branch_id' => $sedePuentePiedra->id,
             'admission_date' => Carbon::parse('2026-03-01'),
             'status' => StudentCareerStatus::ACTIVO,
         ]);
 
-        // 7. Cursos Programados (Periodo Académico 2026-II)
-        $progCursoBD = ScheduledCourse::create([
-            'course_id' => $cursoBD->id,
+        // 8. Cursos Programados (Apertura por sede y docente)
+        // 8.1 En Sede Comas: Hardware y Ensamblaje
+        $progHardwareComas = ScheduledCourse::create([
+            'branch_id' => $sedeComas->id,
+            'course_id' => $cursoHardware->id,
             'teacher_id' => $teacherRojas->id,
             'start_date' => Carbon::parse('2026-10-01'),
-            'end_date' => Carbon::parse('2026-12-20'),
+            'end_date' => Carbon::parse('2026-10-31'),
         ]);
 
-        $progCursoLaravel = ScheduledCourse::create([
-            'course_id' => $cursoLaravel->id,
+        // 8.2 En Sede Comas: Excel Avanzado (Ofimática)
+        $progExcelComas = ScheduledCourse::create([
+            'branch_id' => $sedeComas->id,
+            'course_id' => $cursoExcel->id,
             'teacher_id' => $teacherRojas->id,
             'start_date' => Carbon::parse('2026-10-01'),
-            'end_date' => Carbon::parse('2026-12-20'),
+            'end_date' => Carbon::parse('2026-10-31'),
         ]);
 
-        $progCursoRedes = ScheduledCourse::create([
-            'course_id' => $cursoRedes->id,
+        // 8.3 En Sede Puente Piedra: Taller de Barber Shop
+        $progBarberPuentePiedra = ScheduledCourse::create([
+            'branch_id' => $sedePuentePiedra->id,
+            'course_id' => $tallerBarber->id,
             'teacher_id' => $teacherGomez->id,
             'start_date' => Carbon::parse('2026-10-01'),
-            'end_date' => Carbon::parse('2026-12-20'),
+            'end_date' => Carbon::parse('2026-11-15'),
         ]);
 
-        // 8. Horarios de Clases
-        // Curso BD: Lunes y Miércoles en Lab 1 (08:00 - 10:00)
+        // 9. Horarios de Clases (en las aulas de cada sede)
+        // Hardware en Comas: Lunes y Miércoles 08:00 - 10:00 (Lab 1 Comas)
         CourseSchedule::create([
-            'scheduled_course_id' => $progCursoBD->id,
-            'classroom_id' => $lab1->id,
+            'scheduled_course_id' => $progHardwareComas->id,
+            'classroom_id' => $lab1Comas->id,
             'day_of_week' => DayOfWeek::LUNES,
             'start_time' => '08:00:00',
             'end_time' => '10:00:00',
         ]);
         CourseSchedule::create([
-            'scheduled_course_id' => $progCursoBD->id,
-            'classroom_id' => $lab1->id,
+            'scheduled_course_id' => $progHardwareComas->id,
+            'classroom_id' => $lab1Comas->id,
             'day_of_week' => DayOfWeek::MIERCOLES,
             'start_time' => '08:00:00',
             'end_time' => '10:00:00',
         ]);
 
-        // Curso Laravel: Martes y Jueves en Aula 101 (10:00 - 12:00)
+        // Excel en Comas: Martes y Jueves 18:00 - 20:00 (Aula 101 Comas)
         CourseSchedule::create([
-            'scheduled_course_id' => $progCursoLaravel->id,
-            'classroom_id' => $aula101->id,
+            'scheduled_course_id' => $progExcelComas->id,
+            'classroom_id' => $aula101Comas->id,
             'day_of_week' => DayOfWeek::MARTES,
-            'start_time' => '10:00:00',
-            'end_time' => '12:00:00',
-        ]);
-        CourseSchedule::create([
-            'scheduled_course_id' => $progCursoLaravel->id,
-            'classroom_id' => $aula101->id,
-            'day_of_week' => DayOfWeek::JUEVES,
-            'start_time' => '10:00:00',
-            'end_time' => '12:00:00',
+            'start_time' => '18:00:00',
+            'end_time' => '20:00:00',
         ]);
 
-        // Curso Redes: Viernes en Aula 202 (14:00 - 18:00)
+        // Barber Shop en Puente Piedra: Sábados 14:00 - 18:00 (Aula 201 Puente Piedra)
         CourseSchedule::create([
-            'scheduled_course_id' => $progCursoRedes->id,
-            'classroom_id' => $aula202->id,
-            'day_of_week' => DayOfWeek::VIERNES,
+            'scheduled_course_id' => $progBarberPuentePiedra->id,
+            'classroom_id' => $aula201PuentePiedra->id,
+            'day_of_week' => DayOfWeek::SABADO,
             'start_time' => '14:00:00',
             'end_time' => '18:00:00',
         ]);
 
-        // 9. Matrículas (Enrollments)
-        // 9.1 Diego en Base de Datos I con su padre como apoderado
+        // 10. Matrículas (Enrollments)
+        // 10.1 Diego en Hardware (como parte de su carrera en Comas, con apoderado)
         Enrollment::create([
-            'scheduled_course_id' => $progCursoBD->id,
+            'scheduled_course_id' => $progHardwareComas->id,
             'student_id' => $studentDiego->id,
             'student_career_id' => $scDiego->id,
+            'module_id' => $moduloEnsamblaje->id,
             'guardian_id' => $userPadre->id,
             'enrollment_date' => Carbon::parse('2026-10-01'),
             'status' => EnrollmentStatus::ACTIVO,
         ]);
 
-        // 9.2 Valeria en Base de Datos I (independiente)
+        // 10.2 Valeria en Hardware (como parte de su carrera, independiente)
         Enrollment::create([
-            'scheduled_course_id' => $progCursoBD->id,
+            'scheduled_course_id' => $progHardwareComas->id,
             'student_id' => $studentValeria->id,
             'student_career_id' => $scValeria->id,
+            'module_id' => $moduloEnsamblaje->id,
             'guardian_id' => null,
             'enrollment_date' => Carbon::parse('2026-10-01'),
             'status' => EnrollmentStatus::ACTIVO,
         ]);
 
-        // 9.3 Carlos Gomez (Docente de redes) matriculado como Alumno en Laravel
+        // 10.3 Carlos Gomez (Docente) matriculado en el Módulo Independiente de Ofimática (Excel)
+        // Sin carrera técnica (estudia solo el módulo)
         Enrollment::create([
-            'scheduled_course_id' => $progCursoLaravel->id,
+            'scheduled_course_id' => $progExcelComas->id,
             'student_id' => $studentGomez->id,
             'student_career_id' => null,
+            'module_id' => $moduloOfimatica->id,
             'guardian_id' => null,
             'enrollment_date' => Carbon::parse('2026-10-02'),
             'status' => EnrollmentStatus::ACTIVO,
         ]);
 
-        // 10. Registro de Asistencias (Attendances)
-        // Sesión 1: 2026-10-05 (Lunes)
+        // 11. Registro de Asistencias (Attendances)
+        // Sesión 1: 2026-10-05 (Lunes) en Lab Comas
         Attendance::create([
-            'scheduled_course_id' => $progCursoBD->id,
+            'scheduled_course_id' => $progHardwareComas->id,
             'student_id' => $studentDiego->id,
             'date' => Carbon::parse('2026-10-05'),
             'attended' => true,
-            'notes' => 'Asistencia puntual',
+            'notes' => 'Puntual en laboratorio',
         ]);
 
         Attendance::create([
-            'scheduled_course_id' => $progCursoBD->id,
+            'scheduled_course_id' => $progHardwareComas->id,
             'student_id' => $studentValeria->id,
             'date' => Carbon::parse('2026-10-05'),
             'attended' => true,
-            'notes' => 'Asistencia puntual',
+            'notes' => 'Puntual en laboratorio',
         ]);
 
         // Sesión 2: 2026-10-07 (Miércoles)
         Attendance::create([
-            'scheduled_course_id' => $progCursoBD->id,
+            'scheduled_course_id' => $progHardwareComas->id,
             'student_id' => $studentDiego->id,
             'date' => Carbon::parse('2026-10-07'),
             'attended' => false,
-            'notes' => 'Inasistencia justificada por apoderado',
+            'notes' => 'Falta justificada por apoderado',
         ]);
 
         Attendance::create([
-            'scheduled_course_id' => $progCursoBD->id,
+            'scheduled_course_id' => $progHardwareComas->id,
             'student_id' => $studentValeria->id,
             'date' => Carbon::parse('2026-10-07'),
             'attended' => true,
-            'notes' => 'Participación activa en laboratorio',
+            'notes' => 'Práctica destacada',
         ]);
     }
 }

@@ -15,12 +15,18 @@ use Illuminate\Support\Carbon;
  * @property int $scheduled_course_id
  * @property int $student_id
  * @property int|null $student_career_id
+ * @property int|null $module_id
  * @property int|null $guardian_id
  * @property Carbon $enrollment_date
  * @property EnrollmentStatus $status
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
+ * @property-read ScheduledCourse $scheduledCourse
+ * @property-read Student $student
+ * @property-read StudentCareer|null $studentCareer
+ * @property-read Module|null $module
+ * @property-read User|null $guardian
  */
 class Enrollment extends Model
 {
@@ -33,6 +39,7 @@ class Enrollment extends Model
         'scheduled_course_id',
         'student_id',
         'student_career_id',
+        'module_id',
         'guardian_id',
         'enrollment_date',
         'status',
@@ -47,6 +54,7 @@ class Enrollment extends Model
             'scheduled_course_id' => 'integer',
             'student_id' => 'integer',
             'student_career_id' => 'integer',
+            'module_id' => 'integer',
             'guardian_id' => 'integer',
             'enrollment_date' => 'date',
             'status' => EnrollmentStatus::class,
@@ -75,6 +83,14 @@ class Enrollment extends Model
     public function studentCareer(): BelongsTo
     {
         return $this->belongsTo(StudentCareer::class);
+    }
+
+    /**
+     * @return BelongsTo<Module, $this>
+     */
+    public function module(): BelongsTo
+    {
+        return $this->belongsTo(Module::class);
     }
 
     /**

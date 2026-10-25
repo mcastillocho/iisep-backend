@@ -15,11 +15,15 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $student_id
  * @property int $career_id
+ * @property int $branch_id
  * @property Carbon $admission_date
  * @property StudentCareerStatus $status
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
+ * @property-read Student $student
+ * @property-read Career $career
+ * @property-read Branch $branch
  */
 class StudentCareer extends Model
 {
@@ -31,6 +35,7 @@ class StudentCareer extends Model
     protected $fillable = [
         'student_id',
         'career_id',
+        'branch_id',
         'admission_date',
         'status',
     ];
@@ -43,6 +48,7 @@ class StudentCareer extends Model
         return [
             'student_id' => 'integer',
             'career_id' => 'integer',
+            'branch_id' => 'integer',
             'admission_date' => 'date',
             'status' => StudentCareerStatus::class,
         ];
@@ -62,6 +68,14 @@ class StudentCareer extends Model
     public function career(): BelongsTo
     {
         return $this->belongsTo(Career::class);
+    }
+
+    /**
+     * @return BelongsTo<Branch, $this>
+     */
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     /**

@@ -20,6 +20,7 @@ return new class extends Migration
             $table->foreignId('scheduled_course_id')->constrained('scheduled_courses');
             $table->foreignId('student_id')->index()->constrained('students');
             $table->foreignId('student_career_id')->nullable()->index()->constrained('student_careers');
+            $table->foreignId('module_id')->nullable()->index()->constrained('modules');
             $table->foreignId('guardian_id')->nullable()->index()->constrained('users');
             $table->date('enrollment_date')->useCurrent();
             $table->pgEnum('status', 'enum_enrollment_status', array_column(EnrollmentStatus::cases(), 'value'))->default('preinscrito');

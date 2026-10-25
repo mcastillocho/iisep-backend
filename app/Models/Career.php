@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $name
  * @property string|null $description
+ * @property int|null $duration_in_weeks
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
@@ -28,7 +29,18 @@ class Career extends Model
     protected $fillable = [
         'name',
         'description',
+        'duration_in_weeks',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'duration_in_weeks' => 'integer',
+        ];
+    }
 
     /**
      * @return BelongsToMany<Module, $this>

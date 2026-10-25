@@ -17,6 +17,8 @@ return new class extends Migration
             $table->id();
             $table->text('name');
             $table->text('description')->nullable();
+            $table->integer('duration_in_weeks')->nullable();
+            $table->boolean('is_workshop')->default(false);
             $table->timestamps();
             $table->softDeletes();
         });

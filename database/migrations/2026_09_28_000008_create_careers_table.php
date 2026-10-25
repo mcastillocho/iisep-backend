@@ -17,6 +17,7 @@ return new class extends Migration
             $table->id();
             $table->text('name');
             $table->text('description')->nullable();
+            $table->integer('duration_in_weeks')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

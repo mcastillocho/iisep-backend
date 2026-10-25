@@ -15,10 +15,13 @@ return new class extends Migration
     {
         Schema::create('classrooms', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('branch_id')->constrained('branches')->cascadeOnDelete();
             $table->text('name');
             $table->integer('capacity')->nullable();
             $table->timestamps();
             $table->softDeletes();
+
+            $table->unique(['branch_id', 'name'], 'uq_branch_classroom_name');
         });
     }
 

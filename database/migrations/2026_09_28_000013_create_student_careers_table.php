@@ -18,6 +18,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('student_id')->constrained('students')->cascadeOnDelete();
             $table->foreignId('career_id')->index()->constrained('careers');
+            $table->foreignId('branch_id')->index()->constrained('branches');
             $table->date('admission_date')->useCurrent();
             $table->pgEnum('status', 'enum_student_career_status', array_column(StudentCareerStatus::cases(), 'value'))->default('activo');
             $table->timestamps();
