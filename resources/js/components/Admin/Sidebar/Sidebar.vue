@@ -10,7 +10,13 @@ interface Branch {
     phone: string;
 }
 
-type MainTab = 'infraestructura' | 'curricular' | 'matriculas' | 'aperturas' | 'asistencia' | 'resumen';
+type MainTab =
+    | 'infraestructura'
+    | 'curricular'
+    | 'matriculas'
+    | 'aperturas'
+    | 'asistencia'
+    | 'resumen';
 type CurricularTab = 'carreras' | 'modulos' | 'talleres';
 
 interface Props {
@@ -66,38 +72,99 @@ function handleCurricularTabSelect(tab: CurricularTab) {
     <div
         v-if="isMobileOpen"
         @click="emit('update:isMobileOpen', false)"
-        class="fixed inset-0 bg-slate-900/40 z-40 md:hidden backdrop-blur-xs transition-opacity"
+        class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs transition-opacity md:hidden"
     ></div>
 
     <aside
         :class="[
-            isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
-            'fixed md:sticky top-0 inset-y-0 left-0 z-50 h-screen w-72 md:w-80 shrink-0 bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-200 ease-in-out shadow-xs'
+            isMobileOpen
+                ? 'translate-x-0'
+                : '-translate-x-full md:translate-x-0',
+            'fixed inset-y-0 top-0 left-0 z-50 flex h-screen w-72 shrink-0 flex-col justify-between border-r border-slate-200 bg-white shadow-xs transition-transform duration-200 ease-in-out md:sticky md:w-80',
         ]"
     >
         <!-- Contenedor scrollable independiente del menú -->
-        <div class="overflow-y-auto flex-1 flex flex-col">
+        <div class="flex flex-1 flex-col overflow-y-auto">
             <!-- Brand Header -->
-            <div class="p-6 border-b border-slate-100 flex items-center gap-3.5 shrink-0 bg-white sticky top-0 z-10">
-                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2e8b57] font-black text-white shadow-md shadow-emerald-700/20">
+            <div
+                class="sticky top-0 z-10 flex shrink-0 items-center gap-3.5 border-b border-slate-100 bg-white p-6"
+            >
+                <div
+                    class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2e8b57] font-black text-white shadow-md shadow-emerald-700/20"
+                >
                     <span class="text-xl tracking-wider">II</span>
                 </div>
                 <div>
                     <div class="flex items-center gap-2">
-                        <span class="text-xl font-black tracking-tight text-[#2e8b57]">IISEP</span>
-                        <span class="rounded bg-emerald-50 px-2 py-0.5 text-xs font-bold text-[#2e8b57] border border-emerald-200">
+                        <span
+                            class="text-xl font-black tracking-tight text-[#2e8b57]"
+                            >IISEP</span
+                        >
+                        <span
+                            class="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-bold text-[#2e8b57]"
+                        >
                             CETPRO
                         </span>
                     </div>
-                    <p class="text-xs text-slate-500 font-medium">Gestión Académica Oficial</p>
+                    <p class="text-xs font-medium text-slate-500">
+                        Gestión Académica Oficial
+                    </p>
                 </div>
             </div>
 
             <!-- Navigation Groups -->
-            <nav class="px-4 py-4 space-y-4">
-                <!-- GRUPO 1: MATRÍCULAS (MÁXIMA FRECUENCIA OPERATIVA) -->
+            <nav class="space-y-4 px-4 py-4">
+                <!-- GRUPO 1: ASISTENCIAS (MÁXIMA PRIORIDAD Y OPERATIVA DIARIA) -->
                 <div>
-                    <div class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase">
+                    <div
+                        class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase"
+                    >
+                        Asistencias
+                    </div>
+
+                    <div class="space-y-1">
+                        <button
+                            @click="selectMainTab('asistencia')"
+                            :class="[
+                                activeMainTab === 'asistencia'
+                                    ? 'border-l-4 border-[#2e8b57] bg-emerald-50 font-bold text-[#2e8b57]'
+                                    : 'font-semibold text-slate-700 hover:bg-slate-50',
+                                'flex w-full cursor-pointer items-center justify-between rounded-lg px-3.5 py-2.5 text-sm transition',
+                            ]"
+                        >
+                            <div class="flex items-center gap-3">
+                                <svg
+                                    class="h-5 w-5 text-[#2e8b57]"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                                    />
+                                </svg>
+                                <span>Asistencias</span>
+                            </div>
+                            <span
+                                class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black tracking-wide text-[#2e8b57] uppercase"
+                            >
+                                <span
+                                    class="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2e8b57]"
+                                ></span>
+                                En vivo
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- GRUPO 2: MATRÍCULAS -->
+                <div>
+                    <div
+                        class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase"
+                    >
                         Matrículas
                     </div>
 
@@ -107,18 +174,30 @@ function handleCurricularTabSelect(tab: CurricularTab) {
                             @click="selectMainTab('matriculas')"
                             :class="[
                                 activeMainTab === 'matriculas'
-                                    ? 'bg-emerald-50 text-[#2e8b57] font-bold border-l-4 border-[#2e8b57]'
-                                    : 'text-slate-700 hover:bg-slate-50 font-semibold',
-                                'w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm transition cursor-pointer'
+                                    ? 'border-l-4 border-[#2e8b57] bg-emerald-50 font-bold text-[#2e8b57]'
+                                    : 'font-semibold text-slate-700 hover:bg-slate-50',
+                                'flex w-full cursor-pointer items-center justify-between rounded-lg px-3.5 py-2.5 text-sm transition',
                             ]"
                         >
                             <div class="flex items-center gap-3">
-                                <svg class="h-5 w-5 text-[#2e8b57]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                <svg
+                                    class="h-5 w-5 text-[#2e8b57]"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                    />
                                 </svg>
                                 <span>Matrículas</span>
                             </div>
-                            <span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-[#2e8b57]">
+                            <span
+                                class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-[#2e8b57]"
+                            >
                                 {{ enrollmentsCount }}
                             </span>
                         </button>
@@ -128,27 +207,41 @@ function handleCurricularTabSelect(tab: CurricularTab) {
                             @click="selectMainTab('aperturas')"
                             :class="[
                                 activeMainTab === 'aperturas'
-                                    ? 'bg-emerald-50 text-[#2e8b57] font-bold border-l-4 border-[#2e8b57]'
-                                    : 'text-slate-700 hover:bg-slate-50 font-semibold',
-                                'w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm transition cursor-pointer'
+                                    ? 'border-l-4 border-[#2e8b57] bg-emerald-50 font-bold text-[#2e8b57]'
+                                    : 'font-semibold text-slate-700 hover:bg-slate-50',
+                                'flex w-full cursor-pointer items-center justify-between rounded-lg px-3.5 py-2.5 text-sm transition',
                             ]"
                         >
                             <div class="flex items-center gap-3">
-                                <svg class="h-5 w-5 text-[#2e8b57]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                <svg
+                                    class="h-5 w-5 text-[#2e8b57]"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                    />
                                 </svg>
                                 <span>Apertura de Cursos</span>
                             </div>
-                            <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+                            <span
+                                class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600"
+                            >
                                 {{ scheduledCoursesCount ?? 4 }}
                             </span>
                         </button>
                     </div>
                 </div>
 
-                <!-- GRUPO 2: OFERTA ACADÉMICA / CURSOS -->
+                <!-- GRUPO 3: OFERTA ACADÉMICA / CURSOS -->
                 <div>
-                    <div class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase">
+                    <div
+                        class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase"
+                    >
                         Cursos
                     </div>
 
@@ -162,25 +255,40 @@ function handleCurricularTabSelect(tab: CurricularTab) {
                     />
                 </div>
 
-                <!-- GRUPO 3: AMBIENTES / SEDES & AULAS -->
+                <!-- GRUPO 4: AMBIENTES / SEDES & AULAS -->
                 <div>
-                    <div class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase">
+                    <div
+                        class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase"
+                    >
                         Ambientes
                     </div>
 
                     <div class="space-y-1">
                         <button
-                            @click="isSedesMenuOpen = !isSedesMenuOpen; selectMainTab('infraestructura')"
+                            @click="
+                                isSedesMenuOpen = !isSedesMenuOpen;
+                                selectMainTab('infraestructura');
+                            "
                             :class="[
                                 activeMainTab === 'infraestructura'
-                                    ? 'bg-emerald-50 text-[#2e8b57] font-bold'
-                                    : 'text-slate-700 hover:bg-slate-50 font-semibold',
-                                'w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm transition cursor-pointer'
+                                    ? 'bg-emerald-50 font-bold text-[#2e8b57]'
+                                    : 'font-semibold text-slate-700 hover:bg-slate-50',
+                                'flex w-full cursor-pointer items-center justify-between rounded-lg px-3.5 py-2.5 text-sm transition',
                             ]"
                         >
                             <div class="flex items-center gap-3">
-                                <svg class="h-5 w-5 text-[#2e8b57]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                <svg
+                                    class="h-5 w-5 text-[#2e8b57]"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                                    />
                                 </svg>
                                 <span class="text-sm">Sedes & Aulas</span>
                             </div>
@@ -191,23 +299,34 @@ function handleCurricularTabSelect(tab: CurricularTab) {
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
                             >
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M9 5l7 7-7 7"
+                                />
                             </svg>
                         </button>
 
                         <!-- Submenú desplegable de Sedes -->
-                        <div v-show="isSedesMenuOpen" class="pl-4 pr-1 space-y-1.5 pt-1.5 border-l-2 border-emerald-200 ml-5">
+                        <div
+                            v-show="isSedesMenuOpen"
+                            class="ml-5 space-y-1.5 border-l-2 border-emerald-200 pt-1.5 pr-1 pl-4"
+                        >
                             <button
                                 @click="selectBranch('all')"
                                 :class="[
-                                    selectedBranchId === 'all' && activeMainTab === 'infraestructura'
-                                        ? 'text-[#2e8b57] font-bold bg-white shadow-xs'
-                                        : 'text-slate-600 hover:text-slate-900 font-medium',
-                                    'w-full text-left px-3 py-2 rounded-md text-xs flex items-center justify-between transition cursor-pointer'
+                                    selectedBranchId === 'all' &&
+                                    activeMainTab === 'infraestructura'
+                                        ? 'bg-white font-bold text-[#2e8b57] shadow-xs'
+                                        : 'font-medium text-slate-600 hover:text-slate-900',
+                                    'flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-left text-xs transition',
                                 ]"
                             >
                                 <span>Todas las Sedes</span>
-                                <span class="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600 font-mono">
+                                <span
+                                    class="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600"
+                                >
                                     {{ classroomsCount }} aulas
                                 </span>
                             </button>
@@ -216,14 +335,17 @@ function handleCurricularTabSelect(tab: CurricularTab) {
                                 :key="branch.id"
                                 @click="selectBranch(branch.id)"
                                 :class="[
-                                    selectedBranchId === branch.id && activeMainTab === 'infraestructura'
-                                        ? 'text-[#2e8b57] font-bold bg-white shadow-xs'
-                                        : 'text-slate-600 hover:text-slate-900 font-medium',
-                                    'w-full text-left px-3 py-2 rounded-md text-xs flex items-center justify-between transition cursor-pointer'
+                                    selectedBranchId === branch.id &&
+                                    activeMainTab === 'infraestructura'
+                                        ? 'bg-white font-bold text-[#2e8b57] shadow-xs'
+                                        : 'font-medium text-slate-600 hover:text-slate-900',
+                                    'flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-left text-xs transition',
                                 ]"
                             >
                                 <span class="truncate">{{ branch.name }}</span>
-                                <span class="rounded bg-emerald-50 px-2 py-0.5 text-xs text-[#2e8b57] font-bold">
+                                <span
+                                    class="rounded bg-emerald-50 px-2 py-0.5 text-xs font-bold text-[#2e8b57]"
+                                >
                                     {{ branch.code }}
                                 </span>
                             </button>
@@ -231,33 +353,11 @@ function handleCurricularTabSelect(tab: CurricularTab) {
                     </div>
                 </div>
 
-                <!-- GRUPO 4: ASISTENCIAS Y OPERACIONES -->
+                <!-- GRUPO 5: DIRECCIÓN -->
                 <div>
-                    <div class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase">
-                        Asistencias
-                    </div>
-
-                    <div class="space-y-1">
-                        <button
-                            @click="selectMainTab('asistencia')"
-                            :class="[
-                                activeMainTab === 'asistencia'
-                                    ? 'bg-emerald-50 text-[#2e8b57] font-bold border-l-4 border-[#2e8b57]'
-                                    : 'text-slate-700 hover:bg-slate-50 font-semibold',
-                                'w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm transition cursor-pointer'
-                            ]"
-                        >
-                            <svg class="h-5 w-5 text-[#2e8b57]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span>Sesiones & Asistencias</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- GRUPO 4: DIRECCIÓN -->
-                <div>
-                    <div class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase">
+                    <div
+                        class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase"
+                    >
                         Dirección
                     </div>
 
@@ -265,14 +365,29 @@ function handleCurricularTabSelect(tab: CurricularTab) {
                         @click="selectMainTab('resumen')"
                         :class="[
                             activeMainTab === 'resumen'
-                                ? 'bg-emerald-50 text-[#2e8b57] font-bold border-l-4 border-[#2e8b57]'
-                                : 'text-slate-700 hover:bg-slate-50 font-semibold',
-                            'w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm transition cursor-pointer'
+                                ? 'border-l-4 border-[#2e8b57] bg-emerald-50 font-bold text-[#2e8b57]'
+                                : 'font-semibold text-slate-700 hover:bg-slate-50',
+                            'flex w-full cursor-pointer items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm transition',
                         ]"
                     >
-                        <svg class="h-5 w-5 text-[#2e8b57]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                        <svg
+                            class="h-5 w-5 text-[#2e8b57]"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"
+                            />
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"
+                            />
                         </svg>
                         <span>Panel Resumen & KPIs</span>
                     </button>
@@ -281,14 +396,20 @@ function handleCurricularTabSelect(tab: CurricularTab) {
         </div>
 
         <!-- User Info at Bottom of Sidebar (Fixed) -->
-        <div class="shrink-0 p-5 border-t border-slate-100 bg-slate-50/80">
+        <div class="shrink-0 border-t border-slate-100 bg-slate-50/80 p-5">
             <div class="flex items-center gap-3.5">
-                <div class="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 border border-emerald-300 text-sm font-bold text-[#2e8b57]">
+                <div
+                    class="flex h-11 w-11 items-center justify-center rounded-full border border-emerald-300 bg-emerald-100 text-sm font-bold text-[#2e8b57]"
+                >
                     ST
                 </div>
-                <div class="leading-tight overflow-hidden">
-                    <p class="text-sm font-bold text-slate-900 truncate">Sofia Torres Castro</p>
-                    <p class="text-xs text-slate-500 truncate">Coordinación Sede Comas</p>
+                <div class="overflow-hidden leading-tight">
+                    <p class="truncate text-sm font-bold text-slate-900">
+                        Sofia Torres Castro
+                    </p>
+                    <p class="truncate text-xs text-slate-500">
+                        Coordinación Sede Comas
+                    </p>
                 </div>
             </div>
         </div>

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
-import SedesAulasView, { Branch, Classroom } from '../../components/Admin/Pages/SedesAulasView.vue';
+import SedesAulasView, {
+    Branch,
+    Classroom,
+} from '../../components/Admin/Pages/SedesAulasView.vue';
 import Sidebar from '../../components/Admin/Sidebar/Sidebar.vue';
 
 // --- DATOS MOCK INSTITUCIONALES (branches & classrooms) ---
@@ -70,12 +73,18 @@ const classrooms = ref<Classroom[]>([
 type CurricularTab = 'carreras' | 'modulos' | 'talleres';
 const activeCurricularTab = ref<CurricularTab>('carreras');
 const isMobileSidebarOpen = ref(false);
-const activeMainTab = ref<'infraestructura' | 'curricular' | 'matriculas' | 'asistencia' | 'resumen'>('infraestructura');
+const activeMainTab = ref<
+    'infraestructura' | 'curricular' | 'matriculas' | 'asistencia' | 'resumen'
+>('infraestructura');
 const selectedBranchId = ref<number | 'all'>('all');
 
 function handleMainTabChange(tab: string) {
     if (tab === 'curricular') {
         router.visit('/admin/oferta-academica');
+    } else if (tab === 'matriculas' || tab === 'aperturas') {
+        router.visit('/admin/matriculas');
+    } else if (tab === 'asistencia') {
+        router.visit('/admin/asistencias');
     } else if (tab !== 'infraestructura') {
         router.visit('/admin');
     }
@@ -97,7 +106,9 @@ function triggerToast(message: string) {
 <template>
     <Head title="Sedes & Aulas - CETPRO IISEP" />
 
-    <div class="min-h-screen bg-[#f4f7f5] text-slate-800 flex flex-col md:flex-row font-sans">
+    <div
+        class="flex min-h-screen flex-col bg-[#f4f7f5] font-sans text-slate-800 md:flex-row"
+    >
         <!-- Toast Notification -->
         <transition
             enter-active-class="transform ease-out duration-300 transition"
@@ -109,26 +120,50 @@ function triggerToast(message: string) {
         >
             <div
                 v-if="toastMessage"
-                class="fixed bottom-5 right-5 z-50 flex items-center gap-3 rounded-xl bg-slate-900 px-5 py-3 text-white shadow-2xl border border-slate-700"
+                class="fixed right-5 bottom-5 z-50 flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-900 px-5 py-3 text-white shadow-2xl"
             >
-                <div class="h-2.5 w-2.5 rounded-full bg-[#2e8b57] animate-pulse"></div>
+                <div
+                    class="h-2.5 w-2.5 animate-pulse rounded-full bg-[#2e8b57]"
+                ></div>
                 <p class="text-sm font-semibold">{{ toastMessage }}</p>
-                <button @click="toastMessage = null" class="ml-2 text-slate-400 hover:text-white cursor-pointer">&times;</button>
+                <button
+                    @click="toastMessage = null"
+                    class="ml-2 cursor-pointer text-slate-400 hover:text-white"
+                >
+                    &times;
+                </button>
             </div>
         </transition>
 
         <!-- Mobile header trigger -->
-        <div class="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+        <div
+            class="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:hidden"
+        >
             <div class="flex items-center gap-2">
-                <span class="text-lg font-black tracking-tight text-[#2e8b57]">IISEP</span>
-                <span class="rounded bg-emerald-50 px-2 py-0.5 text-xs font-bold text-[#2e8b57]">CETPRO</span>
+                <span class="text-lg font-black tracking-tight text-[#2e8b57]"
+                    >IISEP</span
+                >
+                <span
+                    class="rounded bg-emerald-50 px-2 py-0.5 text-xs font-bold text-[#2e8b57]"
+                    >CETPRO</span
+                >
             </div>
             <button
                 @click="isMobileSidebarOpen = !isMobileSidebarOpen"
-                class="p-2 rounded-lg text-slate-600 hover:bg-slate-100"
+                class="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
             >
-                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                <svg
+                    class="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M4 6h16M4 12h16M4 18h16"
+                    />
                 </svg>
             </button>
         </div>
@@ -149,24 +184,34 @@ function triggerToast(message: string) {
         />
 
         <!-- CONTENIDO PRINCIPAL A LA DERECHA -->
-        <div class="flex-1 flex flex-col min-w-0">
+        <div class="flex min-w-0 flex-1 flex-col">
             <!-- Top bar -->
-            <header class="bg-white border-b border-slate-200 px-8 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-2xs">
+            <header
+                class="flex flex-col gap-4 border-b border-slate-200 bg-white px-8 py-5 shadow-2xs sm:flex-row sm:items-center sm:justify-between"
+            >
                 <div>
                     <h1 class="text-2xl font-black text-slate-900">
                         Sedes & Aulas
-                        <span v-if="selectedBranchId !== 'all'" class="text-[#2e8b57] text-lg font-bold">
-                            &bull; {{ branches.find((b) => b.id === selectedBranchId)?.name }}
+                        <span
+                            v-if="selectedBranchId !== 'all'"
+                            class="text-lg font-bold text-[#2e8b57]"
+                        >
+                            &bull;
+                            {{
+                                branches.find((b) => b.id === selectedBranchId)
+                                    ?.name
+                            }}
                         </span>
                     </h1>
-                    <p class="text-sm text-slate-500 font-medium mt-0.5">
-                        Administración de infraestructura física, sedes oficiales y disponibilidad de ambientes de clase
+                    <p class="mt-0.5 text-sm font-medium text-slate-500">
+                        Administración de infraestructura física, sedes
+                        oficiales y disponibilidad de ambientes de clase
                     </p>
                 </div>
             </header>
 
             <!-- MAIN BODY: PÁGINA INDEPENDIENTE DE SEDES Y AULAS -->
-            <main class="flex-1 p-8 space-y-6 max-w-7xl">
+            <main class="max-w-7xl flex-1 space-y-6 p-8">
                 <SedesAulasView
                     :branches="branches"
                     :classrooms="classrooms"

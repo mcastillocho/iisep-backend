@@ -81,7 +81,10 @@ const selectedModuleToAddId = ref<number | ''>('');
 // Cantidad de semanas calculada automáticamente según los módulos (solo lectura)
 const calculatedWeeks = computed(() => {
     if (!editingCareer.value || !editingCareer.value.modules) return 0;
-    return editingCareer.value.modules.reduce((sum, m) => sum + m.duration_in_weeks, 0);
+    return editingCareer.value.modules.reduce(
+        (sum, m) => sum + m.duration_in_weeks,
+        0,
+    );
 });
 
 // Módulos del catálogo aún no asignados a esta carrera
@@ -101,11 +104,16 @@ function cancelCareerEditing() {
 
 function saveCareerChanges() {
     if (!editingCareer.value) return;
-    const index = props.careers.findIndex((c) => c.id === editingCareer.value!.id);
+    const index = props.careers.findIndex(
+        (c) => c.id === editingCareer.value!.id,
+    );
     if (index !== -1) {
         props.careers[index] = JSON.parse(JSON.stringify(editingCareer.value));
     }
-    emit('notify', `Carrera "${editingCareer.value.name}" actualizada con éxito.`);
+    emit(
+        'notify',
+        `Carrera "${editingCareer.value.name}" actualizada con éxito.`,
+    );
     editingCareer.value = null;
 }
 
@@ -119,7 +127,8 @@ function moveModuleUp(index: number) {
 }
 
 function moveModuleDown(index: number) {
-    if (!editingCareer.value || index >= editingCareer.value.modules.length - 1) return;
+    if (!editingCareer.value || index >= editingCareer.value.modules.length - 1)
+        return;
     const list = editingCareer.value.modules;
     const temp = list[index];
     list[index] = list[index + 1];
@@ -135,7 +144,9 @@ function removeModuleFromCareer(index: number) {
 
 function addModuleToCareer() {
     if (!editingCareer.value || selectedModuleToAddId.value === '') return;
-    const mod = props.allModulesPool.find((m) => m.id === Number(selectedModuleToAddId.value));
+    const mod = props.allModulesPool.find(
+        (m) => m.id === Number(selectedModuleToAddId.value),
+    );
     if (mod) {
         editingCareer.value.modules.push({
             id: mod.id,
@@ -151,36 +162,56 @@ function addModuleToCareer() {
 const filteredCareers = computed(() => {
     if (!searchCareerQuery.value.trim()) return props.careers;
     const q = searchCareerQuery.value.toLowerCase();
-    return props.careers.filter((c) => c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q));
+    return props.careers.filter(
+        (c) =>
+            c.name.toLowerCase().includes(q) ||
+            c.description.toLowerCase().includes(q),
+    );
 });
 
 const filteredModules = computed(() => {
     if (!searchModuleQuery.value.trim()) return props.allModulesPool;
     const q = searchModuleQuery.value.toLowerCase();
-    return props.allModulesPool.filter((m) => m.name.toLowerCase().includes(q) || m.description.toLowerCase().includes(q));
+    return props.allModulesPool.filter(
+        (m) =>
+            m.name.toLowerCase().includes(q) ||
+            m.description.toLowerCase().includes(q),
+    );
 });
 
 const filteredCourses = computed(() => {
     if (!searchCourseQuery.value.trim()) return props.coursesList;
     const q = searchCourseQuery.value.toLowerCase();
-    return props.coursesList.filter((c) => c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q));
+    return props.coursesList.filter(
+        (c) =>
+            c.name.toLowerCase().includes(q) ||
+            c.description.toLowerCase().includes(q),
+    );
 });
 </script>
 
 <template>
     <div class="space-y-6">
         <!-- 1. VISTA DETALLADA: EDITAR CARRERA -->
-        <div v-if="editingCareer" class="rounded-xl border border-slate-200 bg-white p-7 shadow-xs space-y-6">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div
+            v-if="editingCareer"
+            class="space-y-6 rounded-xl border border-slate-200 bg-white p-7 shadow-xs"
+        >
+            <div
+                class="flex items-center justify-between border-b border-slate-100 pb-4"
+            >
                 <div class="flex items-center gap-3">
                     <button
                         @click="cancelCareerEditing"
-                        class="inline-flex items-center gap-1 text-sm font-bold text-slate-600 hover:text-slate-900 bg-slate-100 px-3 py-1.5 rounded-lg transition"
+                        class="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-bold text-slate-600 transition hover:text-slate-900"
                     >
                         &larr; Volver a Carreras
                     </button>
                     <h2 class="text-xl font-black text-slate-900">
-                        Editando Carrera: <span class="text-[#2e8b57]">{{ editingCareer.name }}</span>
+                        Editando Carrera:
+                        <span class="text-[#2e8b57]">{{
+                            editingCareer.name
+                        }}</span>
                     </h2>
                 </div>
 
@@ -188,14 +219,14 @@ const filteredCourses = computed(() => {
                     <button
                         type="button"
                         @click="cancelCareerEditing"
-                        class="px-4 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                        class="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
                     >
                         Cancelar
                     </button>
                     <button
                         type="button"
                         @click="saveCareerChanges"
-                        class="px-5 py-2 bg-[#2e8b57] hover:bg-[#257347] text-white text-sm font-bold rounded-lg shadow-sm transition cursor-pointer"
+                        class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#257347]"
                     >
                         Guardar Cambios
                     </button>
@@ -203,9 +234,11 @@ const filteredCourses = computed(() => {
             </div>
 
             <!-- Formulario de Datos Básicos -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
                 <div>
-                    <label class="block text-sm font-bold text-slate-800">Nombre de la Carrera</label>
+                    <label class="block text-sm font-bold text-slate-800"
+                        >Nombre de la Carrera</label
+                    >
                     <input
                         v-model="editingCareer.name"
                         type="text"
@@ -214,7 +247,9 @@ const filteredCourses = computed(() => {
                 </div>
 
                 <div>
-                    <label class="block text-sm font-bold text-slate-800">Aforo / Vacantes Estimadas</label>
+                    <label class="block text-sm font-bold text-slate-800"
+                        >Aforo / Vacantes Estimadas</label
+                    >
                     <input
                         v-model="editingCareer.estimated_capacity"
                         type="number"
@@ -225,8 +260,13 @@ const filteredCourses = computed(() => {
 
                 <div>
                     <div class="flex items-center justify-between">
-                        <label class="block text-sm font-bold text-slate-800">Duración Total</label>
-                        <span class="text-xs font-semibold text-slate-400 italic">Calculada automáticamente</span>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Duración Total</label
+                        >
+                        <span
+                            class="text-xs font-semibold text-slate-400 italic"
+                            >Calculada automáticamente</span
+                        >
                     </div>
                     <div class="mt-1.5 flex items-center gap-2">
                         <input
@@ -234,25 +274,29 @@ const filteredCourses = computed(() => {
                             type="text"
                             readonly
                             disabled
-                            class="w-full rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-2.5 text-sm font-mono font-bold text-slate-700 cursor-not-allowed"
+                            class="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-2.5 font-mono text-sm font-bold text-slate-700"
                         />
                     </div>
                 </div>
             </div>
 
             <!-- Sedes Disponibles -->
-            <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-5 space-y-2">
+            <div
+                class="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-5"
+            >
                 <label class="block text-sm font-bold text-slate-800">
                     Sedes Disponibles para esta Carrera
                 </label>
-                <p class="text-xs text-slate-500 mb-3">
-                    Selecciona en qué sedes físicas estará aperturada esta carrera (a futuro se persistirá mediante tabla de asignación por sede):
+                <p class="mb-3 text-xs text-slate-500">
+                    Selecciona en qué sedes físicas estará aperturada esta
+                    carrera (a futuro se persistirá mediante tabla de asignación
+                    por sede):
                 </p>
                 <div class="flex flex-wrap items-center gap-6">
                     <label
                         v-for="branch in branches"
                         :key="branch.id"
-                        class="flex items-center gap-2.5 cursor-pointer bg-white border border-slate-300 rounded-lg px-4 py-2 hover:border-[#2e8b57]"
+                        class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-300 bg-white px-4 py-2 hover:border-[#2e8b57]"
                     >
                         <input
                             type="checkbox"
@@ -260,55 +304,79 @@ const filteredCourses = computed(() => {
                             v-model="editingCareer.available_branch_ids"
                             class="h-4 w-4 rounded text-[#2e8b57] focus:ring-[#2e8b57]"
                         />
-                        <span class="text-sm font-bold text-slate-800">{{ branch.name }}</span>
-                        <span class="text-xs text-slate-400">({{ branch.code }})</span>
+                        <span class="text-sm font-bold text-slate-800">{{
+                            branch.name
+                        }}</span>
+                        <span class="text-xs text-slate-400"
+                            >({{ branch.code }})</span
+                        >
                     </label>
                 </div>
             </div>
 
             <!-- Panel de Módulos Ordenables -->
             <div class="space-y-4 pt-2">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div
+                    class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                >
                     <div>
-                        <h3 class="text-base font-bold text-slate-900">Módulos Componentes de la Carrera</h3>
+                        <h3 class="text-base font-bold text-slate-900">
+                            Módulos Componentes de la Carrera
+                        </h3>
                         <p class="text-xs text-slate-500">
-                            Organiza los módulos en orden correlativo y cronológico de dictado (career_module).
+                            Organiza los módulos en orden correlativo y
+                            cronológico de dictado (career_module).
                         </p>
                     </div>
 
                     <div class="flex items-center gap-2">
                         <select
                             v-model="selectedModuleToAddId"
-                            class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#2e8b57]"
+                            class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 focus:border-[#2e8b57] focus:outline-none"
                         >
-                            <option value="">-- Seleccionar Módulo Existente --</option>
+                            <option value="">
+                                -- Seleccionar Módulo Existente --
+                            </option>
                             <option
                                 v-for="mod in availableModulesToAdd"
                                 :key="mod.id"
                                 :value="mod.id"
                             >
-                                {{ mod.name }} ({{ mod.duration_in_weeks }} semanas)
+                                {{ mod.name }} ({{ mod.duration_in_weeks }}
+                                semanas)
                             </option>
                         </select>
                         <button
                             @click="addModuleToCareer"
                             :disabled="selectedModuleToAddId === ''"
-                            class="px-3.5 py-2 bg-[#2e8b57] hover:bg-[#257347] disabled:bg-slate-300 text-white text-xs font-bold rounded-lg transition cursor-pointer"
+                            class="cursor-pointer rounded-lg bg-[#2e8b57] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#257347] disabled:bg-slate-300"
                         >
                             + Asignar a Carrera
                         </button>
                     </div>
                 </div>
 
-                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div
+                    class="overflow-hidden rounded-xl border border-slate-200 bg-white"
+                >
                     <table class="w-full text-left text-sm text-slate-700">
-                        <thead class="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 uppercase">
+                        <thead
+                            class="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 uppercase"
+                        >
                             <tr>
-                                <th class="py-3 px-4 w-16 text-center">Orden</th>
-                                <th class="py-3 px-4">Nombre del Módulo Formativo</th>
-                                <th class="py-3 px-4">Duración</th>
-                                <th class="py-3 px-4 text-center w-36">Cambiar Orden</th>
-                                <th class="py-3 px-4 text-right w-24">Quitar</th>
+                                <th class="w-16 px-4 py-3 text-center">
+                                    Orden
+                                </th>
+                                <th class="px-4 py-3">
+                                    Nombre del Módulo Formativo
+                                </th>
+                                <th class="px-4 py-3">Duración</th>
+                                <th class="w-36 px-4 py-3 text-center">
+                                    Cambiar Orden
+                                </th>
+                                <th class="w-24 px-4 py-3 text-right">
+                                    Quitar
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
@@ -317,44 +385,73 @@ const filteredCourses = computed(() => {
                                 :key="mod.id"
                                 class="hover:bg-slate-50"
                             >
-                                <td class="py-3 px-4 text-center font-mono font-bold text-slate-900 bg-slate-50/50">
+                                <td
+                                    class="bg-slate-50/50 px-4 py-3 text-center font-mono font-bold text-slate-900"
+                                >
                                     {{ mod.order }}
                                 </td>
-                                <td class="py-3 px-4 font-bold text-slate-900">
+                                <td class="px-4 py-3 font-bold text-slate-900">
                                     {{ mod.name }}
                                 </td>
-                                <td class="py-3 px-4 font-mono font-semibold text-[#2e8b57]">
+                                <td
+                                    class="px-4 py-3 font-mono font-semibold text-[#2e8b57]"
+                                >
                                     {{ mod.duration_in_weeks }} semanas
                                 </td>
-                                <td class="py-3 px-4 text-center whitespace-nowrap">
+                                <td
+                                    class="px-4 py-3 text-center whitespace-nowrap"
+                                >
                                     <div class="inline-flex items-center gap-1">
                                         <button
                                             @click="moveModuleUp(index)"
                                             :disabled="index === 0"
                                             title="Mover hacia arriba"
-                                            class="p-1 rounded border border-slate-300 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                            class="cursor-pointer rounded border border-slate-300 p-1 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30"
                                         >
-                                            <svg class="h-4 w-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                            <svg
+                                                class="h-4 w-4 text-slate-700"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M5 15l7-7 7 7"
+                                                />
                                             </svg>
                                         </button>
                                         <button
                                             @click="moveModuleDown(index)"
-                                            :disabled="index === editingCareer.modules.length - 1"
+                                            :disabled="
+                                                index ===
+                                                editingCareer.modules.length - 1
+                                            "
                                             title="Mover hacia abajo"
-                                            class="p-1 rounded border border-slate-300 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                            class="cursor-pointer rounded border border-slate-300 p-1 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30"
                                         >
-                                            <svg class="h-4 w-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                            <svg
+                                                class="h-4 w-4 text-slate-700"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M19 9l-7 7-7-7"
+                                                />
                                             </svg>
                                         </button>
                                     </div>
                                 </td>
-                                <td class="py-3 px-4 text-right">
+                                <td class="px-4 py-3 text-right">
                                     <button
                                         @click="removeModuleFromCareer(index)"
                                         title="Quitar módulo"
-                                        class="text-red-500 hover:text-red-700 text-xs font-bold cursor-pointer"
+                                        class="cursor-pointer text-xs font-bold text-red-500 hover:text-red-700"
                                     >
                                         ✕ Quitar
                                     </button>
@@ -362,8 +459,13 @@ const filteredCourses = computed(() => {
                             </tr>
 
                             <tr v-if="editingCareer.modules.length === 0">
-                                <td colspan="5" class="py-8 text-center text-slate-400 font-medium">
-                                    Esta carrera aún no cuenta con módulos asignados. Usa el selector arriba para asignar el primer módulo.
+                                <td
+                                    colspan="5"
+                                    class="py-8 text-center font-medium text-slate-400"
+                                >
+                                    Esta carrera aún no cuenta con módulos
+                                    asignados. Usa el selector arriba para
+                                    asignar el primer módulo.
                                 </td>
                             </tr>
                         </tbody>
@@ -381,13 +483,15 @@ const filteredCourses = computed(() => {
                         @click="currentTab = 'carreras'"
                         :class="[
                             currentTab === 'carreras'
-                                ? 'border-[#2e8b57] text-[#2e8b57] font-bold'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 font-semibold',
-                            'whitespace-nowrap py-3 px-1 border-b-2 text-sm flex items-center gap-2 cursor-pointer'
+                                ? 'border-[#2e8b57] font-bold text-[#2e8b57]'
+                                : 'border-transparent font-semibold text-slate-500 hover:border-slate-300 hover:text-slate-700',
+                            'flex cursor-pointer items-center gap-2 border-b-2 px-1 py-3 text-sm whitespace-nowrap',
                         ]"
                     >
                         <span>Carreras</span>
-                        <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-mono text-slate-600">
+                        <span
+                            class="rounded-full bg-slate-100 px-2.5 py-0.5 font-mono text-xs text-slate-600"
+                        >
                             {{ careers.length }}
                         </span>
                     </button>
@@ -396,13 +500,15 @@ const filteredCourses = computed(() => {
                         @click="currentTab = 'modulos'"
                         :class="[
                             currentTab === 'modulos'
-                                ? 'border-[#2e8b57] text-[#2e8b57] font-bold'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 font-semibold',
-                            'whitespace-nowrap py-3 px-1 border-b-2 text-sm flex items-center gap-2 cursor-pointer'
+                                ? 'border-[#2e8b57] font-bold text-[#2e8b57]'
+                                : 'border-transparent font-semibold text-slate-500 hover:border-slate-300 hover:text-slate-700',
+                            'flex cursor-pointer items-center gap-2 border-b-2 px-1 py-3 text-sm whitespace-nowrap',
                         ]"
                     >
                         <span>Módulos</span>
-                        <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-mono text-slate-600">
+                        <span
+                            class="rounded-full bg-slate-100 px-2.5 py-0.5 font-mono text-xs text-slate-600"
+                        >
                             {{ allModulesPool.length }}
                         </span>
                     </button>
@@ -411,13 +517,15 @@ const filteredCourses = computed(() => {
                         @click="currentTab = 'talleres'"
                         :class="[
                             currentTab === 'talleres'
-                                ? 'border-[#2e8b57] text-[#2e8b57] font-bold'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 font-semibold',
-                            'whitespace-nowrap py-3 px-1 border-b-2 text-sm flex items-center gap-2 cursor-pointer'
+                                ? 'border-[#2e8b57] font-bold text-[#2e8b57]'
+                                : 'border-transparent font-semibold text-slate-500 hover:border-slate-300 hover:text-slate-700',
+                            'flex cursor-pointer items-center gap-2 border-b-2 px-1 py-3 text-sm whitespace-nowrap',
                         ]"
                     >
                         <span>Talleres</span>
-                        <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-mono text-slate-600">
+                        <span
+                            class="rounded-full bg-slate-100 px-2.5 py-0.5 font-mono text-xs text-slate-600"
+                        >
                             {{ coursesList.length }}
                         </span>
                     </button>
@@ -425,32 +533,46 @@ const filteredCourses = computed(() => {
             </div>
 
             <!-- Panel de Búsqueda y Botón de Creación -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+            <div
+                class="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between"
+            >
                 <div class="relative flex-1 sm:max-w-md">
                     <input
                         v-if="currentTab === 'carreras'"
                         v-model="searchCareerQuery"
                         type="text"
                         placeholder="Buscar carrera técnica..."
-                        class="w-full rounded-lg border border-slate-300 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                        class="w-full rounded-lg border border-slate-300 bg-slate-50 py-2.5 pr-4 pl-10 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                     />
                     <input
                         v-else-if="currentTab === 'modulos'"
                         v-model="searchModuleQuery"
                         type="text"
                         placeholder="Buscar módulo formativo..."
-                        class="w-full rounded-lg border border-slate-300 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                        class="w-full rounded-lg border border-slate-300 bg-slate-50 py-2.5 pr-4 pl-10 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                     />
                     <input
                         v-else
                         v-model="searchCourseQuery"
                         type="text"
                         placeholder="Buscar taller práctico..."
-                        class="w-full rounded-lg border border-slate-300 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                        class="w-full rounded-lg border border-slate-300 bg-slate-50 py-2.5 pr-4 pl-10 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                     />
-                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                        <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    <div
+                        class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
+                    >
+                        <svg
+                            class="h-5 w-5 text-slate-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                            />
                         </svg>
                     </div>
                 </div>
@@ -459,30 +581,60 @@ const filteredCourses = computed(() => {
                     <button
                         v-if="currentTab === 'carreras'"
                         @click="emit('notify', 'Crear nueva carrera técnica')"
-                        class="inline-flex items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs hover:bg-[#257347] transition cursor-pointer"
+                        class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
                     >
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        <svg
+                            class="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 4v16m8-8H4"
+                            />
                         </svg>
                         <span>Nueva Carrera</span>
                     </button>
                     <button
                         v-else-if="currentTab === 'modulos'"
                         @click="emit('notify', 'Crear nuevo módulo formativo')"
-                        class="inline-flex items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs hover:bg-[#257347] transition cursor-pointer"
+                        class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
                     >
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        <svg
+                            class="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 4v16m8-8H4"
+                            />
                         </svg>
                         <span>Nuevo Módulo</span>
                     </button>
                     <button
                         v-else
                         @click="emit('notify', 'Crear nuevo taller práctico')"
-                        class="inline-flex items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs hover:bg-[#257347] transition cursor-pointer"
+                        class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
                     >
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        <svg
+                            class="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 4v16m8-8H4"
+                            />
                         </svg>
                         <span>Nuevo Taller</span>
                     </button>
@@ -494,37 +646,64 @@ const filteredCourses = computed(() => {
                 <div
                     v-for="carrera in filteredCareers"
                     :key="carrera.id"
-                    class="rounded-xl border border-slate-200 bg-white p-6 shadow-xs hover:border-emerald-300 transition"
+                    class="rounded-xl border border-slate-200 bg-white p-6 shadow-xs transition hover:border-emerald-300"
                 >
-                    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                        <div class="space-y-2 flex-1">
-                            <div class="flex items-center gap-3 flex-wrap">
-                                <h3 class="text-lg font-black text-slate-900">{{ carrera.name }}</h3>
-                                <span class="rounded bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-[#2e8b57] border border-emerald-200">
+                    <div
+                        class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"
+                    >
+                        <div class="flex-1 space-y-2">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <h3 class="text-lg font-black text-slate-900">
+                                    {{ carrera.name }}
+                                </h3>
+                                <span
+                                    class="rounded border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-[#2e8b57]"
+                                >
                                     {{ carrera.modules.length }} módulos
                                 </span>
-                                <span class="rounded bg-slate-100 px-2.5 py-0.5 text-xs font-mono font-bold text-slate-700">
-                                    {{ carrera.modules.reduce((s, m) => s + m.duration_in_weeks, 0) }} semanas totales
+                                <span
+                                    class="rounded bg-slate-100 px-2.5 py-0.5 font-mono text-xs font-bold text-slate-700"
+                                >
+                                    {{
+                                        carrera.modules.reduce(
+                                            (s, m) => s + m.duration_in_weeks,
+                                            0,
+                                        )
+                                    }}
+                                    semanas totales
                                 </span>
                             </div>
-                            <p class="text-sm text-slate-600 leading-relaxed">{{ carrera.description }}</p>
+                            <p class="text-sm leading-relaxed text-slate-600">
+                                {{ carrera.description }}
+                            </p>
 
                             <!-- Sedes disponibles -->
-                            <div class="pt-2 flex items-center gap-2 flex-wrap text-xs">
-                                <span class="font-bold text-slate-500">Sedes Habilitadas:</span>
+                            <div
+                                class="flex flex-wrap items-center gap-2 pt-2 text-xs"
+                            >
+                                <span class="font-bold text-slate-500"
+                                    >Sedes Habilitadas:</span
+                                >
                                 <span
                                     v-for="branchId in carrera.available_branch_ids"
                                     :key="branchId"
                                     class="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 font-bold text-slate-700"
                                 >
-                                    <span class="h-1.5 w-1.5 rounded-full bg-[#2e8b57]"></span>
-                                    {{ branches.find((b) => b.id === branchId)?.name || 'Sede' }}
+                                    <span
+                                        class="h-1.5 w-1.5 rounded-full bg-[#2e8b57]"
+                                    ></span>
+                                    {{
+                                        branches.find((b) => b.id === branchId)
+                                            ?.name || 'Sede'
+                                    }}
                                 </span>
                             </div>
 
                             <!-- Módulos incluidos ordenados -->
                             <div class="pt-3">
-                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                                <span
+                                    class="mb-1.5 block text-xs font-bold tracking-wider text-slate-400 uppercase"
+                                >
                                     Módulos Curriculares (Secuencia):
                                 </span>
                                 <div class="flex flex-wrap gap-2">
@@ -533,28 +712,55 @@ const filteredCourses = computed(() => {
                                         :key="mod.id"
                                         class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-800"
                                     >
-                                        <span class="flex h-4 w-4 items-center justify-center rounded-full bg-[#2e8b57] text-[10px] font-bold text-white">
+                                        <span
+                                            class="flex h-4 w-4 items-center justify-center rounded-full bg-[#2e8b57] text-[10px] font-bold text-white"
+                                        >
                                             {{ mod.order }}
                                         </span>
                                         <span>{{ mod.name }}</span>
-                                        <span class="text-slate-400 font-mono">({{ mod.duration_in_weeks }} sem)</span>
+                                        <span class="font-mono text-slate-400"
+                                            >({{
+                                                mod.duration_in_weeks
+                                            }}
+                                            sem)</span
+                                        >
                                     </span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Botón Editar Carrera -->
-                        <div class="flex md:flex-col items-center md:items-end justify-between gap-3 border-t md:border-t-0 pt-4 md:pt-0 border-slate-100">
+                        <div
+                            class="flex items-center justify-between gap-3 border-t border-slate-100 pt-4 md:flex-col md:items-end md:border-t-0 md:pt-0"
+                        >
                             <div class="text-right">
-                                <p class="text-xs text-slate-400 font-bold uppercase">Aforo Estimado</p>
-                                <p class="text-base font-black text-slate-900 font-mono">{{ carrera.estimated_capacity }} vacantes</p>
+                                <p
+                                    class="text-xs font-bold text-slate-400 uppercase"
+                                >
+                                    Aforo Estimado
+                                </p>
+                                <p
+                                    class="font-mono text-base font-black text-slate-900"
+                                >
+                                    {{ carrera.estimated_capacity }} vacantes
+                                </p>
                             </div>
                             <button
                                 @click="startEditingCareer(carrera)"
-                                class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600 bg-white px-4 py-2 text-xs font-bold text-[#2e8b57] hover:bg-emerald-50 transition shadow-2xs cursor-pointer"
+                                class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-emerald-600 bg-white px-4 py-2 text-xs font-bold text-[#2e8b57] shadow-2xs transition hover:bg-emerald-50"
                             >
-                                <svg class="h-4 w-4 text-[#2e8b57]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                <svg
+                                    class="h-4 w-4 text-[#2e8b57]"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    />
                                 </svg>
                                 <span>Editar Carrera</span>
                             </button>
@@ -565,50 +771,93 @@ const filteredCourses = computed(() => {
 
             <!-- CONTENIDO DE SUB-PESTAÑA 2: MÓDULOS -->
             <div v-if="currentTab === 'modulos'" class="space-y-4">
-                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+                <div
+                    class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs"
+                >
                     <table class="w-full text-left text-sm text-slate-700">
-                        <thead class="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 uppercase">
+                        <thead
+                            class="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 uppercase"
+                        >
                             <tr>
-                                <th class="py-3.5 px-6">Módulo Formativo</th>
-                                <th class="py-3.5 px-4">Duración</th>
-                                <th class="py-3.5 px-4">Carreras que lo incluyen</th>
-                                <th class="py-3.5 px-4">Cursos asignados</th>
-                                <th class="py-3.5 px-6 text-right">Acciones</th>
+                                <th class="px-6 py-3.5">Módulo Formativo</th>
+                                <th class="px-4 py-3.5">Duración</th>
+                                <th class="px-4 py-3.5">
+                                    Carreras que lo incluyen
+                                </th>
+                                <th class="px-4 py-3.5">Cursos asignados</th>
+                                <th class="px-6 py-3.5 text-right">Acciones</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            <tr v-for="modulo in filteredModules" :key="modulo.id" class="hover:bg-slate-50 transition">
-                                <td class="py-4 px-6">
-                                    <div class="font-bold text-slate-900 text-sm">{{ modulo.name }}</div>
-                                    <div class="text-xs text-slate-500 max-w-md line-clamp-1 mt-0.5">{{ modulo.description }}</div>
+                            <tr
+                                v-for="modulo in filteredModules"
+                                :key="modulo.id"
+                                class="transition hover:bg-slate-50"
+                            >
+                                <td class="px-6 py-4">
+                                    <div
+                                        class="text-sm font-bold text-slate-900"
+                                    >
+                                        {{ modulo.name }}
+                                    </div>
+                                    <div
+                                        class="mt-0.5 line-clamp-1 max-w-md text-xs text-slate-500"
+                                    >
+                                        {{ modulo.description }}
+                                    </div>
                                 </td>
-                                <td class="py-4 px-4 font-mono font-bold text-[#2e8b57]">
+                                <td
+                                    class="px-4 py-4 font-mono font-bold text-[#2e8b57]"
+                                >
                                     {{ modulo.duration_in_weeks }} semanas
                                 </td>
-                                <td class="py-4 px-4">
+                                <td class="px-4 py-4">
                                     <div class="flex flex-wrap gap-1">
                                         <span
                                             v-for="car in modulo.careers_associated"
                                             :key="car"
-                                            class="inline-block rounded bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-[#2e8b57] border border-emerald-100"
+                                            class="inline-block rounded border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-[#2e8b57]"
                                         >
                                             {{ car }}
                                         </span>
-                                        <span v-if="modulo.careers_associated.length === 0" class="text-xs text-slate-400 italic">
+                                        <span
+                                            v-if="
+                                                modulo.careers_associated
+                                                    .length === 0
+                                            "
+                                            class="text-xs text-slate-400 italic"
+                                        >
                                             Módulo libre / No asociado
                                         </span>
                                     </div>
                                 </td>
-                                <td class="py-4 px-4 font-mono font-bold text-slate-700">
+                                <td
+                                    class="px-4 py-4 font-mono font-bold text-slate-700"
+                                >
                                     {{ modulo.courses_count }} cursos
                                 </td>
-                                <td class="py-4 px-6 text-right">
+                                <td class="px-6 py-4 text-right">
                                     <button
-                                        @click="emit('notify', `Editar módulo: ${modulo.name}`)"
-                                        class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-[#2e8b57] transition cursor-pointer"
+                                        @click="
+                                            emit(
+                                                'notify',
+                                                `Editar módulo: ${modulo.name}`,
+                                            )
+                                        "
+                                        class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-[#2e8b57]"
                                     >
-                                        <svg class="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        <svg
+                                            class="h-4 w-4 text-slate-500"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                            />
                                         </svg>
                                         <span>Editar</span>
                                     </button>
@@ -621,43 +870,82 @@ const filteredCourses = computed(() => {
 
             <!-- CONTENIDO DE SUB-PESTAÑA 3: TALLERES -->
             <div v-if="currentTab === 'talleres'" class="space-y-4">
-                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+                <div
+                    class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs"
+                >
                     <table class="w-full text-left text-sm text-slate-700">
-                        <thead class="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 uppercase">
+                        <thead
+                            class="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 uppercase"
+                        >
                             <tr>
-                                <th class="py-3.5 px-6">Taller / Curso</th>
-                                <th class="py-3.5 px-4">Módulo de Pertenencia</th>
-                                <th class="py-3.5 px-4">Duración</th>
-                                <th class="py-3.5 px-6 text-right">Acciones</th>
+                                <th class="px-6 py-3.5">Taller / Curso</th>
+                                <th class="px-4 py-3.5">
+                                    Módulo de Pertenencia
+                                </th>
+                                <th class="px-4 py-3.5">Duración</th>
+                                <th class="px-6 py-3.5 text-right">Acciones</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            <tr v-for="curso in filteredCourses" :key="curso.id" class="hover:bg-slate-50 transition">
-                                <td class="py-4 px-6">
+                            <tr
+                                v-for="curso in filteredCourses"
+                                :key="curso.id"
+                                class="transition hover:bg-slate-50"
+                            >
+                                <td class="px-6 py-4">
                                     <div class="flex items-center gap-2">
-                                        <span class="font-bold text-slate-900 text-sm">{{ curso.name }}</span>
+                                        <span
+                                            class="text-sm font-bold text-slate-900"
+                                            >{{ curso.name }}</span
+                                        >
                                         <span
                                             v-if="curso.is_workshop"
-                                            class="rounded bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700 border border-amber-200"
+                                            class="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700"
                                         >
                                             Taller Libre
                                         </span>
                                     </div>
-                                    <div class="text-xs text-slate-500 max-w-md line-clamp-1 mt-0.5">{{ curso.description }}</div>
+                                    <div
+                                        class="mt-0.5 line-clamp-1 max-w-md text-xs text-slate-500"
+                                    >
+                                        {{ curso.description }}
+                                    </div>
                                 </td>
-                                <td class="py-4 px-4 text-slate-700 font-semibold">
-                                    {{ curso.module_name || 'Ninguno (Taller Independiente)' }}
+                                <td
+                                    class="px-4 py-4 font-semibold text-slate-700"
+                                >
+                                    {{
+                                        curso.module_name ||
+                                        'Ninguno (Taller Independiente)'
+                                    }}
                                 </td>
-                                <td class="py-4 px-4 font-mono font-bold text-slate-800">
+                                <td
+                                    class="px-4 py-4 font-mono font-bold text-slate-800"
+                                >
                                     {{ curso.duration_in_weeks }} semanas
                                 </td>
-                                <td class="py-4 px-6 text-right">
+                                <td class="px-6 py-4 text-right">
                                     <button
-                                        @click="emit('notify', `Editar taller: ${curso.name}`)"
-                                        class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-[#2e8b57] transition cursor-pointer"
+                                        @click="
+                                            emit(
+                                                'notify',
+                                                `Editar taller: ${curso.name}`,
+                                            )
+                                        "
+                                        class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-[#2e8b57]"
                                     >
-                                        <svg class="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        <svg
+                                            class="h-4 w-4 text-slate-500"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                            />
                                         </svg>
                                         <span>Editar</span>
                                     </button>

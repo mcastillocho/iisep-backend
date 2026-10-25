@@ -43,7 +43,13 @@ export interface ScheduledCourseItem {
     status: 'en_curso' | 'programado' | 'finalizado' | 'cancelado';
 }
 
-export type EnrollmentStatus = 'activo' | 'convalidado' | 'completado' | 'preinscrito' | 'retirado' | 'anulado';
+export type EnrollmentStatus =
+    | 'activo'
+    | 'convalidado'
+    | 'completado'
+    | 'preinscrito'
+    | 'retirado'
+    | 'anulado';
 
 export interface EnrollmentRecord {
     id: number;
@@ -89,7 +95,7 @@ watch(
     () => props.activeTab,
     (newVal) => {
         if (newVal) currentTab.value = newVal;
-    }
+    },
 );
 
 function changeTab(tab: MatriculasTab) {
@@ -176,12 +182,17 @@ const statusEnrollmentFilter = ref<'all' | EnrollmentStatus>('all');
 const filteredEnrollments = computed(() => {
     return props.enrollments.filter((record) => {
         if (props.selectedBranchId !== 'all') {
-            const currentBranch = props.branches.find((b) => b.id === props.selectedBranchId);
+            const currentBranch = props.branches.find(
+                (b) => b.id === props.selectedBranchId,
+            );
             if (currentBranch && record.branch_name !== currentBranch.name) {
                 return false;
             }
         }
-        if (statusEnrollmentFilter.value !== 'all' && record.status !== statusEnrollmentFilter.value) {
+        if (
+            statusEnrollmentFilter.value !== 'all' &&
+            record.status !== statusEnrollmentFilter.value
+        ) {
             return false;
         }
         if (searchEnrollmentQuery.value.trim() !== '') {
@@ -211,7 +222,8 @@ function openNewEnrollmentModal(preselectedCourseId?: number) {
     enrollmentForm.value = {
         student_full_name: '',
         student_document: '',
-        scheduled_course_id: preselectedCourseId || (scheduledCourses.value[0]?.id || 1),
+        scheduled_course_id:
+            preselectedCourseId || scheduledCourses.value[0]?.id || 1,
         enrollment_date: new Date().toISOString().split('T')[0],
         status: 'activo',
         notes: '',
@@ -220,9 +232,18 @@ function openNewEnrollmentModal(preselectedCourseId?: number) {
 }
 
 function saveNewEnrollment() {
-    if (!enrollmentForm.value.student_full_name.trim() || !enrollmentForm.value.student_document.trim()) return;
-    const sched = scheduledCourses.value.find((s) => s.id === Number(enrollmentForm.value.scheduled_course_id));
-    const newId = props.enrollments.length > 0 ? Math.max(...props.enrollments.map((e) => e.id)) + 1 : 1;
+    if (
+        !enrollmentForm.value.student_full_name.trim() ||
+        !enrollmentForm.value.student_document.trim()
+    )
+        return;
+    const sched = scheduledCourses.value.find(
+        (s) => s.id === Number(enrollmentForm.value.scheduled_course_id),
+    );
+    const newId =
+        props.enrollments.length > 0
+            ? Math.max(...props.enrollments.map((e) => e.id)) + 1
+            : 1;
 
     props.enrollments.unshift({
         id: newId,
@@ -243,7 +264,10 @@ function saveNewEnrollment() {
         sched.enrolled_count++;
     }
 
-    emit('notify', `Matrícula registrada con éxito para ${enrollmentForm.value.student_full_name} (${enrollmentForm.value.status.toUpperCase()}).`);
+    emit(
+        'notify',
+        `Matrícula registrada con éxito para ${enrollmentForm.value.student_full_name} (${enrollmentForm.value.status.toUpperCase()}).`,
+    );
     showEnrollmentModal.value = false;
 }
 
@@ -264,7 +288,10 @@ function applyStatusChange() {
     if (!selectedEnrollment.value) return;
     selectedEnrollment.value.status = newStatusToApply.value;
     selectedEnrollment.value.notes = statusChangeNotes.value.trim() || null;
-    emit('notify', `Estado de ${selectedEnrollment.value.student_full_name} actualizado a "${newStatusToApply.value.toUpperCase()}".`);
+    emit(
+        'notify',
+        `Estado de ${selectedEnrollment.value.student_full_name} actualizado a "${newStatusToApply.value.toUpperCase()}".`,
+    );
     showChangeStatusModal.value = false;
 }
 
@@ -283,7 +310,9 @@ const scheduleCourseForm = ref({
 
 // Aulas disponibles según la sede seleccionada en el formulario
 const availableClassroomsForBranch = computed(() => {
-    return props.classrooms.filter((c) => c.branch_id === scheduleCourseForm.value.branch_id);
+    return props.classrooms.filter(
+        (c) => c.branch_id === scheduleCourseForm.value.branch_id,
+    );
 });
 
 function openNewScheduleCourseModal() {
@@ -293,7 +322,9 @@ function openNewScheduleCourseModal() {
         classroom_id: props.classrooms[0]?.id || 1,
         teacher_name: '',
         start_date: new Date().toISOString().split('T')[0],
-        end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split('T')[0],
         day_of_week: 'Lunes y Miércoles',
         time_range: '18:00 - 20:00',
     };
@@ -301,11 +332,20 @@ function openNewScheduleCourseModal() {
 }
 
 function saveNewScheduleCourse() {
-    const courseObj = props.courses.find((c) => c.id === Number(scheduleCourseForm.value.course_id));
-    const branchObj = props.branches.find((b) => b.id === Number(scheduleCourseForm.value.branch_id));
-    const classroomObj = props.classrooms.find((c) => c.id === Number(scheduleCourseForm.value.classroom_id));
+    const courseObj = props.courses.find(
+        (c) => c.id === Number(scheduleCourseForm.value.course_id),
+    );
+    const branchObj = props.branches.find(
+        (b) => b.id === Number(scheduleCourseForm.value.branch_id),
+    );
+    const classroomObj = props.classrooms.find(
+        (c) => c.id === Number(scheduleCourseForm.value.classroom_id),
+    );
 
-    const newId = scheduledCourses.value.length > 0 ? Math.max(...scheduledCourses.value.map((s) => s.id)) + 1 : 1;
+    const newId =
+        scheduledCourses.value.length > 0
+            ? Math.max(...scheduledCourses.value.map((s) => s.id)) + 1
+            : 1;
 
     scheduledCourses.value.unshift({
         id: newId,
@@ -315,7 +355,9 @@ function saveNewScheduleCourse() {
         branch_name: branchObj ? branchObj.name : 'Sede Principal',
         classroom_id: scheduleCourseForm.value.classroom_id,
         classroom_name: classroomObj ? classroomObj.name : 'Aula Multiusos',
-        teacher_name: scheduleCourseForm.value.teacher_name.trim() || 'Docente por asignar',
+        teacher_name:
+            scheduleCourseForm.value.teacher_name.trim() ||
+            'Docente por asignar',
         start_date: scheduleCourseForm.value.start_date,
         end_date: scheduleCourseForm.value.end_date,
         day_of_week: scheduleCourseForm.value.day_of_week,
@@ -325,7 +367,10 @@ function saveNewScheduleCourse() {
         status: 'programado',
     });
 
-    emit('notify', `Curso "${courseObj?.name}" aperturado con éxito en ${classroomObj?.name}.`);
+    emit(
+        'notify',
+        `Curso "${courseObj?.name}" aperturado con éxito en ${classroomObj?.name}.`,
+    );
     showScheduleCourseModal.value = false;
 }
 
@@ -335,10 +380,16 @@ const scheduledStatusFilter = ref<'all' | 'en_curso' | 'programado'>('all');
 
 const filteredScheduledCourses = computed(() => {
     return scheduledCourses.value.filter((sched) => {
-        if (props.selectedBranchId !== 'all' && sched.branch_id !== props.selectedBranchId) {
+        if (
+            props.selectedBranchId !== 'all' &&
+            sched.branch_id !== props.selectedBranchId
+        ) {
             return false;
         }
-        if (scheduledStatusFilter.value !== 'all' && sched.status !== scheduledStatusFilter.value) {
+        if (
+            scheduledStatusFilter.value !== 'all' &&
+            sched.status !== scheduledStatusFilter.value
+        ) {
             return false;
         }
         if (searchScheduledQuery.value.trim() !== '') {
@@ -364,16 +415,28 @@ const filteredScheduledCourses = computed(() => {
                     @click="changeTab('inscripciones')"
                     :class="[
                         currentTab === 'inscripciones'
-                            ? 'border-[#2e8b57] text-[#2e8b57] font-bold'
-                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 font-semibold',
-                        'whitespace-nowrap py-3 px-1 border-b-2 text-sm flex items-center gap-2 cursor-pointer'
+                            ? 'border-[#2e8b57] font-bold text-[#2e8b57]'
+                            : 'border-transparent font-semibold text-slate-500 hover:border-slate-300 hover:text-slate-700',
+                        'flex cursor-pointer items-center gap-2 border-b-2 px-1 py-3 text-sm whitespace-nowrap',
                     ]"
                 >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    <svg
+                        class="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
                     </svg>
                     <span>Inscripciones & Convalidaciones</span>
-                    <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-mono text-slate-600">
+                    <span
+                        class="rounded-full bg-slate-100 px-2.5 py-0.5 font-mono text-xs text-slate-600"
+                    >
                         {{ enrollments.length }}
                     </span>
                 </button>
@@ -382,16 +445,28 @@ const filteredScheduledCourses = computed(() => {
                     @click="changeTab('aperturas')"
                     :class="[
                         currentTab === 'aperturas'
-                            ? 'border-[#2e8b57] text-[#2e8b57] font-bold'
-                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 font-semibold',
-                        'whitespace-nowrap py-3 px-1 border-b-2 text-sm flex items-center gap-2 cursor-pointer'
+                            ? 'border-[#2e8b57] font-bold text-[#2e8b57]'
+                            : 'border-transparent font-semibold text-slate-500 hover:border-slate-300 hover:text-slate-700',
+                        'flex cursor-pointer items-center gap-2 border-b-2 px-1 py-3 text-sm whitespace-nowrap',
                     ]"
                 >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    <svg
+                        class="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
                     </svg>
                     <span>Apertura de Cursos / Aulas</span>
-                    <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-mono text-slate-600">
+                    <span
+                        class="rounded-full bg-slate-100 px-2.5 py-0.5 font-mono text-xs text-slate-600"
+                    >
                         {{ scheduledCourses.length }}
                     </span>
                 </button>
@@ -403,11 +478,25 @@ const filteredScheduledCourses = computed(() => {
         <!-- ========================================== -->
         <div v-if="currentTab === 'inscripciones'" class="space-y-6">
             <!-- Barra de Búsqueda, Filtros de Estado y Botón de Nueva Matrícula -->
-            <div class="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div
+                class="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs"
+            >
+                <div
+                    class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+                >
                     <div class="relative flex-1 sm:max-w-md">
-                        <svg class="pointer-events-none absolute top-3 left-3.5 h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <svg
+                            class="pointer-events-none absolute top-3 left-3.5 h-5 w-5 text-slate-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                            />
                         </svg>
                         <input
                             v-model="searchEnrollmentQuery"
@@ -419,25 +508,40 @@ const filteredScheduledCourses = computed(() => {
 
                     <button
                         @click="openNewEnrollmentModal()"
-                        class="inline-flex items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs hover:bg-[#257347] transition cursor-pointer"
+                        class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
                     >
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                        <svg
+                            class="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                            />
                         </svg>
                         <span>+ Nueva Matrícula / Convalidación</span>
                     </button>
                 </div>
 
                 <!-- Filtros rápidos por estado de matrícula (enum_enrollment_status) -->
-                <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Filtrar Estado:</span>
+                <div
+                    class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2"
+                >
+                    <span
+                        class="mr-1 text-xs font-bold tracking-wider text-slate-400 uppercase"
+                        >Filtrar Estado:</span
+                    >
                     <button
                         @click="statusEnrollmentFilter = 'all'"
                         :class="[
                             statusEnrollmentFilter === 'all'
-                                ? 'bg-slate-800 text-white font-bold'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-semibold',
-                            'rounded-lg px-3 py-1.5 text-xs transition cursor-pointer'
+                                ? 'bg-slate-800 font-bold text-white'
+                                : 'bg-slate-100 font-semibold text-slate-600 hover:bg-slate-200',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
                         ]"
                     >
                         Todos
@@ -446,9 +550,9 @@ const filteredScheduledCourses = computed(() => {
                         @click="statusEnrollmentFilter = 'activo'"
                         :class="[
                             statusEnrollmentFilter === 'activo'
-                                ? 'bg-[#2e8b57] text-white font-bold'
-                                : 'bg-emerald-50 text-[#2e8b57] hover:bg-emerald-100 font-semibold',
-                            'rounded-lg px-3 py-1.5 text-xs transition cursor-pointer'
+                                ? 'bg-[#2e8b57] font-bold text-white'
+                                : 'bg-emerald-50 font-semibold text-[#2e8b57] hover:bg-emerald-100',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
                         ]"
                     >
                         Activos
@@ -457,9 +561,9 @@ const filteredScheduledCourses = computed(() => {
                         @click="statusEnrollmentFilter = 'convalidado'"
                         :class="[
                             statusEnrollmentFilter === 'convalidado'
-                                ? 'bg-purple-700 text-white font-bold'
-                                : 'bg-purple-50 text-purple-700 hover:bg-purple-100 font-semibold',
-                            'rounded-lg px-3 py-1.5 text-xs transition cursor-pointer'
+                                ? 'bg-purple-700 font-bold text-white'
+                                : 'bg-purple-50 font-semibold text-purple-700 hover:bg-purple-100',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
                         ]"
                     >
                         Convalidados
@@ -468,9 +572,9 @@ const filteredScheduledCourses = computed(() => {
                         @click="statusEnrollmentFilter = 'preinscrito'"
                         :class="[
                             statusEnrollmentFilter === 'preinscrito'
-                                ? 'bg-amber-600 text-white font-bold'
-                                : 'bg-amber-50 text-amber-700 hover:bg-amber-100 font-semibold',
-                            'rounded-lg px-3 py-1.5 text-xs transition cursor-pointer'
+                                ? 'bg-amber-600 font-bold text-white'
+                                : 'bg-amber-50 font-semibold text-amber-700 hover:bg-amber-100',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
                         ]"
                     >
                         Preinscritos
@@ -479,9 +583,9 @@ const filteredScheduledCourses = computed(() => {
                         @click="statusEnrollmentFilter = 'completado'"
                         :class="[
                             statusEnrollmentFilter === 'completado'
-                                ? 'bg-blue-600 text-white font-bold'
-                                : 'bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold',
-                            'rounded-lg px-3 py-1.5 text-xs transition cursor-pointer'
+                                ? 'bg-blue-600 font-bold text-white'
+                                : 'bg-blue-50 font-semibold text-blue-700 hover:bg-blue-100',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
                         ]"
                     >
                         Completados
@@ -490,9 +594,9 @@ const filteredScheduledCourses = computed(() => {
                         @click="statusEnrollmentFilter = 'retirado'"
                         :class="[
                             statusEnrollmentFilter === 'retirado'
-                                ? 'bg-slate-600 text-white font-bold'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold',
-                            'rounded-lg px-3 py-1.5 text-xs transition cursor-pointer'
+                                ? 'bg-slate-600 font-bold text-white'
+                                : 'bg-slate-100 font-semibold text-slate-700 hover:bg-slate-200',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
                         ]"
                     >
                         Retirados
@@ -501,16 +605,33 @@ const filteredScheduledCourses = computed(() => {
             </div>
 
             <!-- Tabla de Inscripciones y Convalidaciones -->
-            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+            <div
+                class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs"
+            >
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm text-slate-700">
-                        <thead class="border-b border-slate-200 bg-slate-50 text-xs font-bold tracking-wider text-slate-600 uppercase">
+                        <thead
+                            class="border-b border-slate-200 bg-slate-50 text-xs font-bold tracking-wider text-slate-600 uppercase"
+                        >
                             <tr>
-                                <th scope="col" class="py-4 pr-4 pl-6">Estudiante / DNI</th>
-                                <th scope="col" class="px-4 py-4">Curso y Módulo Asignado</th>
-                                <th scope="col" class="px-4 py-4">Sede y Fecha</th>
-                                <th scope="col" class="px-4 py-4 text-center">Estado (enum_enrollment_status)</th>
-                                <th scope="col" class="py-4 pr-6 pl-4 text-right">Acciones</th>
+                                <th scope="col" class="py-4 pr-4 pl-6">
+                                    Estudiante / DNI
+                                </th>
+                                <th scope="col" class="px-4 py-4">
+                                    Curso y Módulo Asignado
+                                </th>
+                                <th scope="col" class="px-4 py-4">
+                                    Sede y Fecha
+                                </th>
+                                <th scope="col" class="px-4 py-4 text-center">
+                                    Estado (enum_enrollment_status)
+                                </th>
+                                <th
+                                    scope="col"
+                                    class="py-4 pr-6 pl-4 text-right"
+                                >
+                                    Acciones
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
@@ -520,76 +641,130 @@ const filteredScheduledCourses = computed(() => {
                                 class="transition hover:bg-emerald-50/40"
                             >
                                 <td class="py-4 pr-4 pl-6">
-                                    <div class="font-bold text-slate-900 text-sm">{{ record.student_full_name }}</div>
-                                    <div class="text-xs font-mono text-slate-500">DNI: {{ record.student_document }}</div>
-                                    <div v-if="record.notes" class="text-[11px] text-purple-700 italic mt-0.5">
+                                    <div
+                                        class="text-sm font-bold text-slate-900"
+                                    >
+                                        {{ record.student_full_name }}
+                                    </div>
+                                    <div
+                                        class="font-mono text-xs text-slate-500"
+                                    >
+                                        DNI: {{ record.student_document }}
+                                    </div>
+                                    <div
+                                        v-if="record.notes"
+                                        class="mt-0.5 text-[11px] text-purple-700 italic"
+                                    >
                                         Obs: {{ record.notes }}
                                     </div>
                                 </td>
 
                                 <td class="px-4 py-4">
-                                    <div class="font-bold text-slate-900">{{ record.course_name }}</div>
-                                    <div class="text-xs text-slate-500 font-medium">
-                                        {{ record.module_name || 'Curso Libre' }}
-                                        <span v-if="record.career_name" class="text-slate-400">&bull; {{ record.career_name }}</span>
+                                    <div class="font-bold text-slate-900">
+                                        {{ record.course_name }}
+                                    </div>
+                                    <div
+                                        class="text-xs font-medium text-slate-500"
+                                    >
+                                        {{
+                                            record.module_name || 'Curso Libre'
+                                        }}
+                                        <span
+                                            v-if="record.career_name"
+                                            class="text-slate-400"
+                                            >&bull;
+                                            {{ record.career_name }}</span
+                                        >
                                     </div>
                                 </td>
 
-                                <td class="px-4 py-4 whitespace-nowrap text-xs">
-                                    <div class="font-semibold text-slate-800">{{ record.branch_name }}</div>
-                                    <div class="text-slate-400 font-mono">Inscrito: {{ record.enrollment_date }}</div>
+                                <td class="px-4 py-4 text-xs whitespace-nowrap">
+                                    <div class="font-semibold text-slate-800">
+                                        {{ record.branch_name }}
+                                    </div>
+                                    <div class="font-mono text-slate-400">
+                                        Inscrito: {{ record.enrollment_date }}
+                                    </div>
                                 </td>
 
-                                <td class="px-4 py-4 text-center whitespace-nowrap">
+                                <td
+                                    class="px-4 py-4 text-center whitespace-nowrap"
+                                >
                                     <span
                                         v-if="record.status === 'activo'"
-                                        class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-[#2e8b57]"
+                                        class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-[#2e8b57]"
                                     >
-                                        <span class="h-1.5 w-1.5 rounded-full bg-[#2e8b57]"></span>
+                                        <span
+                                            class="h-1.5 w-1.5 rounded-full bg-[#2e8b57]"
+                                        ></span>
                                         Activo
                                     </span>
                                     <span
-                                        v-else-if="record.status === 'convalidado'"
-                                        class="inline-flex items-center gap-1.5 rounded-full bg-purple-50 border border-purple-200 px-3 py-1 text-xs font-bold text-purple-700"
+                                        v-else-if="
+                                            record.status === 'convalidado'
+                                        "
+                                        class="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700"
                                     >
-                                        <span class="h-1.5 w-1.5 rounded-full bg-purple-700"></span>
+                                        <span
+                                            class="h-1.5 w-1.5 rounded-full bg-purple-700"
+                                        ></span>
                                         Convalidado
                                     </span>
                                     <span
-                                        v-else-if="record.status === 'preinscrito'"
-                                        class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-700"
+                                        v-else-if="
+                                            record.status === 'preinscrito'
+                                        "
+                                        class="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700"
                                     >
-                                        <span class="h-1.5 w-1.5 rounded-full bg-amber-600"></span>
+                                        <span
+                                            class="h-1.5 w-1.5 rounded-full bg-amber-600"
+                                        ></span>
                                         Preinscrito
                                     </span>
                                     <span
-                                        v-else-if="record.status === 'completado'"
-                                        class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-xs font-bold text-blue-700"
+                                        v-else-if="
+                                            record.status === 'completado'
+                                        "
+                                        class="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700"
                                     >
-                                        <span class="h-1.5 w-1.5 rounded-full bg-blue-600"></span>
+                                        <span
+                                            class="h-1.5 w-1.5 rounded-full bg-blue-600"
+                                        ></span>
                                         Completado
                                     </span>
                                     <span
                                         v-else-if="record.status === 'retirado'"
-                                        class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-300 px-3 py-1 text-xs font-bold text-slate-600"
+                                        class="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600"
                                     >
                                         Retirado
                                     </span>
                                     <span
                                         v-else
-                                        class="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-3 py-1 text-xs font-bold text-red-600"
+                                        class="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-bold text-red-600"
                                     >
                                         Anulado
                                     </span>
                                 </td>
 
-                                <td class="py-4 pr-6 pl-4 text-right whitespace-nowrap">
+                                <td
+                                    class="py-4 pr-6 pl-4 text-right whitespace-nowrap"
+                                >
                                     <button
                                         @click="openChangeStatusModal(record)"
-                                        class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-[#2e8b57] transition cursor-pointer"
+                                        class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-[#2e8b57]"
                                     >
-                                        <svg class="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        <svg
+                                            class="h-4 w-4 text-slate-500"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                            />
                                         </svg>
                                         <span>Modificar Estado</span>
                                     </button>
@@ -597,8 +772,12 @@ const filteredScheduledCourses = computed(() => {
                             </tr>
 
                             <tr v-if="filteredEnrollments.length === 0">
-                                <td colspan="5" class="py-12 text-center text-slate-400 font-medium">
-                                    No se encontraron registros de matrícula con los filtros seleccionados.
+                                <td
+                                    colspan="5"
+                                    class="py-12 text-center font-medium text-slate-400"
+                                >
+                                    No se encontraron registros de matrícula con
+                                    los filtros seleccionados.
                                 </td>
                             </tr>
                         </tbody>
@@ -607,19 +786,49 @@ const filteredScheduledCourses = computed(() => {
             </div>
 
             <!-- Tarjeta explicativa de la regla de negocio para convalidaciones -->
-            <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-3">
+            <div
+                class="space-y-3 rounded-xl border border-slate-200 bg-white p-6 shadow-xs"
+            >
                 <div class="flex items-center gap-2.5">
-                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-[#2e8b57]">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <div
+                        class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-[#2e8b57]"
+                    >
+                        <svg
+                            class="h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
                         </svg>
                     </div>
-                    <h3 class="text-sm font-bold text-slate-900">Lógica de Convalidación Atómica en Base de Datos (CETPRO IISEP)</h3>
+                    <h3 class="text-sm font-bold text-slate-900">
+                        Lógica de Convalidación Atómica en Base de Datos (CETPRO
+                        IISEP)
+                    </h3>
                 </div>
                 <p class="text-xs leading-relaxed text-slate-600">
-                    En la base de datos de PostgreSQL, las convalidaciones se almacenan directamente en la tabla <code class="font-mono font-bold text-slate-900 bg-slate-100 px-1 py-0.5 rounded">enrollments</code> mediante el valor de enum <code class="font-mono font-bold text-purple-700 bg-purple-50 px-1 py-0.5 rounded">'convalidado'</code>.
-                    Para la acreditación de un certificado modular oficial, el sistema consulta:
-                    <span class="font-mono font-bold text-[#2e8b57] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 ml-1">status IN ('completado', 'convalidado')</span>.
+                    En la base de datos de PostgreSQL, las convalidaciones se
+                    almacenan directamente en la tabla
+                    <code
+                        class="rounded bg-slate-100 px-1 py-0.5 font-mono font-bold text-slate-900"
+                        >enrollments</code
+                    >
+                    mediante el valor de enum
+                    <code
+                        class="rounded bg-purple-50 px-1 py-0.5 font-mono font-bold text-purple-700"
+                        >'convalidado'</code
+                    >. Para la acreditación de un certificado modular oficial,
+                    el sistema consulta:
+                    <span
+                        class="ml-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-mono font-bold text-[#2e8b57]"
+                        >status IN ('completado', 'convalidado')</span
+                    >.
                 </p>
             </div>
         </div>
@@ -629,11 +838,25 @@ const filteredScheduledCourses = computed(() => {
         <!-- ================================================== -->
         <div v-else class="space-y-6">
             <!-- Barra Superior: Búsqueda, Filtros de Estado y Botón de Apertura -->
-            <div class="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div
+                class="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs"
+            >
+                <div
+                    class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+                >
                     <div class="relative flex-1 sm:max-w-md">
-                        <svg class="pointer-events-none absolute top-3 left-3.5 h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <svg
+                            class="pointer-events-none absolute top-3 left-3.5 h-5 w-5 text-slate-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                            />
                         </svg>
                         <input
                             v-model="searchScheduledQuery"
@@ -645,25 +868,40 @@ const filteredScheduledCourses = computed(() => {
 
                     <button
                         @click="openNewScheduleCourseModal"
-                        class="inline-flex items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs hover:bg-[#257347] transition cursor-pointer"
+                        class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
                     >
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        <svg
+                            class="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 4v16m8-8H4"
+                            />
                         </svg>
                         <span>+ Aperturar Nuevo Curso / Aula</span>
                     </button>
                 </div>
 
                 <!-- Filtros por estado del curso programado -->
-                <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Estado de Apertura:</span>
+                <div
+                    class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2"
+                >
+                    <span
+                        class="mr-1 text-xs font-bold tracking-wider text-slate-400 uppercase"
+                        >Estado de Apertura:</span
+                    >
                     <button
                         @click="scheduledStatusFilter = 'all'"
                         :class="[
                             scheduledStatusFilter === 'all'
-                                ? 'bg-slate-800 text-white font-bold'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-semibold',
-                            'rounded-lg px-3 py-1.5 text-xs transition cursor-pointer'
+                                ? 'bg-slate-800 font-bold text-white'
+                                : 'bg-slate-100 font-semibold text-slate-600 hover:bg-slate-200',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
                         ]"
                     >
                         Todos ({{ scheduledCourses.length }})
@@ -672,9 +910,9 @@ const filteredScheduledCourses = computed(() => {
                         @click="scheduledStatusFilter = 'en_curso'"
                         :class="[
                             scheduledStatusFilter === 'en_curso'
-                                ? 'bg-[#2e8b57] text-white font-bold'
-                                : 'bg-emerald-50 text-[#2e8b57] hover:bg-emerald-100 font-semibold',
-                            'rounded-lg px-3 py-1.5 text-xs transition cursor-pointer'
+                                ? 'bg-[#2e8b57] font-bold text-white'
+                                : 'bg-emerald-50 font-semibold text-[#2e8b57] hover:bg-emerald-100',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
                         ]"
                     >
                         En Dictado Activo
@@ -683,9 +921,9 @@ const filteredScheduledCourses = computed(() => {
                         @click="scheduledStatusFilter = 'programado'"
                         :class="[
                             scheduledStatusFilter === 'programado'
-                                ? 'bg-amber-600 text-white font-bold'
-                                : 'bg-amber-50 text-amber-700 hover:bg-amber-100 font-semibold',
-                            'rounded-lg px-3 py-1.5 text-xs transition cursor-pointer'
+                                ? 'bg-amber-600 font-bold text-white'
+                                : 'bg-amber-50 font-semibold text-amber-700 hover:bg-amber-100',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
                         ]"
                     >
                         Programados
@@ -694,17 +932,25 @@ const filteredScheduledCourses = computed(() => {
             </div>
 
             <!-- TABLA / LISTA DE CURSOS APERTURADOS -->
-            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+            <div
+                class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs"
+            >
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm text-slate-700">
-                        <thead class="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 uppercase tracking-wider">
+                        <thead
+                            class="border-b border-slate-200 bg-slate-50 text-xs font-bold tracking-wider text-slate-600 uppercase"
+                        >
                             <tr>
-                                <th class="py-4 pr-4 pl-6">Curso / Materia Aperturada</th>
+                                <th class="py-4 pr-4 pl-6">
+                                    Curso / Materia Aperturada
+                                </th>
                                 <th class="px-4 py-4">Sede & Aula Física</th>
                                 <th class="px-4 py-4">Periodo de Vigencia</th>
                                 <th class="px-4 py-4">Horarios & Docente</th>
                                 <th class="px-4 py-4">Aforo & Vacantes</th>
-                                <th class="py-4 pr-6 pl-4 text-right">Acciones</th>
+                                <th class="py-4 pr-6 pl-4 text-right">
+                                    Acciones
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
@@ -715,78 +961,167 @@ const filteredScheduledCourses = computed(() => {
                             >
                                 <!-- Columna 1: Curso / Materia -->
                                 <td class="py-4 pr-4 pl-6">
-                                    <div class="flex items-center gap-2 mb-1">
+                                    <div class="mb-1 flex items-center gap-2">
                                         <span
                                             :class="[
                                                 sched.status === 'en_curso'
-                                                    ? 'bg-emerald-50 text-[#2e8b57] border-emerald-200'
-                                                    : 'bg-amber-50 text-amber-700 border-amber-200',
-                                                'rounded px-2 py-0.5 text-[11px] font-bold border uppercase font-mono'
+                                                    ? 'border-emerald-200 bg-emerald-50 text-[#2e8b57]'
+                                                    : 'border-amber-200 bg-amber-50 text-amber-700',
+                                                'rounded border px-2 py-0.5 font-mono text-[11px] font-bold uppercase',
                                             ]"
                                         >
                                             {{ sched.status.replace('_', ' ') }}
                                         </span>
-                                        <span class="text-xs font-mono text-slate-400 font-medium">SCH-{{ sched.id }}</span>
+                                        <span
+                                            class="font-mono text-xs font-medium text-slate-400"
+                                            >SCH-{{ sched.id }}</span
+                                        >
                                     </div>
-                                    <div class="font-bold text-slate-900 text-sm">{{ sched.course_name }}</div>
+                                    <div
+                                        class="text-sm font-bold text-slate-900"
+                                    >
+                                        {{ sched.course_name }}
+                                    </div>
                                 </td>
 
                                 <!-- Columna 2: Sede & Aula Física -->
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <div class="flex items-center gap-2 font-bold text-slate-800 text-xs">
-                                        <span class="h-2 w-2 rounded-full" :class="sched.branch_name.includes('Comas') ? 'bg-[#2e8b57]' : 'bg-teal-600'"></span>
+                                    <div
+                                        class="flex items-center gap-2 text-xs font-bold text-slate-800"
+                                    >
+                                        <span
+                                            class="h-2 w-2 rounded-full"
+                                            :class="
+                                                sched.branch_name.includes(
+                                                    'Comas',
+                                                )
+                                                    ? 'bg-[#2e8b57]'
+                                                    : 'bg-teal-600'
+                                            "
+                                        ></span>
                                         {{ sched.branch_name }}
                                     </div>
-                                    <div class="text-xs font-medium text-slate-500 mt-0.5">{{ sched.classroom_name }}</div>
+                                    <div
+                                        class="mt-0.5 text-xs font-medium text-slate-500"
+                                    >
+                                        {{ sched.classroom_name }}
+                                    </div>
                                 </td>
 
                                 <!-- Columna 3: Periodo de Vigencia -->
-                                <td class="px-4 py-4 whitespace-nowrap text-xs">
-                                    <div class="font-mono font-bold text-slate-800 flex items-center gap-1.5">
-                                        <svg class="h-3.5 w-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                <td class="px-4 py-4 text-xs whitespace-nowrap">
+                                    <div
+                                        class="flex items-center gap-1.5 font-mono font-bold text-slate-800"
+                                    >
+                                        <svg
+                                            class="h-3.5 w-3.5 text-slate-400"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                            />
                                         </svg>
                                         <span>{{ sched.start_date }}</span>
-                                        <span class="text-slate-400 font-normal">al</span>
+                                        <span class="font-normal text-slate-400"
+                                            >al</span
+                                        >
                                         <span>{{ sched.end_date }}</span>
                                     </div>
-                                    <div class="text-[11px] text-slate-400 mt-0.5">Programación activa</div>
+                                    <div
+                                        class="mt-0.5 text-[11px] text-slate-400"
+                                    >
+                                        Programación activa
+                                    </div>
                                 </td>
 
                                 <!-- Columna 4: Horarios & Docente -->
                                 <td class="px-4 py-4 text-xs">
-                                    <div class="font-bold text-[#2e8b57]">{{ sched.day_of_week }}</div>
-                                    <div class="font-mono text-slate-600 mt-0.5">{{ sched.time_range }}</div>
-                                    <div class="text-[11px] text-slate-500 font-medium mt-1">Prof: {{ sched.teacher_name }}</div>
+                                    <div class="font-bold text-[#2e8b57]">
+                                        {{ sched.day_of_week }}
+                                    </div>
+                                    <div
+                                        class="mt-0.5 font-mono text-slate-600"
+                                    >
+                                        {{ sched.time_range }}
+                                    </div>
+                                    <div
+                                        class="mt-1 text-[11px] font-medium text-slate-500"
+                                    >
+                                        Prof: {{ sched.teacher_name }}
+                                    </div>
                                 </td>
 
                                 <!-- Columna 5: Aforo & Ocupabilidad -->
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <div class="flex items-center justify-between text-xs mb-1 gap-2">
-                                        <span class="font-bold font-mono text-slate-800">{{ sched.enrolled_count }} / {{ sched.capacity }}</span>
-                                        <span class="font-mono font-bold text-slate-500 text-[11px]">{{ Math.round((sched.enrolled_count / sched.capacity) * 100) }}%</span>
+                                    <div
+                                        class="mb-1 flex items-center justify-between gap-2 text-xs"
+                                    >
+                                        <span
+                                            class="font-mono font-bold text-slate-800"
+                                            >{{ sched.enrolled_count }} /
+                                            {{ sched.capacity }}</span
+                                        >
+                                        <span
+                                            class="font-mono text-[11px] font-bold text-slate-500"
+                                            >{{
+                                                Math.round(
+                                                    (sched.enrolled_count /
+                                                        sched.capacity) *
+                                                        100,
+                                                )
+                                            }}%</span
+                                        >
                                     </div>
-                                    <div class="w-32 bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
+                                    <div
+                                        class="h-2 w-32 overflow-hidden rounded-full border border-slate-200 bg-slate-100"
+                                    >
                                         <div
-                                            class="bg-[#2e8b57] h-2 rounded-full transition-all duration-300"
-                                            :style="{ width: `${Math.min(100, Math.round((sched.enrolled_count / sched.capacity) * 100))}%` }"
+                                            class="h-2 rounded-full bg-[#2e8b57] transition-all duration-300"
+                                            :style="{
+                                                width: `${Math.min(100, Math.round((sched.enrolled_count / sched.capacity) * 100))}%`,
+                                            }"
                                         ></div>
                                     </div>
-                                    <div class="text-[11px] text-slate-400 mt-1">
-                                        {{ sched.capacity - sched.enrolled_count }} vacantes disp.
+                                    <div
+                                        class="mt-1 text-[11px] text-slate-400"
+                                    >
+                                        {{
+                                            sched.capacity -
+                                            sched.enrolled_count
+                                        }}
+                                        vacantes disp.
                                     </div>
                                 </td>
 
                                 <!-- Columna 6: Acciones -->
-                                <td class="py-4 pr-6 pl-4 text-right whitespace-nowrap">
+                                <td
+                                    class="py-4 pr-6 pl-4 text-right whitespace-nowrap"
+                                >
                                     <div class="inline-flex items-center gap-2">
                                         <button
-                                            @click="openNewEnrollmentModal(sched.id)"
-                                            class="inline-flex items-center gap-1.5 rounded-lg bg-[#2e8b57] hover:bg-[#257347] px-3 py-1.5 text-xs font-bold text-white transition shadow-2xs cursor-pointer"
+                                            @click="
+                                                openNewEnrollmentModal(sched.id)
+                                            "
+                                            class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#2e8b57] px-3 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-[#257347]"
                                             title="Matricular alumno a este curso"
                                         >
-                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                            <svg
+                                                class="h-3.5 w-3.5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                                                />
                                             </svg>
                                             <span>Matricular</span>
                                         </button>
@@ -795,8 +1130,12 @@ const filteredScheduledCourses = computed(() => {
                             </tr>
 
                             <tr v-if="filteredScheduledCourses.length === 0">
-                                <td colspan="6" class="py-12 text-center text-slate-400 font-medium">
-                                    No se encontraron cursos aperturados para el filtro seleccionado.
+                                <td
+                                    colspan="6"
+                                    class="py-12 text-center font-medium text-slate-400"
+                                >
+                                    No se encontraron cursos aperturados para el
+                                    filtro seleccionado.
                                 </td>
                             </tr>
                         </tbody>
@@ -805,17 +1144,49 @@ const filteredScheduledCourses = computed(() => {
             </div>
 
             <!-- Tarjeta explicativa de la programación y vinculación física -->
-            <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-3">
+            <div
+                class="space-y-3 rounded-xl border border-slate-200 bg-white p-6 shadow-xs"
+            >
                 <div class="flex items-center gap-2.5">
-                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-[#2e8b57]">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <div
+                        class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-[#2e8b57]"
+                    >
+                        <svg
+                            class="h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
                         </svg>
                     </div>
-                    <h3 class="text-sm font-bold text-slate-900">Estructura Relacional de Aperturas (CETPRO IISEP)</h3>
+                    <h3 class="text-sm font-bold text-slate-900">
+                        Estructura Relacional de Aperturas (CETPRO IISEP)
+                    </h3>
                 </div>
                 <p class="text-xs leading-relaxed text-slate-600">
-                    Cada apertura genera un registro en <code class="font-mono font-bold text-slate-900 bg-slate-100 px-1 py-0.5 rounded">scheduled_courses</code> vinculando el curso, docente, sede y rango de fechas (<span class="font-mono font-bold text-slate-700">start_date, end_date</span>). Los turnos y aulas físicas asociadas se persisten en <code class="font-mono font-bold text-slate-900 bg-slate-100 px-1 py-0.5 rounded">course_schedules</code> (<span class="font-mono font-bold text-slate-700">classroom_id, day_of_week, start_time, end_time</span>), garantizando la validación de cruce de horarios antes de su apertura.
+                    Cada apertura genera un registro en
+                    <code
+                        class="rounded bg-slate-100 px-1 py-0.5 font-mono font-bold text-slate-900"
+                        >scheduled_courses</code
+                    >
+                    vinculando el curso, docente, sede y rango de fechas (<span
+                        class="font-mono font-bold text-slate-700"
+                        >start_date, end_date</span
+                    >). Los turnos y aulas físicas asociadas se persisten en
+                    <code
+                        class="rounded bg-slate-100 px-1 py-0.5 font-mono font-bold text-slate-900"
+                        >course_schedules</code
+                    >
+                    (<span class="font-mono font-bold text-slate-700"
+                        >classroom_id, day_of_week, start_time, end_time</span
+                    >), garantizando la validación de cruce de horarios antes de
+                    su apertura.
                 </p>
             </div>
         </div>
@@ -828,20 +1199,31 @@ const filteredScheduledCourses = computed(() => {
             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
             @click.self="showEnrollmentModal = false"
         >
-            <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
-                    <h3 class="text-lg font-bold text-slate-900">Registrar Matrícula o Convalidación</h3>
+            <div
+                class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+            >
+                <div
+                    class="flex items-center justify-between border-b border-slate-100 pb-4"
+                >
+                    <h3 class="text-lg font-bold text-slate-900">
+                        Registrar Matrícula o Convalidación
+                    </h3>
                     <button
                         @click="showEnrollmentModal = false"
-                        class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+                        class="cursor-pointer rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                     >
                         &times;
                     </button>
                 </div>
 
-                <form @submit.prevent="saveNewEnrollment" class="mt-5 space-y-4">
+                <form
+                    @submit.prevent="saveNewEnrollment"
+                    class="mt-5 space-y-4"
+                >
                     <div>
-                        <label class="block text-sm font-bold text-slate-800">Apellidos y Nombres del Estudiante</label>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Apellidos y Nombres del Estudiante</label
+                        >
                         <input
                             v-model="enrollmentForm.student_full_name"
                             type="text"
@@ -853,58 +1235,80 @@ const filteredScheduledCourses = computed(() => {
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-bold text-slate-800">Documento DNI</label>
+                            <label
+                                class="block text-sm font-bold text-slate-800"
+                                >Documento DNI</label
+                            >
                             <input
                                 v-model="enrollmentForm.student_document"
                                 type="text"
                                 required
                                 placeholder="8 dígitos"
-                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm font-mono text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             />
                         </div>
 
                         <div>
-                            <label class="block text-sm font-bold text-slate-800">Fecha de Matrícula</label>
+                            <label
+                                class="block text-sm font-bold text-slate-800"
+                                >Fecha de Matrícula</label
+                            >
                             <input
                                 v-model="enrollmentForm.enrollment_date"
                                 type="date"
                                 required
-                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm font-mono text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-slate-800">Curso Aperturado / Aula</label>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Curso Aperturado / Aula</label
+                        >
                         <select
                             v-model="enrollmentForm.scheduled_course_id"
-                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none cursor-pointer"
+                            class="mt-1.5 w-full cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                         >
                             <option
                                 v-for="sched in scheduledCourses"
                                 :key="sched.id"
                                 :value="sched.id"
                             >
-                                {{ sched.course_name }} &bull; {{ sched.branch_name }} ({{ sched.classroom_name }})
+                                {{ sched.course_name }} &bull;
+                                {{ sched.branch_name }} ({{
+                                    sched.classroom_name
+                                }})
                             </option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-slate-800">Estado de Matrícula (enum_enrollment_status)</label>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Estado de Matrícula (enum_enrollment_status)</label
+                        >
                         <select
                             v-model="enrollmentForm.status"
-                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none font-bold cursor-pointer"
+                            class="mt-1.5 w-full cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                         >
-                            <option value="activo">Activo (Dictado Regular)</option>
-                            <option value="convalidado">Convalidado (Aprobado por Convalidación)</option>
-                            <option value="preinscrito">Preinscrito (Reserva de vacante)</option>
+                            <option value="activo">
+                                Activo (Dictado Regular)
+                            </option>
+                            <option value="convalidado">
+                                Convalidado (Aprobado por Convalidación)
+                            </option>
+                            <option value="preinscrito">
+                                Preinscrito (Reserva de vacante)
+                            </option>
                             <option value="completado">Completado</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-slate-800">Observaciones / Justificación de Convalidación</label>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Observaciones / Justificación de
+                            Convalidación</label
+                        >
                         <textarea
                             v-model="enrollmentForm.notes"
                             rows="2"
@@ -913,17 +1317,19 @@ const filteredScheduledCourses = computed(() => {
                         ></textarea>
                     </div>
 
-                    <div class="flex items-center justify-end gap-3 border-t border-slate-100 pt-5 mt-6">
+                    <div
+                        class="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-5"
+                    >
                         <button
                             type="button"
                             @click="showEnrollmentModal = false"
-                            class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                            class="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
-                            class="rounded-lg bg-[#2e8b57] hover:bg-[#257347] px-5 py-2 text-sm font-bold text-white shadow-xs transition cursor-pointer"
+                            class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
                         >
                             Registrar Matrícula
                         </button>
@@ -940,29 +1346,46 @@ const filteredScheduledCourses = computed(() => {
             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
             @click.self="showChangeStatusModal = false"
         >
-            <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
-                    <h3 class="text-lg font-bold text-slate-900">Modificar Estado de Matrícula</h3>
+            <div
+                class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+            >
+                <div
+                    class="flex items-center justify-between border-b border-slate-100 pb-4"
+                >
+                    <h3 class="text-lg font-bold text-slate-900">
+                        Modificar Estado de Matrícula
+                    </h3>
                     <button
                         @click="showChangeStatusModal = false"
-                        class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+                        class="cursor-pointer rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                     >
                         &times;
                     </button>
                 </div>
 
-                <div class="py-4 space-y-4">
-                    <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 text-xs space-y-1">
-                        <p class="font-bold text-slate-900 text-sm">{{ selectedEnrollment.student_full_name }}</p>
-                        <p class="text-slate-500 font-mono">DNI: {{ selectedEnrollment.student_document }}</p>
-                        <p class="text-slate-700 font-semibold">{{ selectedEnrollment.course_name }} &bull; {{ selectedEnrollment.branch_name }}</p>
+                <div class="space-y-4 py-4">
+                    <div
+                        class="space-y-1 rounded-lg border border-slate-200 bg-slate-50 p-3.5 text-xs"
+                    >
+                        <p class="text-sm font-bold text-slate-900">
+                            {{ selectedEnrollment.student_full_name }}
+                        </p>
+                        <p class="font-mono text-slate-500">
+                            DNI: {{ selectedEnrollment.student_document }}
+                        </p>
+                        <p class="font-semibold text-slate-700">
+                            {{ selectedEnrollment.course_name }} &bull;
+                            {{ selectedEnrollment.branch_name }}
+                        </p>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-slate-800">Nuevo Estado</label>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Nuevo Estado</label
+                        >
                         <select
                             v-model="newStatusToApply"
-                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none cursor-pointer"
+                            class="mt-1.5 w-full cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                         >
                             <option value="activo">Activo</option>
                             <option value="convalidado">Convalidado</option>
@@ -974,7 +1397,9 @@ const filteredScheduledCourses = computed(() => {
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-slate-800">Nota / Motivo del Cambio</label>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Nota / Motivo del Cambio</label
+                        >
                         <textarea
                             v-model="statusChangeNotes"
                             rows="2"
@@ -984,18 +1409,20 @@ const filteredScheduledCourses = computed(() => {
                     </div>
                 </div>
 
-                <div class="flex items-center justify-end gap-3 border-t border-slate-100 pt-4 mt-2">
+                <div
+                    class="mt-2 flex items-center justify-end gap-3 border-t border-slate-100 pt-4"
+                >
                     <button
                         type="button"
                         @click="showChangeStatusModal = false"
-                        class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                        class="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
                     >
                         Cancelar
                     </button>
                     <button
                         type="button"
                         @click="applyStatusChange"
-                        class="rounded-lg bg-[#2e8b57] hover:bg-[#257347] px-5 py-2 text-sm font-bold text-white shadow-xs transition cursor-pointer"
+                        class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
                     >
                         Actualizar Estado
                     </button>
@@ -1011,43 +1438,61 @@ const filteredScheduledCourses = computed(() => {
             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
             @click.self="showScheduleCourseModal = false"
         >
-            <div class="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div
+                class="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+            >
+                <div
+                    class="flex items-center justify-between border-b border-slate-100 pb-4"
+                >
                     <div>
-                        <h3 class="text-lg font-bold text-slate-900">Aperturar Curso y Aula por Periodo</h3>
-                        <p class="text-xs text-slate-500">Programa la oferta de un curso en un ambiente físico durante un lapso de tiempo.</p>
+                        <h3 class="text-lg font-bold text-slate-900">
+                            Aperturar Curso y Aula por Periodo
+                        </h3>
+                        <p class="text-xs text-slate-500">
+                            Programa la oferta de un curso en un ambiente físico
+                            durante un lapso de tiempo.
+                        </p>
                     </div>
                     <button
                         @click="showScheduleCourseModal = false"
-                        class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+                        class="cursor-pointer rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                     >
                         &times;
                     </button>
                 </div>
 
-                <form @submit.prevent="saveNewScheduleCourse" class="mt-5 space-y-4">
+                <form
+                    @submit.prevent="saveNewScheduleCourse"
+                    class="mt-5 space-y-4"
+                >
                     <div>
-                        <label class="block text-sm font-bold text-slate-800">Curso o Taller a Aperturar</label>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Curso o Taller a Aperturar</label
+                        >
                         <select
                             v-model="scheduleCourseForm.course_id"
-                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none cursor-pointer font-bold"
+                            class="mt-1.5 w-full cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                         >
                             <option
                                 v-for="c in courses"
                                 :key="c.id"
                                 :value="c.id"
                             >
-                                {{ c.name }} ({{ c.duration_in_weeks }} semanas) {{ c.is_workshop ? '&bull; Taller Libre' : '' }}
+                                {{ c.name }} ({{ c.duration_in_weeks }} semanas)
+                                {{ c.is_workshop ? '&bull; Taller Libre' : '' }}
                             </option>
                         </select>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-bold text-slate-800">Sede</label>
+                            <label
+                                class="block text-sm font-bold text-slate-800"
+                                >Sede</label
+                            >
                             <select
                                 v-model="scheduleCourseForm.branch_id"
-                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none cursor-pointer"
+                                class="mt-1.5 w-full cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             >
                                 <option
                                     v-for="b in branches"
@@ -1060,17 +1505,21 @@ const filteredScheduledCourses = computed(() => {
                         </div>
 
                         <div>
-                            <label class="block text-sm font-bold text-slate-800">Aula / Ambiente Físico</label>
+                            <label
+                                class="block text-sm font-bold text-slate-800"
+                                >Aula / Ambiente Físico</label
+                            >
                             <select
                                 v-model="scheduleCourseForm.classroom_id"
-                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none cursor-pointer"
+                                class="mt-1.5 w-full cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             >
                                 <option
                                     v-for="room in availableClassroomsForBranch"
                                     :key="room.id"
                                     :value="room.id"
                                 >
-                                    {{ room.name }} ({{ room.capacity }} vacantes)
+                                    {{ room.name }} ({{ room.capacity }}
+                                    vacantes)
                                 </option>
                             </select>
                         </div>
@@ -1078,29 +1527,38 @@ const filteredScheduledCourses = computed(() => {
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-bold text-slate-800">Fecha de Inicio (Periodo)</label>
+                            <label
+                                class="block text-sm font-bold text-slate-800"
+                                >Fecha de Inicio (Periodo)</label
+                            >
                             <input
                                 v-model="scheduleCourseForm.start_date"
                                 type="date"
                                 required
-                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm font-mono text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             />
                         </div>
 
                         <div>
-                            <label class="block text-sm font-bold text-slate-800">Fecha de Fin (Periodo)</label>
+                            <label
+                                class="block text-sm font-bold text-slate-800"
+                                >Fecha de Fin (Periodo)</label
+                            >
                             <input
                                 v-model="scheduleCourseForm.end_date"
                                 type="date"
                                 required
-                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm font-mono text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             />
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-bold text-slate-800">Días de Clase (course_schedules)</label>
+                            <label
+                                class="block text-sm font-bold text-slate-800"
+                                >Días de Clase (course_schedules)</label
+                            >
                             <input
                                 v-model="scheduleCourseForm.day_of_week"
                                 type="text"
@@ -1110,18 +1568,23 @@ const filteredScheduledCourses = computed(() => {
                         </div>
 
                         <div>
-                            <label class="block text-sm font-bold text-slate-800">Rango Horario</label>
+                            <label
+                                class="block text-sm font-bold text-slate-800"
+                                >Rango Horario</label
+                            >
                             <input
                                 v-model="scheduleCourseForm.time_range"
                                 type="text"
                                 placeholder="Ej. 18:00 - 20:00"
-                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm font-mono text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-slate-800">Docente a Cargo (Opcional)</label>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Docente a Cargo (Opcional)</label
+                        >
                         <input
                             v-model="scheduleCourseForm.teacher_name"
                             type="text"
@@ -1130,17 +1593,19 @@ const filteredScheduledCourses = computed(() => {
                         />
                     </div>
 
-                    <div class="flex items-center justify-end gap-3 border-t border-slate-100 pt-5 mt-6">
+                    <div
+                        class="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-5"
+                    >
                         <button
                             type="button"
                             @click="showScheduleCourseModal = false"
-                            class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                            class="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
-                            class="rounded-lg bg-[#2e8b57] hover:bg-[#257347] px-5 py-2 text-sm font-bold text-white shadow-xs transition cursor-pointer"
+                            class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
                         >
                             Aperturar Curso
                         </button>
