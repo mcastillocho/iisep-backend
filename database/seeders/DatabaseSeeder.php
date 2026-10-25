@@ -170,6 +170,30 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 6. Usuarios e Identidades
+        // 6.0 Super Administrador / Staff con Máximos Permisos
+        $userSuperAdmin = User::firstOrCreate(
+            ['username' => 'admin'],
+            [
+                'first_name' => 'Administrador',
+                'paternal_surname' => 'General',
+                'maternal_surname' => 'IISEP',
+                'document' => '10000001',
+                'document_type' => DocumentType::DNI,
+                'birth_date' => Carbon::parse('1980-01-01'),
+                'email' => 'admin@iisep.edu.pe',
+                'phone' => '970518364',
+                'password' => 'admin123',
+            ]
+        );
+
+        Staff::firstOrCreate(
+            ['user_id' => $userSuperAdmin->id],
+            [
+                'branch_id' => null, // Acceso global y máximos permisos en todas las sedes
+                'position' => 'Director General / Administrador del Sistema',
+            ]
+        );
+
         // 6.1 Personal Administrativo / Staff de Sede Comas
         $userStaffComas = User::create([
             'first_name' => 'Sofia',

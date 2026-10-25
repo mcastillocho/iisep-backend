@@ -1,413 +1,523 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+const page = usePage();
+const user = computed(() => page.props.auth?.user);
+
+const careers = [
+    {
+        title: 'Computación e Informática',
+        category: 'Tecnología',
+        icon: 'computer',
+        duration: '1 a 2 Años (Modular)',
+        badge: 'Certificación Oficial MINEDU',
+        description:
+            'Aprende gestión de sistemas, soporte y mantenimiento de equipos, redes de datos, bases de datos y desarrollo de aplicaciones para empresas.',
+        features: ['Ofimática avanzada', 'Soporte de hardware y redes', 'Desarrollo web y bases de datos'],
+        color: 'from-blue-600 to-indigo-700',
+    },
+    {
+        title: 'Logística y Gestión de Almacenes',
+        category: 'Gestión Empresarial',
+        icon: 'truck',
+        duration: '1 Año (Modular)',
+        badge: 'Alta Demanda Laboral',
+        description:
+            'Capacítate en control de inventarios, gestión de almacenes, Kardex, compras, despachos y cadena de suministros con herramientas digitales.',
+        features: ['Control de stock e inventarios', 'Operaciones de almacén y despacho', 'Software logístico y Excel'],
+        color: 'from-amber-600 to-orange-700',
+    },
+    {
+        title: 'Gastronomía y Arte Culinario',
+        category: 'Alimentos y Bebidas',
+        icon: 'utensils',
+        duration: '1 a 2 Años (Modular)',
+        badge: 'Talleres Prácticos 100%',
+        description:
+            'Domina las técnicas de cocina peruana, internacional, pescados y mariscos, buffet y gestión de negocios culinarios con altos estándares.',
+        features: ['Cocina peruana e internacional', 'Buenas Prácticas de Manufactura (BPM)', 'Costos y gestión de restaurantes'],
+        color: 'from-rose-600 to-red-700',
+    },
+    {
+        title: 'Cosmetología y Estética Integral',
+        category: 'Cuidado y Belleza',
+        icon: 'sparkles',
+        duration: '1 Año (Modular)',
+        badge: 'Inserción o Emprendimiento',
+        description:
+            'Especialízate en corte y diseño capilar, colorimetría, peinados para eventos, manicure, pedicure y tratamientos estéticos modernos.',
+        features: ['Colorimetría y mechas avanzadas', 'Corte dama, caballero y niños', 'Tratamientos capilares y faciales'],
+        color: 'from-pink-600 to-rose-700',
+    },
+    {
+        title: 'Instalaciones Electrotécnicas',
+        category: 'Ingeniería Técnica',
+        icon: 'bolt',
+        duration: '1 Año (Modular)',
+        badge: 'Certificación Técnica',
+        description:
+            'Aprende diseño, instalación y mantenimiento de tableros eléctricos residenciales y comerciales conforme al Código Nacional de Electricidad.',
+        features: ['Instalaciones residenciales y comerciales', 'Tableros de distribución y pozo a tierra', 'Normas de seguridad eléctrica'],
+        color: 'from-emerald-600 to-teal-800',
+    },
+];
+
+const workshops = [
+    { name: 'Ofimática Empresarial', duration: '2 a 3 Meses', icon: 'file-text' },
+    { name: 'Barber Shop & Fade Pro', duration: '2 Meses', icon: 'scissors' },
+    { name: 'Uñas Acrílicas & Polygel', duration: '2 Meses', icon: 'hand' },
+    { name: 'Ensamblaje y Redes de PC', duration: '3 Meses', icon: 'cpu' },
+    { name: 'Diseño Gráfico Publicitario', duration: '3 Meses', icon: 'palette' },
+    { name: 'Pastelería y Repostería Fina', duration: '3 Meses', icon: 'cake' },
+    { name: 'Bartender y Coctelería', duration: '2 Meses', icon: 'wine' },
+];
+
+const branches = [
+    {
+        name: 'Sede Comas (La Pascana)',
+        address: 'Av. Túpac Amaru 3850 – La Pascana',
+        reference: 'Al costado de Plaza Vea La Pascana',
+        phones: ['970 518 364', '(01) 698-0498'],
+        schedule: 'Lunes a Sábado: 8:00 am - 8:00 pm',
+        highlights: 'Talleres de cómputo equipados, cocina profesional y salones de estética.',
+    },
+    {
+        name: 'Sede Puente Piedra (Centro)',
+        address: 'Jr. Ricardo Palma 241',
+        reference: '2do piso de la oficina RENIEC',
+        phones: ['987 710 344'],
+        schedule: 'Lunes a Sábado: 8:00 am - 8:00 pm',
+        highlights: 'Ubicación céntrica de rápido acceso con aulas climatizadas y talleres modernos.',
+    },
+];
 </script>
 
 <template>
-    <Head title="Welcome">
+    <Head title="CETPRO IISEP - Centro de Educación Técnico Productiva | Sedes Comas y Puente Piedra">
         <link rel="preconnect" href="https://rsms.me/" />
         <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
     </Head>
-    <div
-        class="flex min-h-screen flex-col items-center bg-[#FDFDFC] p-6 text-[#1b1b18] lg:justify-center lg:p-8 dark:bg-[#0a0a0a]"
-    >
-        <div
-            class="flex w-full items-center justify-center opacity-100 transition-opacity duration-750 lg:grow starting:opacity-0"
-        >
-            <main
-                class="flex w-full max-w-[335px] flex-col-reverse overflow-hidden rounded-lg lg:max-w-4xl lg:flex-row"
-            >
-                <div
-                    class="flex-1 rounded-br-lg rounded-bl-lg bg-white p-6 pb-12 text-[13px] leading-[20px] shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-tl-lg lg:rounded-br-none lg:p-20 dark:bg-[#161615] dark:text-[#EDEDEC] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
-                >
-                    <h1 class="mb-1 font-medium">Let's get started</h1>
-                    <p class="mb-2 text-[#706f6c] dark:text-[#A1A09A]">
-                        Laravel has an incredibly rich ecosystem. <br />We
-                        suggest starting with the following.
-                    </p>
-                    <ul class="mb-4 flex flex-col lg:mb-6">
-                        <li
-                            class="relative flex items-center gap-4 py-2 before:absolute before:top-1/2 before:bottom-0 before:left-[0.4rem] before:border-l before:border-[#e3e3e0] dark:before:border-[#3E3E3A]"
-                        >
-                            <span
-                                class="relative bg-white py-1 dark:bg-[#161615]"
-                            >
-                                <span
-                                    class="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[#e3e3e0] bg-[#FDFDFC] shadow-[0px_0px_1px_0px_rgba(0,0,0,0.03),0px_1px_2px_0px_rgba(0,0,0,0.06)] dark:border-[#3E3E3A] dark:bg-[#161615]"
-                                >
-                                    <span
-                                        class="h-1.5 w-1.5 rounded-full bg-[#dbdbd7] dark:bg-[#3E3E3A]"
-                                    />
-                                </span>
-                            </span>
-                            <span>
-                                Read the
-                                <a
-                                    href="https://laravel.com/docs"
-                                    target="_blank"
-                                    class="ml-1 inline-flex items-center space-x-1 font-medium text-[#f53003] underline underline-offset-4 dark:text-[#FF4433]"
-                                >
-                                    <span>Documentation</span>
-                                    <svg
-                                        width="{10}"
-                                        height="{11}"
-                                        viewBox="0 0 10 11"
-                                        fill="none"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        class="h-2.5 w-2.5"
-                                    >
-                                        <path
-                                            d="M7.70833 6.95834V2.79167H3.54167M2.5 8L7.5 3.00001"
-                                            stroke="currentColor"
-                                            stroke-linecap="square"
-                                        />
-                                    </svg>
-                                </a>
-                            </span>
-                        </li>
-                        <li
-                            class="relative flex items-center gap-4 py-2 before:absolute before:top-0 before:bottom-1/2 before:left-[0.4rem] before:border-l before:border-[#e3e3e0] dark:before:border-[#3E3E3A]"
-                        >
-                            <span
-                                class="relative bg-white py-1 dark:bg-[#161615]"
-                            >
-                                <span
-                                    class="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[#e3e3e0] bg-[#FDFDFC] shadow-[0px_0px_1px_0px_rgba(0,0,0,0.03),0px_1px_2px_0px_rgba(0,0,0,0.06)] dark:border-[#3E3E3A] dark:bg-[#161615]"
-                                >
-                                    <span
-                                        class="h-1.5 w-1.5 rounded-full bg-[#dbdbd7] dark:bg-[#3E3E3A]"
-                                    />
-                                </span>
-                            </span>
-                            <span>
-                                Watch video tutorials at
-                                <a
-                                    href="https://laracasts.com"
-                                    target="_blank"
-                                    class="ml-1 inline-flex items-center space-x-1 font-medium text-[#f53003] underline underline-offset-4 dark:text-[#FF4433]"
-                                >
-                                    <span>Laracasts</span>
-                                    <svg
-                                        width="{10}"
-                                        height="{11}"
-                                        viewBox="0 0 10 11"
-                                        fill="none"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        class="h-2.5 w-2.5"
-                                    >
-                                        <path
-                                            d="M7.70833 6.95834V2.79167H3.54167M2.5 8L7.5 3.00001"
-                                            stroke="currentColor"
-                                            stroke-linecap="square"
-                                        />
-                                    </svg>
-                                </a>
-                            </span>
-                        </li>
-                    </ul>
-                    <ul class="flex gap-3 text-sm leading-normal">
-                        <li>
-                            <a
-                                href="https://cloud.laravel.com"
-                                target="_blank"
-                                class="inline-block rounded-sm border border-black bg-[#1b1b18] px-5 py-1.5 text-sm leading-normal text-white hover:border-black hover:bg-black dark:border-[#eeeeec] dark:bg-[#eeeeec] dark:text-[#1C1C1A] dark:hover:border-white dark:hover:bg-white"
-                            >
-                                Deploy now
-                            </a>
-                        </li>
-                    </ul>
+
+    <div class="min-h-screen bg-slate-50 text-slate-800 antialiased selection:bg-[#2e8b57] selection:text-white">
+        <!-- Barra Superior de Contacto y Autorización MINEDU -->
+        <div class="bg-slate-900 text-slate-300 text-xs py-2 px-4 border-b border-slate-800">
+            <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex items-center gap-1.5 font-medium text-emerald-400">
+                        <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        CETPRO Licenciado por MINEDU &bull; R.D. N° 0154-2015-ED
+                    </span>
+                    <span class="hidden md:inline text-slate-600">|</span>
+                    <span class="hidden md:inline text-slate-400">DRELM - UGEL 04</span>
                 </div>
-                <div
-                    class="relative -mb-px aspect-[335/364] w-full shrink-0 overflow-hidden rounded-t-lg bg-[#fff2f2] lg:mb-0 lg:-ml-px lg:aspect-auto lg:w-[438px] lg:rounded-t-none lg:rounded-r-lg dark:bg-[#1D0002]"
-                >
-                    <!-- Laravel Logo -->
-                    <svg
-                        class="w-full max-w-none translate-y-0 text-[#F53003] opacity-100 transition-all duration-750 dark:text-[#F61500] starting:opacity-0 motion-safe:starting:translate-y-6"
-                        viewBox="0 0 438 104"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                    >
-                        <path
-                            d="M17.2036 -3H0V102.197H49.5189V86.7187H17.2036V-3Z"
-                            fill="currentColor"
-                        />
-                        <path
-                            d="M110.256 41.6337C108.061 38.1275 104.945 35.3731 100.905 33.3681C96.8667 31.3647 92.8016 30.3618 88.7131 30.3618C83.4247 30.3618 78.5885 31.3389 74.201 33.2923C69.8111 35.2456 66.0474 37.928 62.9059 41.3333C59.7643 44.7401 57.3198 48.6726 55.5754 53.1293C53.8287 57.589 52.9572 62.274 52.9572 67.1813C52.9572 72.1925 53.8287 76.8995 55.5754 81.3069C57.3191 85.7173 59.7636 89.6241 62.9059 93.0293C66.0474 96.4361 69.8119 99.1155 74.201 101.069C78.5885 103.022 83.4247 103.999 88.7131 103.999C92.8016 103.999 96.8667 102.997 100.905 100.994C104.945 98.9911 108.061 96.2359 110.256 92.7282V102.195H126.563V32.1642H110.256V41.6337ZM108.76 75.7472C107.762 78.4531 106.366 80.8078 104.572 82.8112C102.776 84.8161 100.606 86.4183 98.0637 87.6206C95.5202 88.823 92.7004 89.4238 89.6103 89.4238C86.5178 89.4238 83.7252 88.823 81.2324 87.6206C78.7388 86.4183 76.5949 84.8161 74.7998 82.8112C73.004 80.8078 71.6319 78.4531 70.6856 75.7472C69.7356 73.0421 69.2644 70.1868 69.2644 67.1821C69.2644 64.1758 69.7356 61.3205 70.6856 58.6154C71.6319 55.9102 73.004 53.5571 74.7998 51.5522C76.5949 49.5495 78.738 47.9451 81.2324 46.7427C83.7252 45.5404 86.5178 44.9396 89.6103 44.9396C92.7012 44.9396 95.5202 45.5404 98.0637 46.7427C100.606 47.9451 102.776 49.5487 104.572 51.5522C106.367 53.5571 107.762 55.9102 108.76 58.6154C109.756 61.3205 110.256 64.1758 110.256 67.1821C110.256 70.1868 109.756 73.0421 108.76 75.7472Z"
-                            fill="currentColor"
-                        />
-                        <path
-                            d="M242.805 41.6337C240.611 38.1275 237.494 35.3731 233.455 33.3681C229.416 31.3647 225.351 30.3618 221.262 30.3618C215.974 30.3618 211.138 31.3389 206.75 33.2923C202.36 35.2456 198.597 37.928 195.455 41.3333C192.314 44.7401 189.869 48.6726 188.125 53.1293C186.378 57.589 185.507 62.274 185.507 67.1813C185.507 72.1925 186.378 76.8995 188.125 81.3069C189.868 85.7173 192.313 89.6241 195.455 93.0293C198.597 96.4361 202.361 99.1155 206.75 101.069C211.138 103.022 215.974 103.999 221.262 103.999C225.351 103.999 229.416 102.997 233.455 100.994C237.494 98.9911 240.611 96.2359 242.805 92.7282V102.195H259.112V32.1642H242.805V41.6337ZM241.31 75.7472C240.312 78.4531 238.916 80.8078 237.122 82.8112C235.326 84.8161 233.156 86.4183 230.614 87.6206C228.07 88.823 225.251 89.4238 222.16 89.4238C219.068 89.4238 216.275 88.823 213.782 87.6206C211.289 86.4183 209.145 84.8161 207.35 82.8112C205.554 80.8078 204.182 78.4531 203.236 75.7472C202.286 73.0421 201.814 70.1868 201.814 67.1821C201.814 64.1758 202.286 61.3205 203.236 58.6154C204.182 55.9102 205.554 53.5571 207.35 51.5522C209.145 49.5495 211.288 47.9451 213.782 46.7427C216.275 45.5404 219.068 44.9396 222.16 44.9396C225.251 44.9396 228.07 45.5404 230.614 46.7427C233.156 47.9451 235.326 49.5487 237.122 51.5522C238.917 53.5571 240.312 55.9102 241.31 58.6154C242.306 61.3205 242.806 64.1758 242.806 67.1821C242.805 70.1868 242.305 73.0421 241.31 75.7472Z"
-                            fill="currentColor"
-                        />
-                        <path
-                            d="M438 -3H421.694V102.197H438V-3Z"
-                            fill="currentColor"
-                        />
-                        <path
-                            d="M139.43 102.197H155.735V48.2834H183.712V32.1665H139.43V102.197Z"
-                            fill="currentColor"
-                        />
-                        <path
-                            d="M324.49 32.1665L303.995 85.794L283.498 32.1665H266.983L293.748 102.197H314.242L341.006 32.1665H324.49Z"
-                            fill="currentColor"
-                        />
-                        <path
-                            d="M376.571 30.3656C356.603 30.3656 340.797 46.8497 340.797 67.1828C340.797 89.6597 356.094 104 378.661 104C391.29 104 399.354 99.1488 409.206 88.5848L398.189 80.0226C398.183 80.031 389.874 90.9895 377.468 90.9895C363.048 90.9895 356.977 79.3111 356.977 73.269H411.075C413.917 50.1328 398.775 30.3656 376.571 30.3656ZM357.02 61.0967C357.145 59.7487 359.023 43.3761 376.442 43.3761C393.861 43.3761 395.978 59.7464 396.099 61.0967H357.02Z"
-                            fill="currentColor"
-                        />
-                    </svg>
-
-                    <!-- 13 -->
-                    <svg
-                        class="relative -mt-[6.6rem] -ml-8 w-[438px] max-w-none [--stroke-color:#1B1B18] lg:ml-0 dark:[--stroke-color:#FF750F]"
-                        viewBox="0 0 440 392"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                    >
-                        <g
-                            class="text-[#1B1B18] opacity-100 mix-blend-darken transition-all delay-300 duration-750 dark:text-black dark:mix-blend-normal starting:opacity-0"
-                        >
-                            <mask
-                                id="path-1-mask"
-                                maskUnits="userSpaceOnUse"
-                                x="-0.328613"
-                                y="103"
-                                width="338"
-                                height="299"
-                                fill="black"
-                            >
-                                <rect
-                                    fill="white"
-                                    x="-0.328613"
-                                    y="103"
-                                    width="338"
-                                    height="299"
-                                />
-                                <path
-                                    d="M234.936 400.8C204.136 400.8 178.936 392.4 159.336 375.6C140.136 358.8 130.536 337 130.536 310.2H200.736C200.736 318.2 203.736 324.8 209.736 330C215.736 335.2 223.736 337.8 233.736 337.8C243.336 337.8 251.136 335 257.136 329.4C263.536 323.8 266.736 316.6 266.736 307.8C266.736 299.8 263.936 293.2 258.336 288C252.736 282.8 245.536 280.2 236.736 280.2H199.536V218.4H236.736C243.536 218.4 249.336 216 254.136 211.2C258.936 206.4 261.336 200.4 261.336 193.2C261.336 184.8 258.736 178.2 253.536 173.4C248.336 168.6 241.736 166.2 233.736 166.2C226.536 166.2 220.336 168.4 215.136 172.8C210.336 177.2 207.936 182.8 207.936 189.6H141.336C141.336 164.8 150.136 144.6 167.736 129C185.336 113 207.936 105 235.536 105C263.136 105 285.536 112.2 302.736 126.6C320.336 141 329.136 160 329.136 183.6C329.136 200.8 324.536 214.8 315.336 225.6C306.136 236 294.336 243.2 279.936 247.2C297.136 252 310.736 260.2 320.736 271.8C331.136 283.4 336.336 298 336.336 315.6C336.336 340.4 326.936 360.8 308.136 376.8C289.336 392.8 264.936 400.8 234.936 400.8Z"
-                                />
-                                <path
-                                    d="M26.8714 167.6H1.67139V105.2H94.6714V400.2H26.8714V167.6Z"
-                                />
-                            </mask>
-                            <path
-                                d="M234.936 400.8C204.136 400.8 178.936 392.4 159.336 375.6C140.136 358.8 130.536 337 130.536 310.2H200.736C200.736 318.2 203.736 324.8 209.736 330C215.736 335.2 223.736 337.8 233.736 337.8C243.336 337.8 251.136 335 257.136 329.4C263.536 323.8 266.736 316.6 266.736 307.8C266.736 299.8 263.936 293.2 258.336 288C252.736 282.8 245.536 280.2 236.736 280.2H199.536V218.4H236.736C243.536 218.4 249.336 216 254.136 211.2C258.936 206.4 261.336 200.4 261.336 193.2C261.336 184.8 258.736 178.2 253.536 173.4C248.336 168.6 241.736 166.2 233.736 166.2C226.536 166.2 220.336 168.4 215.136 172.8C210.336 177.2 207.936 182.8 207.936 189.6H141.336C141.336 164.8 150.136 144.6 167.736 129C185.336 113 207.936 105 235.536 105C263.136 105 285.536 112.2 302.736 126.6C320.336 141 329.136 160 329.136 183.6C329.136 200.8 324.536 214.8 315.336 225.6C306.136 236 294.336 243.2 279.936 247.2C297.136 252 310.736 260.2 320.736 271.8C331.136 283.4 336.336 298 336.336 315.6C336.336 340.4 326.936 360.8 308.136 376.8C289.336 392.8 264.936 400.8 234.936 400.8Z"
-                                fill="currentColor"
-                            />
-                            <path
-                                d="M26.8714 167.6H1.67139V105.2H94.6714V400.2H26.8714V167.6Z"
-                                fill="currentColor"
-                            />
-                            <path
-                                d="M234.936 400.8C204.136 400.8 178.936 392.4 159.336 375.6C140.136 358.8 130.536 337 130.536 310.2H200.736C200.736 318.2 203.736 324.8 209.736 330C215.736 335.2 223.736 337.8 233.736 337.8C243.336 337.8 251.136 335 257.136 329.4C263.536 323.8 266.736 316.6 266.736 307.8C266.736 299.8 263.936 293.2 258.336 288C252.736 282.8 245.536 280.2 236.736 280.2H199.536V218.4H236.736C243.536 218.4 249.336 216 254.136 211.2C258.936 206.4 261.336 200.4 261.336 193.2C261.336 184.8 258.736 178.2 253.536 173.4C248.336 168.6 241.736 166.2 233.736 166.2C226.536 166.2 220.336 168.4 215.136 172.8C210.336 177.2 207.936 182.8 207.936 189.6H141.336C141.336 164.8 150.136 144.6 167.736 129C185.336 113 207.936 105 235.536 105C263.136 105 285.536 112.2 302.736 126.6C320.336 141 329.136 160 329.136 183.6C329.136 200.8 324.536 214.8 315.336 225.6C306.136 236 294.336 243.2 279.936 247.2C297.136 252 310.736 260.2 320.736 271.8C331.136 283.4 336.336 298 336.336 315.6C336.336 340.4 326.936 360.8 308.136 376.8C289.336 392.8 264.936 400.8 234.936 400.8Z"
-                                stroke="var(--stroke-color)"
-                                stroke-width="2.4"
-                                mask="url(#path-1-mask)"
-                            />
-                            <path
-                                d="M26.8714 167.6H1.67139V105.2H94.6714V400.2H26.8714V167.6Z"
-                                stroke="var(--stroke-color)"
-                                stroke-width="2.4"
-                                mask="url(#path-1-mask)"
-                            />
-                        </g>
-
-                        <g
-                            class="text-[#F3BEC7] opacity-100 transition-all delay-400 duration-750 dark:text-[#4B0600] starting:opacity-0 motion-safe:starting:-translate-x-[26px]"
-                        >
-                            <mask
-                                id="path-2-mask"
-                                maskUnits="userSpaceOnUse"
-                                x="25.3357"
-                                y="103"
-                                width="338"
-                                height="299"
-                                fill="black"
-                            >
-                                <rect
-                                    fill="white"
-                                    x="25.3357"
-                                    y="103"
-                                    width="338"
-                                    height="299"
-                                />
-                                <path
-                                    d="M260.6 400.8C229.8 400.8 204.6 392.4 185 375.6C165.8 358.8 156.2 337 156.2 310.2H226.4C226.4 318.2 229.4 324.8 235.4 330C241.4 335.2 249.4 337.8 259.4 337.8C269 337.8 276.8 335 282.8 329.4C289.2 323.8 292.4 316.6 292.4 307.8C292.4 299.8 289.6 293.2 284 288C278.4 282.8 271.2 280.2 262.4 280.2H225.2V218.4H262.4C269.2 218.4 275 216 279.8 211.2C284.6 206.4 287 200.4 287 193.2C287 184.8 284.4 178.2 279.2 173.4C274 168.6 267.4 166.2 259.4 166.2C252.2 166.2 246 168.4 240.8 172.8C236 177.2 233.6 182.8 233.6 189.6H167C167 164.8 175.8 144.6 193.4 129C211 113 233.6 105 261.2 105C288.8 105 311.2 112.2 328.4 126.6C346 141 354.8 160 354.8 183.6C354.8 200.8 350.2 214.8 341 225.6C331.8 236 320 243.2 305.6 247.2C322.8 252 336.4 260.2 346.4 271.8C356.8 283.4 362 298 362 315.6C362 340.4 352.6 360.8 333.8 376.8C315 392.8 290.6 400.8 260.6 400.8Z"
-                                />
-                                <path
-                                    d="M52.5357 167.6H27.3357V105.2H120.336V400.2H52.5357V167.6Z"
-                                />
-                            </mask>
-                            <path
-                                d="M260.6 400.8C229.8 400.8 204.6 392.4 185 375.6C165.8 358.8 156.2 337 156.2 310.2H226.4C226.4 318.2 229.4 324.8 235.4 330C241.4 335.2 249.4 337.8 259.4 337.8C269 337.8 276.8 335 282.8 329.4C289.2 323.8 292.4 316.6 292.4 307.8C292.4 299.8 289.6 293.2 284 288C278.4 282.8 271.2 280.2 262.4 280.2H225.2V218.4H262.4C269.2 218.4 275 216 279.8 211.2C284.6 206.4 287 200.4 287 193.2C287 184.8 284.4 178.2 279.2 173.4C274 168.6 267.4 166.2 259.4 166.2C252.2 166.2 246 168.4 240.8 172.8C236 177.2 233.6 182.8 233.6 189.6H167C167 164.8 175.8 144.6 193.4 129C211 113 233.6 105 261.2 105C288.8 105 311.2 112.2 328.4 126.6C346 141 354.8 160 354.8 183.6C354.8 200.8 350.2 214.8 341 225.6C331.8 236 320 243.2 305.6 247.2C322.8 252 336.4 260.2 346.4 271.8C356.8 283.4 362 298 362 315.6C362 340.4 352.6 360.8 333.8 376.8C315 392.8 290.6 400.8 260.6 400.8Z"
-                                fill="currentColor"
-                            />
-                            <path
-                                d="M52.5357 167.6H27.3357V105.2H120.336V400.2H52.5357V167.6Z"
-                                fill="currentColor"
-                            />
-                            <path
-                                d="M260.6 400.8C229.8 400.8 204.6 392.4 185 375.6C165.8 358.8 156.2 337 156.2 310.2H226.4C226.4 318.2 229.4 324.8 235.4 330C241.4 335.2 249.4 337.8 259.4 337.8C269 337.8 276.8 335 282.8 329.4C289.2 323.8 292.4 316.6 292.4 307.8C292.4 299.8 289.6 293.2 284 288C278.4 282.8 271.2 280.2 262.4 280.2H225.2V218.4H262.4C269.2 218.4 275 216 279.8 211.2C284.6 206.4 287 200.4 287 193.2C287 184.8 284.4 178.2 279.2 173.4C274 168.6 267.4 166.2 259.4 166.2C252.2 166.2 246 168.4 240.8 172.8C236 177.2 233.6 182.8 233.6 189.6H167C167 164.8 175.8 144.6 193.4 129C211 113 233.6 105 261.2 105C288.8 105 311.2 112.2 328.4 126.6C346 141 354.8 160 354.8 183.6C354.8 200.8 350.2 214.8 341 225.6C331.8 236 320 243.2 305.6 247.2C322.8 252 336.4 260.2 346.4 271.8C356.8 283.4 362 298 362 315.6C362 340.4 352.6 360.8 333.8 376.8C315 392.8 290.6 400.8 260.6 400.8Z"
-                                stroke="var(--stroke-color)"
-                                stroke-width="2.4"
-                                mask="url(#path-2-mask)"
-                            />
-                            <path
-                                d="M52.5357 167.6H27.3357V105.2H120.336V400.2H52.5357V167.6Z"
-                                stroke="var(--stroke-color)"
-                                stroke-width="2.4"
-                                mask="url(#path-2-mask)"
-                            />
-                        </g>
-
-                        <g
-                            class="text-[#F8B803] opacity-100 mix-blend-color transition-all delay-400 duration-750 dark:text-[#391800] dark:mix-blend-hard-light starting:opacity-0 motion-safe:starting:-translate-x-[51px]"
-                        >
-                            <mask
-                                id="path-3-mask"
-                                maskUnits="userSpaceOnUse"
-                                x="51"
-                                y="103"
-                                width="338"
-                                height="299"
-                                fill="black"
-                            >
-                                <rect
-                                    fill="white"
-                                    x="51"
-                                    y="103"
-                                    width="338"
-                                    height="299"
-                                />
-                                <path
-                                    d="M286.264 400.8C255.464 400.8 230.264 392.4 210.664 375.6C191.464 358.8 181.864 337 181.864 310.2H252.064C252.064 318.2 255.064 324.8 261.064 330C267.064 335.2 275.064 337.8 285.064 337.8C294.664 337.8 302.464 335 308.464 329.4C314.864 323.8 318.064 316.6 318.064 307.8C318.064 299.8 315.264 293.2 309.664 288C304.064 282.8 296.864 280.2 288.064 280.2H250.864V218.4H288.064C294.864 218.4 300.664 216 305.464 211.2C310.264 206.4 312.664 200.4 312.664 193.2C312.664 184.8 310.064 178.2 304.864 173.4C299.664 168.6 293.064 166.2 285.064 166.2C277.864 166.2 271.664 168.4 266.464 172.8C261.664 177.2 259.264 182.8 259.264 189.6H192.664C192.664 164.8 201.464 144.6 219.064 129C236.664 113 259.264 105 286.864 105C314.464 105 336.864 112.2 354.064 126.6C371.664 141 380.464 160 380.464 183.6C380.464 200.8 375.864 214.8 366.664 225.6C357.464 236 345.664 243.2 331.264 247.2C348.464 252 362.064 260.2 372.064 271.8C382.464 283.4 387.664 298 387.664 315.6C387.664 340.4 378.264 360.8 359.464 376.8C340.664 392.8 316.264 400.8 286.264 400.8Z"
-                                />
-                                <path
-                                    d="M78.2 167.6H53V105.2H146V400.2H78.2V167.6Z"
-                                />
-                            </mask>
-                            <path
-                                d="M286.264 400.8C255.464 400.8 230.264 392.4 210.664 375.6C191.464 358.8 181.864 337 181.864 310.2H252.064C252.064 318.2 255.064 324.8 261.064 330C267.064 335.2 275.064 337.8 285.064 337.8C294.664 337.8 302.464 335 308.464 329.4C314.864 323.8 318.064 316.6 318.064 307.8C318.064 299.8 315.264 293.2 309.664 288C304.064 282.8 296.864 280.2 288.064 280.2H250.864V218.4H288.064C294.864 218.4 300.664 216 305.464 211.2C310.264 206.4 312.664 200.4 312.664 193.2C312.664 184.8 310.064 178.2 304.864 173.4C299.664 168.6 293.064 166.2 285.064 166.2C277.864 166.2 271.664 168.4 266.464 172.8C261.664 177.2 259.264 182.8 259.264 189.6H192.664C192.664 164.8 201.464 144.6 219.064 129C236.664 113 259.264 105 286.864 105C314.464 105 336.864 112.2 354.064 126.6C371.664 141 380.464 160 380.464 183.6C380.464 200.8 375.864 214.8 366.664 225.6C357.464 236 345.664 243.2 331.264 247.2C348.464 252 362.064 260.2 372.064 271.8C382.464 283.4 387.664 298 387.664 315.6C387.664 340.4 378.264 360.8 359.464 376.8C340.664 392.8 316.264 400.8 286.264 400.8Z"
-                                fill="currentColor"
-                            />
-                            <path
-                                d="M78.2 167.6H53V105.2H146V400.2H78.2V167.6Z"
-                                fill="currentColor"
-                            />
-                            <path
-                                d="M286.264 400.8C255.464 400.8 230.264 392.4 210.664 375.6C191.464 358.8 181.864 337 181.864 310.2H252.064C252.064 318.2 255.064 324.8 261.064 330C267.064 335.2 275.064 337.8 285.064 337.8C294.664 337.8 302.464 335 308.464 329.4C314.864 323.8 318.064 316.6 318.064 307.8C318.064 299.8 315.264 293.2 309.664 288C304.064 282.8 296.864 280.2 288.064 280.2H250.864V218.4H288.064C294.864 218.4 300.664 216 305.464 211.2C310.264 206.4 312.664 200.4 312.664 193.2C312.664 184.8 310.064 178.2 304.864 173.4C299.664 168.6 293.064 166.2 285.064 166.2C277.864 166.2 271.664 168.4 266.464 172.8C261.664 177.2 259.264 182.8 259.264 189.6H192.664C192.664 164.8 201.464 144.6 219.064 129C236.664 113 259.264 105 286.864 105C314.464 105 336.864 112.2 354.064 126.6C371.664 141 380.464 160 380.464 183.6C380.464 200.8 375.864 214.8 366.664 225.6C357.464 236 345.664 243.2 331.264 247.2C348.464 252 362.064 260.2 372.064 271.8C382.464 283.4 387.664 298 387.664 315.6C387.664 340.4 378.264 360.8 359.464 376.8C340.664 392.8 316.264 400.8 286.264 400.8Z"
-                                stroke="var(--stroke-color)"
-                                stroke-width="2.4"
-                                mask="url(#path-3-mask)"
-                            />
-                            <path
-                                d="M78.2 167.6H53V105.2H146V400.2H78.2V167.6Z"
-                                stroke="var(--stroke-color)"
-                                stroke-width="2.4"
-                                mask="url(#path-3-mask)"
-                            />
-                        </g>
-
-                        <g
-                            class="text-[#F3BEC7] opacity-100 mix-blend-multiply transition-all delay-400 duration-750 dark:text-[#733000] dark:mix-blend-normal starting:opacity-0 motion-safe:starting:-translate-x-[78px]"
-                        >
-                            <mask
-                                id="path-4-mask"
-                                maskUnits="userSpaceOnUse"
-                                x="76.6643"
-                                y="103"
-                                width="338"
-                                height="299"
-                                fill="black"
-                            >
-                                <rect
-                                    fill="white"
-                                    x="76.6643"
-                                    y="103"
-                                    width="338"
-                                    height="299"
-                                />
-                                <path
-                                    d="M311.929 400.8C281.129 400.8 255.929 392.4 236.329 375.6C217.129 358.8 207.529 337 207.529 310.2H277.729C277.729 318.2 280.729 324.8 286.729 330C292.729 335.2 300.729 337.8 310.729 337.8C320.329 337.8 328.129 335 334.129 329.4C340.529 323.8 343.729 316.6 343.729 307.8C343.729 299.8 340.929 293.2 335.329 288C329.729 282.8 322.529 280.2 313.729 280.2H276.529V218.4H313.729C320.529 218.4 326.329 216 331.129 211.2C335.929 206.4 338.329 200.4 338.329 193.2C338.329 184.8 335.729 178.2 330.529 173.4C325.329 168.6 318.729 166.2 310.729 166.2C303.529 166.2 297.329 168.4 292.129 172.8C287.329 177.2 284.929 182.8 284.929 189.6H218.329C218.329 164.8 227.129 144.6 244.729 129C262.329 113 284.929 105 312.529 105C340.129 105 362.529 112.2 379.729 126.6C397.329 141 406.129 160 406.129 183.6C406.129 200.8 401.529 214.8 392.329 225.6C383.129 236 371.329 243.2 356.929 247.2C374.129 252 387.729 260.2 397.729 271.8C408.129 283.4 413.329 298 413.329 315.6C413.329 340.4 403.929 360.8 385.129 376.8C366.329 392.8 341.929 400.8 311.929 400.8Z"
-                                />
-                                <path
-                                    d="M103.864 167.6H78.6643V105.2H171.664V400.2H103.864V167.6Z"
-                                />
-                            </mask>
-                            <path
-                                d="M311.929 400.8C281.129 400.8 255.929 392.4 236.329 375.6C217.129 358.8 207.529 337 207.529 310.2H277.729C277.729 318.2 280.729 324.8 286.729 330C292.729 335.2 300.729 337.8 310.729 337.8C320.329 337.8 328.129 335 334.129 329.4C340.529 323.8 343.729 316.6 343.729 307.8C343.729 299.8 340.929 293.2 335.329 288C329.729 282.8 322.529 280.2 313.729 280.2H276.529V218.4H313.729C320.529 218.4 326.329 216 331.129 211.2C335.929 206.4 338.329 200.4 338.329 193.2C338.329 184.8 335.729 178.2 330.529 173.4C325.329 168.6 318.729 166.2 310.729 166.2C303.529 166.2 297.329 168.4 292.129 172.8C287.329 177.2 284.929 182.8 284.929 189.6H218.329C218.329 164.8 227.129 144.6 244.729 129C262.329 113 284.929 105 312.529 105C340.129 105 362.529 112.2 379.729 126.6C397.329 141 406.129 160 406.129 183.6C406.129 200.8 401.529 214.8 392.329 225.6C383.129 236 371.329 243.2 356.929 247.2C374.129 252 387.729 260.2 397.729 271.8C408.129 283.4 413.329 298 413.329 315.6C413.329 340.4 403.929 360.8 385.129 376.8C366.329 392.8 341.929 400.8 311.929 400.8Z"
-                                fill="currentColor"
-                            />
-                            <path
-                                d="M103.864 167.6H78.6643V105.2H171.664V400.2H103.864V167.6Z"
-                                fill="currentColor"
-                            />
-                            <path
-                                d="M311.929 400.8C281.129 400.8 255.929 392.4 236.329 375.6C217.129 358.8 207.529 337 207.529 310.2H277.729C277.729 318.2 280.729 324.8 286.729 330C292.729 335.2 300.729 337.8 310.729 337.8C320.329 337.8 328.129 335 334.129 329.4C340.529 323.8 343.729 316.6 343.729 307.8C343.729 299.8 340.929 293.2 335.329 288C329.729 282.8 322.529 280.2 313.729 280.2H276.529V218.4H313.729C320.529 218.4 326.329 216 331.129 211.2C335.929 206.4 338.329 200.4 338.329 193.2C338.329 184.8 335.729 178.2 330.529 173.4C325.329 168.6 318.729 166.2 310.729 166.2C303.529 166.2 297.329 168.4 292.129 172.8C287.329 177.2 284.929 182.8 284.929 189.6H218.329C218.329 164.8 227.129 144.6 244.729 129C262.329 113 284.929 105 312.529 105C340.129 105 362.529 112.2 379.729 126.6C397.329 141 406.129 160 406.129 183.6C406.129 200.8 401.529 214.8 392.329 225.6C383.129 236 371.329 243.2 356.929 247.2C374.129 252 387.729 260.2 397.729 271.8C408.129 283.4 413.329 298 413.329 315.6C413.329 340.4 403.929 360.8 385.129 376.8C366.329 392.8 341.929 400.8 311.929 400.8Z"
-                                stroke="var(--stroke-color)"
-                                stroke-width="2.4"
-                                mask="url(#path-4-mask)"
-                            />
-                            <path
-                                d="M103.864 167.6H78.6643V105.2H171.664V400.2H103.864V167.6Z"
-                                stroke="var(--stroke-color)"
-                                stroke-width="2.4"
-                                mask="url(#path-4-mask)"
-                            />
-                        </g>
-
-                        <g
-                            class="text-[#F3BEC7] opacity-100 mix-blend-hard-light transition-all delay-400 duration-750 dark:text-[#4B0600] starting:opacity-0 motion-safe:starting:-translate-x-[102px]"
-                        >
-                            <mask
-                                id="path-5-mask"
-                                maskUnits="userSpaceOnUse"
-                                x="102.329"
-                                y="103"
-                                width="338"
-                                height="299"
-                                fill="black"
-                            >
-                                <rect
-                                    fill="white"
-                                    x="102.329"
-                                    y="103"
-                                    width="338"
-                                    height="299"
-                                />
-                                <path
-                                    d="M337.593 400.8C306.793 400.8 281.593 392.4 261.993 375.6C242.793 358.8 233.193 337 233.193 310.2H303.393C303.393 318.2 306.393 324.8 312.393 330C318.393 335.2 326.393 337.8 336.393 337.8C345.993 337.8 353.793 335 359.793 329.4C366.193 323.8 369.393 316.6 369.393 307.8C369.393 299.8 366.593 293.2 360.993 288C355.393 282.8 348.193 280.2 339.393 280.2H302.193V218.4H339.393C346.193 218.4 351.993 216 356.793 211.2C361.593 206.4 363.993 200.4 363.993 193.2C363.993 184.8 361.393 178.2 356.193 173.4C350.993 168.6 344.393 166.2 336.393 166.2C329.193 166.2 322.993 168.4 317.793 172.8C312.993 177.2 310.593 182.8 310.593 189.6H243.993C243.993 164.8 252.793 144.6 270.393 129C287.993 113 310.593 105 338.193 105C365.793 105 388.193 112.2 405.393 126.6C422.993 141 431.793 160 431.793 183.6C431.793 200.8 427.193 214.8 417.993 225.6C408.793 236 396.993 243.2 382.593 247.2C399.793 252 413.393 260.2 423.393 271.8C433.793 283.4 438.993 298 438.993 315.6C438.993 340.4 429.593 360.8 410.793 376.8C391.993 392.8 367.593 400.8 337.593 400.8Z"
-                                />
-                                <path
-                                    d="M129.529 167.6H104.329V105.2H197.329V400.2H129.529V167.6Z"
-                                />
-                            </mask>
-                            <path
-                                d="M337.593 400.8C306.793 400.8 281.593 392.4 261.993 375.6C242.793 358.8 233.193 337 233.193 310.2H303.393C303.393 318.2 306.393 324.8 312.393 330C318.393 335.2 326.393 337.8 336.393 337.8C345.993 337.8 353.793 335 359.793 329.4C366.193 323.8 369.393 316.6 369.393 307.8C369.393 299.8 366.593 293.2 360.993 288C355.393 282.8 348.193 280.2 339.393 280.2H302.193V218.4H339.393C346.193 218.4 351.993 216 356.793 211.2C361.593 206.4 363.993 200.4 363.993 193.2C363.993 184.8 361.393 178.2 356.193 173.4C350.993 168.6 344.393 166.2 336.393 166.2C329.193 166.2 322.993 168.4 317.793 172.8C312.993 177.2 310.593 182.8 310.593 189.6H243.993C243.993 164.8 252.793 144.6 270.393 129C287.993 113 310.593 105 338.193 105C365.793 105 388.193 112.2 405.393 126.6C422.993 141 431.793 160 431.793 183.6C431.793 200.8 427.193 214.8 417.993 225.6C408.793 236 396.993 243.2 382.593 247.2C399.793 252 413.393 260.2 423.393 271.8C433.793 283.4 438.993 298 438.993 315.6C438.993 340.4 429.593 360.8 410.793 376.8C391.993 392.8 367.593 400.8 337.593 400.8Z"
-                                fill="currentColor"
-                            />
-                            <path
-                                d="M129.529 167.6H104.329V105.2H197.329V400.2H129.529V167.6Z"
-                                fill="currentColor"
-                            />
-                            <path
-                                d="M337.593 400.8C306.793 400.8 281.593 392.4 261.993 375.6C242.793 358.8 233.193 337 233.193 310.2H303.393C303.393 318.2 306.393 324.8 312.393 330C318.393 335.2 326.393 337.8 336.393 337.8C345.993 337.8 353.793 335 359.793 329.4C366.193 323.8 369.393 316.6 369.393 307.8C369.393 299.8 366.593 293.2 360.993 288C355.393 282.8 348.193 280.2 339.393 280.2H302.193V218.4H339.393C346.193 218.4 351.993 216 356.793 211.2C361.593 206.4 363.993 200.4 363.993 193.2C363.993 184.8 361.393 178.2 356.193 173.4C350.993 168.6 344.393 166.2 336.393 166.2C329.193 166.2 322.993 168.4 317.793 172.8C312.993 177.2 310.593 182.8 310.593 189.6H243.993C243.993 164.8 252.793 144.6 270.393 129C287.993 113 310.593 105 338.193 105C365.793 105 388.193 112.2 405.393 126.6C422.993 141 431.793 160 431.793 183.6C431.793 200.8 427.193 214.8 417.993 225.6C408.793 236 396.993 243.2 382.593 247.2C399.793 252 413.393 260.2 423.393 271.8C433.793 283.4 438.993 298 438.993 315.6C438.993 340.4 429.593 360.8 410.793 376.8C391.993 392.8 367.593 400.8 337.593 400.8Z"
-                                stroke="var(--stroke-color)"
-                                stroke-width="2.4"
-                                mask="url(#path-5-mask)"
-                            />
-                            <path
-                                d="M129.529 167.6H104.329V105.2H197.329V400.2H129.529V167.6Z"
-                                stroke="var(--stroke-color)"
-                                stroke-width="2.4"
-                                mask="url(#path-5-mask)"
-                            />
-                        </g>
-                    </svg>
-                    <div
-                        class="absolute inset-0 rounded-t-lg shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-t-none lg:rounded-r-lg dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
-                    ></div>
+                <div class="flex items-center gap-4 text-slate-300">
+                    <span class="inline-flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        Comas: 970 518 364
+                    </span>
+                    <span class="inline-flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        Puente Piedra: 987 710 344
+                    </span>
                 </div>
-            </main>
+            </div>
         </div>
+
+        <!-- Barra de Navegación Principal -->
+        <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+                <!-- Marca / Logo -->
+                <Link href="/" class="flex items-center gap-3 group">
+                    <div class="h-12 w-12 rounded-xl bg-[#2e8b57] text-white flex items-center justify-center font-black text-xl shadow-md shadow-emerald-900/20 group-hover:scale-105 transition-transform">
+                        IISEP
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-xl font-black text-slate-900 tracking-tight leading-none group-hover:text-[#2e8b57] transition-colors">
+                            CETPRO IISEP
+                        </span>
+                        <span class="text-xs text-slate-500 font-medium leading-tight mt-0.5">
+                            Educación Técnico Productiva
+                        </span>
+                    </div>
+                </Link>
+
+                <!-- Menú de Enlaces Desktop -->
+                <nav class="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
+                    <a href="#carreras" class="hover:text-[#2e8b57] transition-colors">Carreras Técnicas</a>
+                    <a href="#talleres" class="hover:text-[#2e8b57] transition-colors">Cursos Cortos</a>
+                    <a href="#sedes" class="hover:text-[#2e8b57] transition-colors">Sedes y Horarios</a>
+                    <a href="#beneficios" class="hover:text-[#2e8b57] transition-colors">¿Por qué IISEP?</a>
+                </nav>
+
+                <!-- Acciones / Botón de Login -->
+                <div class="flex items-center gap-3">
+                    <template v-if="user">
+                        <Link
+                            href="/admin"
+                            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-semibold shadow-md hover:bg-slate-800 transition"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                            <span>Panel Admin ({{ user.username }})</span>
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                        </Link>
+                    </template>
+                    <template v-else>
+                        <Link
+                            href="/login"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#2e8b57] text-white text-sm font-bold shadow-md shadow-emerald-700/20 hover:bg-[#267347] active:scale-[0.98] transition-all"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                            </svg>
+                            <span>Acceso Staff / Login</span>
+                        </Link>
+                    </template>
+                </div>
+            </div>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="relative bg-gradient-to-b from-emerald-950 via-slate-900 to-slate-900 text-white pt-16 pb-24 overflow-hidden">
+            <!-- Patrón de fondo brillante -->
+            <div class="absolute inset-0 bg-[radial-gradient(#2e8b57_1px,transparent_1px)] [background-size:24px_24px] opacity-20 pointer-events-none"></div>
+            <div class="absolute top-10 right-1/4 w-96 h-96 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute bottom-0 left-10 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                <div class="max-w-3xl">
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold mb-6">
+                        <span class="flex h-2 w-2 rounded-full bg-[#2e8b57] animate-ping"></span>
+                        Matrículas Abiertas 2025 - 2026 | Turnos Mañana, Tarde y Noche
+                    </div>
+
+                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] text-white">
+                        Formación Técnica que impulsa tu <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-300">éxito profesional</span>
+                    </h1>
+
+                    <p class="mt-6 text-lg sm:text-xl text-slate-300 leading-relaxed">
+                        Aprende con metodología 100% práctica orientada a la rápida inserción laboral. Obtén tu
+                        <strong class="text-white font-semibold">Título Oficial a Nombre de la Nación</strong> en nuestras sedes de
+                        <strong class="text-emerald-300 font-semibold">Comas y Puente Piedra</strong>.
+                    </p>
+
+                    <div class="mt-10 flex flex-wrap items-center gap-4">
+                        <a
+                            href="#carreras"
+                            class="inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-[#2e8b57] text-white text-base font-bold shadow-lg shadow-emerald-900/50 hover:bg-[#267347] transition active:scale-95"
+                        >
+                            Ver Carreras Técnicas
+                        </a>
+
+                        <Link
+                            href="/login"
+                            class="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-base font-semibold border border-white/10 backdrop-blur-xs transition"
+                        >
+                            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <span>Portal Administrativo</span>
+                        </Link>
+                    </div>
+
+                    <!-- Estadísticas Rápidas -->
+                    <div class="mt-14 grid grid-cols-2 sm:grid-cols-4 gap-6 pt-8 border-t border-slate-800">
+                        <div>
+                            <div class="text-3xl font-black text-white">+15 Años</div>
+                            <div class="text-xs text-slate-400 mt-1">Formando especialistas</div>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-black text-emerald-400">100% Oficial</div>
+                            <div class="text-xs text-slate-400 mt-1">Certificado MINEDU</div>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-black text-white">2 Sedes</div>
+                            <div class="text-xs text-slate-400 mt-1">Comas y Puente Piedra</div>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-black text-amber-400">90%</div>
+                            <div class="text-xs text-slate-400 mt-1">Inserción laboral</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección Carreras Técnicas -->
+        <section id="carreras" class="py-20 bg-white">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center max-w-3xl mx-auto mb-16">
+                    <span class="text-xs font-bold uppercase tracking-wider text-[#2e8b57] bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                        Oferta Académica Oficial
+                    </span>
+                    <h2 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-3">
+                        Carreras Técnicas Profesionales
+                    </h2>
+                    <p class="mt-4 text-base text-slate-600">
+                        Planes curriculares modulares aprobados por el Ministerio de Educación que te permiten certificar progresivamente y trabajar mientras estudias.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div
+                        v-for="career in careers"
+                        :key="career.title"
+                        class="group relative bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-xl hover:border-emerald-500/40 transition-all duration-300 flex flex-col overflow-hidden"
+                    >
+                        <!-- Franja Superior de Color -->
+                        <div class="h-3 w-full bg-gradient-to-r" :class="career.color"></div>
+
+                        <div class="p-6 sm:p-7 flex-1 flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between gap-2 mb-3">
+                                    <span class="text-xs font-semibold text-slate-500">{{ career.category }}</span>
+                                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        {{ career.badge }}
+                                    </span>
+                                </div>
+
+                                <h3 class="text-xl font-black text-slate-900 group-hover:text-[#2e8b57] transition-colors">
+                                    {{ career.title }}
+                                </h3>
+
+                                <div class="mt-2 text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span>Duración: {{ career.duration }}</span>
+                                </div>
+
+                                <p class="mt-4 text-sm text-slate-600 leading-relaxed">
+                                    {{ career.description }}
+                                </p>
+
+                                <div class="mt-5 pt-5 border-t border-slate-100">
+                                    <div class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Competencias clave:</div>
+                                    <ul class="space-y-1.5">
+                                        <li
+                                            v-for="feature in career.features"
+                                            :key="feature"
+                                            class="text-xs text-slate-600 flex items-center gap-2"
+                                        >
+                                            <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            <span>{{ feature }}</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                                <span class="text-xs text-slate-500 font-medium">Sedes Comas & Puente Piedra</span>
+                                <a
+                                    href="#sedes"
+                                    class="text-xs font-bold text-[#2e8b57] hover:text-[#267347] inline-flex items-center gap-1 group-hover:translate-x-1 transition-transform"
+                                >
+                                    <span>Consultar vacante</span>
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección Cursos Cortos y Talleres -->
+        <section id="talleres" class="py-16 bg-slate-100 border-y border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex flex-col md:flex-row md:items-end justify-between mb-12">
+                    <div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+                            Capacitación Rápida
+                        </span>
+                        <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-2">
+                            Cursos Cortos y Talleres de Especialización
+                        </h2>
+                        <p class="mt-2 text-sm text-slate-600 max-w-2xl">
+                            Aprende habilidades puntuales y actualizadas para emprender tu propio negocio o potenciar tu CV en 2 a 3 meses.
+                        </p>
+                    </div>
+                    <div class="mt-4 md:mt-0">
+                        <span class="text-xs font-semibold text-slate-500">Incluye certificación modular &bull; Vacantes limitadas</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div
+                        v-for="w in workshops"
+                        :key="w.name"
+                        class="p-5 rounded-xl bg-white border border-slate-200 shadow-xs hover:border-emerald-500 hover:shadow-md transition group"
+                    >
+                        <div class="flex items-center justify-between">
+                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                {{ w.duration }}
+                            </span>
+                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-base mt-3 group-hover:text-[#2e8b57] transition-colors">
+                            {{ w.name }}
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-1">
+                            Clases 100% prácticas en talleres acondicionados.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección Sedes y Horarios -->
+        <section id="sedes" class="py-20 bg-white">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center max-w-2xl mx-auto mb-16">
+                    <span class="text-xs font-bold uppercase tracking-wider text-[#2e8b57] bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                        Ubicaciones Estratégicas
+                    </span>
+                    <h2 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-3">
+                        Nuestras Sedes en Lima Norte
+                    </h2>
+                    <p class="mt-3 text-sm text-slate-600">
+                        Instalaciones equipadas con talleres modernos, fácil acceso y seguridad para nuestros estudiantes.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div
+                        v-for="branch in branches"
+                        :key="branch.name"
+                        class="p-8 rounded-2xl bg-gradient-to-br from-slate-50 to-emerald-50/30 border border-slate-200 shadow-sm relative overflow-hidden"
+                    >
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="h-10 w-10 rounded-xl bg-[#2e8b57] text-white flex items-center justify-center font-bold">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-black text-slate-900">{{ branch.name }}</h3>
+                                <p class="text-xs text-emerald-700 font-semibold">{{ branch.reference }}</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 text-sm text-slate-600 mt-6">
+                            <div class="flex items-start gap-2.5">
+                                <svg class="w-5 h-5 text-slate-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span><strong>Dirección:</strong> {{ branch.address }}</span>
+                            </div>
+
+                            <div class="flex items-start gap-2.5">
+                                <svg class="w-5 h-5 text-slate-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                </svg>
+                                <span><strong>Teléfonos de contacto:</strong> {{ branch.phones.join(' / ') }}</span>
+                            </div>
+
+                            <div class="flex items-start gap-2.5">
+                                <svg class="w-5 h-5 text-slate-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span><strong>Horario:</strong> {{ branch.schedule }}</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 pt-4 border-t border-slate-200 text-xs text-slate-500 font-medium">
+                            {{ branch.highlights }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Banner Exclusivo para Personal Administrativo / Staff -->
+        <section id="portal-staff" class="py-16 bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="rounded-3xl bg-white/5 border border-white/10 p-8 sm:p-12 flex flex-col lg:flex-row items-center justify-between gap-8 backdrop-blur-md">
+                    <div class="max-w-2xl">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold mb-4">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                            <span>Plataforma Interna de Gestión Académica</span>
+                        </div>
+                        <h2 class="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                            Acceso Exclusivo para Personal Staff y Docentes
+                        </h2>
+                        <p class="mt-3 text-sm text-slate-300 leading-relaxed">
+                            Ingresa al sistema para la gestión integral de matrículas, aperturas de cursos y horarios, control de asistencia por DNI en tiempo real y administración de sedes.
+                        </p>
+                    </div>
+
+                    <div class="shrink-0 flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+                        <Link
+                            href="/login"
+                            class="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-[#2e8b57] hover:bg-[#267347] text-white font-bold text-base shadow-xl shadow-emerald-950 transition active:scale-95"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                            </svg>
+                            <span>Iniciar Sesión en el Panel (/login)</span>
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer Institucional -->
+        <footer class="bg-slate-950 text-slate-400 text-xs py-12 border-t border-slate-900">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-slate-900">
+                    <div class="md:col-span-2">
+                        <div class="flex items-center gap-3">
+                            <div class="h-10 w-10 rounded-xl bg-[#2e8b57] text-white flex items-center justify-center font-black text-lg">
+                                IISEP
+                            </div>
+                            <span class="text-lg font-black text-white">CETPRO IISEP</span>
+                        </div>
+                        <p class="mt-3 text-slate-400 max-w-sm text-xs leading-relaxed">
+                            Centro de Educación Técnico Productiva autorizado con Resolución Directoral N° 0154-2015-ED. Comprometidos con el desarrollo profesional de nuestros estudiantes.
+                        </p>
+                    </div>
+
+                    <div>
+                        <h4 class="font-bold text-white text-sm mb-3">Navegación</h4>
+                        <ul class="space-y-2">
+                            <li><a href="#carreras" class="hover:text-emerald-400 transition-colors">Carreras Técnicas</a></li>
+                            <li><a href="#talleres" class="hover:text-emerald-400 transition-colors">Talleres Cortos</a></li>
+                            <li><a href="#sedes" class="hover:text-emerald-400 transition-colors">Sedes y Horarios</a></li>
+                            <li><Link href="/login" class="text-emerald-400 font-semibold hover:underline">Acceso Administrativo (/login)</Link></li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="font-bold text-white text-sm mb-3">Atención y Sedes</h4>
+                        <ul class="space-y-2">
+                            <li>Sede Comas: Av. Túpac Amaru 3850</li>
+                            <li>Sede Puente Piedra: Jr. Ricardo Palma 241</li>
+                            <li>Horario: Lun - Sáb 8:00am a 8:00pm</li>
+                            <li>MINEDU / DRELM / UGEL 04</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-slate-500">
+                    <p>&copy; {{ new Date().getFullYear() }} CETPRO IISEP. Todos los derechos reservados.</p>
+                    <div class="flex items-center gap-6">
+                        <Link href="/login" class="hover:text-slate-300">Intranet Docente y Administrativa</Link>
+                    </div>
+                </div>
+            </div>
+        </footer>
     </div>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import { usePage, router } from '@inertiajs/vue3';
 import OfertaAcademicaMenu from './OfertaAcademicaMenu.vue';
 
 interface Branch {
@@ -64,6 +65,21 @@ function handleCurricularTabSelect(tab: CurricularTab) {
     emit('update:activeMainTab', 'curricular');
     emit('update:isMobileOpen', false);
     emit('clear-editing-career');
+}
+
+// Datos del usuario autenticado desde Inertia
+const page = usePage();
+const currentUser = computed(() => (page.props.auth as any)?.user);
+
+const userInitials = computed(() => {
+    if (!currentUser.value) return 'ST';
+    const first = currentUser.value.first_name?.[0] || 'A';
+    const last = currentUser.value.paternal_surname?.[0] || 'D';
+    return (first + last).toUpperCase();
+});
+
+function handleLogout() {
+    router.post('/logout');
 }
 </script>
 
@@ -396,21 +412,35 @@ function handleCurricularTabSelect(tab: CurricularTab) {
         </div>
 
         <!-- User Info at Bottom of Sidebar (Fixed) -->
-        <div class="shrink-0 border-t border-slate-100 bg-slate-50/80 p-5">
-            <div class="flex items-center gap-3.5">
-                <div
-                    class="flex h-11 w-11 items-center justify-center rounded-full border border-emerald-300 bg-emerald-100 text-sm font-bold text-[#2e8b57]"
+        <div class="shrink-0 border-t border-slate-100 bg-slate-50/80 p-4">
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <div
+                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-emerald-300 bg-emerald-100 text-xs font-black text-[#2e8b57]"
+                    >
+                        {{ userInitials }}
+                    </div>
+                    <div class="overflow-hidden leading-tight">
+                        <p class="truncate text-xs font-bold text-slate-900">
+                            {{ currentUser?.full_name || 'Sofia Torres Castro' }}
+                        </p>
+                        <p class="truncate text-[11px] text-slate-500">
+                            {{ currentUser?.staff?.position || 'Coordinación Sede Comas' }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Botón de Cerrar Sesión -->
+                <button
+                    @click="handleLogout"
+                    type="button"
+                    class="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 transition cursor-pointer shrink-0"
+                    title="Cerrar Sesión"
                 >
-                    ST
-                </div>
-                <div class="overflow-hidden leading-tight">
-                    <p class="truncate text-sm font-bold text-slate-900">
-                        Sofia Torres Castro
-                    </p>
-                    <p class="truncate text-xs text-slate-500">
-                        Coordinación Sede Comas
-                    </p>
-                </div>
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                </button>
             </div>
         </div>
     </aside>

@@ -1,10 +1,28 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use Illuminate\Support\Facades\Route;
 
+// Página Principal Pública
 Route::inertia('/', 'Welcome')->name('home');
-Route::inertia('/admin', 'Admin/Index')->name('admin');
-Route::inertia('/admin/matriculas', 'Admin/Matriculas')->name('admin.matriculas');
-Route::inertia('/admin/oferta-academica', 'Admin/OfertaAcademica')->name('admin.oferta-academica');
-Route::inertia('/admin/sedes-aulas', 'Admin/SedesAulas')->name('admin.sedes-aulas');
-Route::inertia('/admin/asistencias', 'Admin/Asistencias')->name('admin.asistencias');
+
+// Rutas de Autenticación
+Route::middleware('guest')->group(function (): void {
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
+});
+
+Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
+    ->middleware('auth')
+    ->name('logout');
+
+// Rutas Protegidas del Panel Administrativo (Requiere inicio de sesión de Staff)
+Route::middleware(['auth'])->prefix('admin')->group(function (): void {
+    Route::inertia('/', 'Admin/Index')->name('admin');
+    Route::inertia('/matriculas', 'Admin/Matriculas')->name('admin.matriculas');
+    Route::inertia('/oferta-academica', 'Admin/OfertaAcademica')->name('admin.oferta-academica');
+    Route::inertia('/sedes-aulas', 'Admin/SedesAulas')->name('admin.sedes-aulas');
+    Route::inertia('/asistencias', 'Admin/Asistencias')->name('admin.asistencias');
+});
