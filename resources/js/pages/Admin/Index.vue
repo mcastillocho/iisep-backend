@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 import Sidebar from '../../components/Admin/Sidebar/Sidebar.vue';
 import OfertaAcademicaView from '../../components/Admin/Pages/OfertaAcademicaView.vue';
 import SedesAulasView from '../../components/Admin/Pages/SedesAulasView.vue';
+import MatriculasView, { type EnrollmentRecord } from '../../components/Admin/Pages/MatriculasView.vue';
 
 // --- INTERFACES ---
 
@@ -59,19 +60,6 @@ interface CourseItem {
     is_workshop: boolean;
 }
 
-interface EnrollmentRecord {
-    id: number;
-    student_full_name: string;
-    student_document: string;
-    course_name: string;
-    module_name: string | null;
-    career_name: string | null;
-    branch_name: string;
-    enrollment_date: string;
-    status: 'activo' | 'convalidado' | 'completado' | 'preinscrito' | 'retirado' | 'anulado';
-    notes: string | null;
-}
-
 interface AttendanceSession {
     id: number;
     course_name: string;
@@ -85,7 +73,7 @@ interface AttendanceSession {
 }
 
 // --- ESTADOS DE NAVEGACIÓN ---
-type MainTab = 'infraestructura' | 'curricular' | 'matriculas' | 'asistencia' | 'resumen';
+type MainTab = 'infraestructura' | 'curricular' | 'matriculas' | 'aperturas' | 'asistencia' | 'resumen';
 const activeMainTab = ref<MainTab>('infraestructura');
 const isMobileSidebarOpen = ref(false);
 
@@ -289,6 +277,7 @@ const coursesList = ref<CourseItem[]>([
 const enrollments = ref<EnrollmentRecord[]>([
     {
         id: 1,
+        scheduled_course_id: 2,
         student_full_name: 'Diego Mendoza Salazar',
         student_document: '76543210',
         course_name: 'Arquitectura de Hardware y Diagnóstico',
@@ -301,6 +290,7 @@ const enrollments = ref<EnrollmentRecord[]>([
     },
     {
         id: 2,
+        scheduled_course_id: 2,
         student_full_name: 'Valeria Rios Flores',
         student_document: '78901234',
         course_name: 'Arquitectura de Hardware y Diagnóstico',
@@ -313,6 +303,7 @@ const enrollments = ref<EnrollmentRecord[]>([
     },
     {
         id: 3,
+        scheduled_course_id: 1,
         student_full_name: 'Valeria Rios Flores',
         student_document: '78901234',
         course_name: 'Excel Avanzado y Macros',
@@ -325,6 +316,7 @@ const enrollments = ref<EnrollmentRecord[]>([
     },
     {
         id: 4,
+        scheduled_course_id: 1,
         student_full_name: 'Carlos Alberto Gomez Paredes',
         student_document: '34567890',
         course_name: 'Excel Avanzado y Macros',
@@ -336,32 +328,6 @@ const enrollments = ref<EnrollmentRecord[]>([
         notes: 'Módulo independiente libre (Docente IISEP)',
     },
 ]);
-
-const searchEnrollmentQuery = ref('');
-const statusEnrollmentFilter = ref<'all' | 'activo' | 'convalidado' | 'completado' | 'preinscrito'>('all');
-
-const filteredEnrollments = computed(() => {
-    return enrollments.value.filter((record) => {
-        if (selectedBranchId.value !== 'all') {
-            const currentBranch = branches.value.find((b) => b.id === selectedBranchId.value);
-            if (currentBranch && record.branch_name !== currentBranch.name) {
-                return false;
-            }
-        }
-        if (statusEnrollmentFilter.value !== 'all' && record.status !== statusEnrollmentFilter.value) {
-            return false;
-        }
-        if (searchEnrollmentQuery.value.trim() !== '') {
-            const q = searchEnrollmentQuery.value.toLowerCase();
-            return (
-                record.student_full_name.toLowerCase().includes(q) ||
-                record.student_document.includes(q) ||
-                record.course_name.toLowerCase().includes(q)
-            );
-        }
-        return true;
-    });
-});
 
 // 7. Asistencias
 const attendanceSessions = ref<AttendanceSession[]>([
@@ -471,6 +437,7 @@ function triggerToast(msg: string) {
             :modules-count="allModulesPool.length"
             :courses-count="coursesList.length"
             :enrollments-count="enrollments.length"
+            :scheduled-courses-count="4"
             @clear-editing-career="() => {}"
         />
 
@@ -487,6 +454,7 @@ function triggerToast(msg: string) {
                             <span v-else>Talleres</span>
                         </span>
                         <span v-else-if="activeMainTab === 'matriculas'">Matrículas & Convalidaciones</span>
+                        <span v-else-if="activeMainTab === 'aperturas'">Apertura de Cursos y Aulas</span>
                         <span v-else-if="activeMainTab === 'asistencia'">Sesiones & Asistencias</span>
                         <span v-else>Panel Resumen</span>
                     </h1>
@@ -498,6 +466,7 @@ function triggerToast(msg: string) {
                             <span v-else>Cursos y talleres libres</span>
                         </span>
                         <span v-else-if="activeMainTab === 'matriculas'">Inscripciones de estudiantes y convalidaciones</span>
+                        <span v-else-if="activeMainTab === 'aperturas'">Programación de periodos formativos y asignación física</span>
                         <span v-else-if="activeMainTab === 'asistencia'">Control de asistencia presencial</span>
                         <span v-else>Métricas de retención institucional</span>
                     </p>
@@ -549,118 +518,32 @@ function triggerToast(msg: string) {
                     />
                 </div>
 
-                <!-- 3. SECCIÓN: MATRÍCULAS Y CONVALIDACIONES -->
-                <div v-if="activeMainTab === 'matriculas'" class="space-y-6">
-                    <div class="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between">
-                        <div class="relative flex-1 sm:max-w-md">
-                            <svg class="pointer-events-none absolute top-3 left-3.5 h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <input
-                                v-model="searchEnrollmentQuery"
-                                type="text"
-                                placeholder="Buscar por DNI, alumno o curso..."
-                                class="w-full rounded-lg border border-slate-300 bg-slate-50 py-2.5 pr-4 pl-11 text-sm text-slate-900 placeholder-slate-400 focus:border-[#2e8b57] focus:bg-white focus:ring-1 focus:ring-[#2e8b57] focus:outline-none"
-                            />
-                        </div>
+                <!-- 3. SECCIÓN INDEPENDIENTE: MATRÍCULAS -->
+                <div v-if="activeMainTab === 'matriculas'">
+                    <MatriculasView
+                        active-tab="inscripciones"
+                        :branches="branches"
+                        :classrooms="classrooms"
+                        :courses="coursesList"
+                        :enrollments="enrollments"
+                        :selected-branch-id="selectedBranchId"
+                        :show-subtabs-nav="false"
+                        @notify="triggerToast"
+                    />
+                </div>
 
-                        <div class="flex flex-wrap items-center gap-2">
-                            <button
-                                @click="statusEnrollmentFilter = 'all'"
-                                :class="[
-                                    statusEnrollmentFilter === 'all'
-                                        ? 'bg-slate-800 text-white font-bold'
-                                        : 'bg-slate-100 text-slate-700 hover:text-slate-900',
-                                    'rounded-md px-3.5 py-1.5 text-xs transition font-semibold'
-                                ]"
-                            >
-                                Todos ({{ enrollments.length }})
-                            </button>
-                            <button
-                                @click="statusEnrollmentFilter = 'convalidado'"
-                                :class="[
-                                    statusEnrollmentFilter === 'convalidado'
-                                        ? 'bg-purple-700 text-white font-bold'
-                                        : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200',
-                                    'rounded-md px-3.5 py-1.5 text-xs transition font-semibold'
-                                ]"
-                            >
-                                Convalidados
-                            </button>
-                            <button
-                                @click="statusEnrollmentFilter = 'activo'"
-                                :class="[
-                                    statusEnrollmentFilter === 'activo'
-                                        ? 'bg-[#2e8b57] text-white font-bold'
-                                        : 'bg-emerald-50 text-[#2e8b57] hover:bg-emerald-100 border border-emerald-200',
-                                    'rounded-md px-3.5 py-1.5 text-xs transition font-semibold'
-                                ]"
-                            >
-                                Activos
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Tabla de Matrículas -->
-                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-                        <table class="w-full text-left text-sm text-slate-700">
-                            <thead class="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 uppercase">
-                                <tr>
-                                    <th class="py-4 pr-4 pl-6">Estudiante / DNI</th>
-                                    <th class="px-4 py-4">Materia / Taller</th>
-                                    <th class="px-4 py-4">Módulo & Carrera</th>
-                                    <th class="px-4 py-4">Sede</th>
-                                    <th class="px-4 py-4">Fecha</th>
-                                    <th class="px-4 py-4">Estado</th>
-                                    <th class="py-4 pr-6 pl-4">Observaciones</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <tr v-for="item in filteredEnrollments" :key="item.id" class="transition hover:bg-emerald-50/40">
-                                    <td class="py-4 pr-4 pl-6">
-                                        <div class="font-bold text-slate-900">{{ item.student_full_name }}</div>
-                                        <div class="font-mono text-xs text-slate-500">DNI: {{ item.student_document }}</div>
-                                    </td>
-                                    <td class="px-4 py-4 font-bold text-slate-800">{{ item.course_name }}</td>
-                                    <td class="px-4 py-4">
-                                        <div v-if="item.module_name" class="font-semibold text-slate-700">{{ item.module_name }}</div>
-                                        <div v-if="item.career_name" class="text-xs text-slate-500 font-medium">{{ item.career_name }}</div>
-                                        <span v-if="!item.module_name && !item.career_name" class="inline-block rounded-sm bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-bold text-amber-800">
-                                            Taller Independiente
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-4 whitespace-nowrap">
-                                        <span class="inline-flex items-center gap-2 font-semibold text-slate-800">
-                                            <span class="h-2.5 w-2.5 rounded-full" :class="item.branch_name.includes('Comas') ? 'bg-[#2e8b57]' : 'bg-teal-600'"></span>
-                                            {{ item.branch_name }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-4 font-mono text-xs text-slate-600 whitespace-nowrap">{{ item.enrollment_date }}</td>
-                                    <td class="px-4 py-4 whitespace-nowrap">
-                                        <span v-if="item.status === 'convalidado'" class="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700 shadow-2xs">
-                                            <svg class="h-4 w-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                            </svg>
-                                            Convalidado
-                                        </span>
-                                        <span v-else-if="item.status === 'activo'" class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-[#2e8b57]">
-                                            <span class="h-2 w-2 animate-pulse rounded-full bg-[#2e8b57]"></span>
-                                            Activo
-                                        </span>
-                                        <span v-else-if="item.status === 'completado'" class="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
-                                            Completado
-                                        </span>
-                                        <span v-else class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
-                                            Preinscrito
-                                        </span>
-                                    </td>
-                                    <td class="py-4 pr-6 pl-4 text-xs text-slate-600">
-                                        {{ item.notes || '—' }}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <!-- 4. SECCIÓN INDEPENDIENTE: APERTURA DE CURSOS Y AULAS (LISTA) -->
+                <div v-if="activeMainTab === 'aperturas'">
+                    <MatriculasView
+                        active-tab="aperturas"
+                        :branches="branches"
+                        :classrooms="classrooms"
+                        :courses="coursesList"
+                        :enrollments="enrollments"
+                        :selected-branch-id="selectedBranchId"
+                        :show-subtabs-nav="false"
+                        @notify="triggerToast"
+                    />
                 </div>
 
                 <!-- 4. SECCIÓN: ASISTENCIA & HORARIOS -->

@@ -10,7 +10,7 @@ interface Branch {
     phone: string;
 }
 
-type MainTab = 'infraestructura' | 'curricular' | 'matriculas' | 'asistencia' | 'resumen';
+type MainTab = 'infraestructura' | 'curricular' | 'matriculas' | 'aperturas' | 'asistencia' | 'resumen';
 type CurricularTab = 'carreras' | 'modulos' | 'talleres';
 
 interface Props {
@@ -23,6 +23,7 @@ interface Props {
     modulesCount: number;
     coursesCount: number;
     enrollmentsCount: number;
+    scheduledCoursesCount?: number;
     isMobileOpen: boolean;
 }
 
@@ -94,7 +95,58 @@ function handleCurricularTabSelect(tab: CurricularTab) {
 
             <!-- Navigation Groups -->
             <nav class="px-4 py-4 space-y-4">
-                <!-- GRUPO 1: OFERTA ACADÉMICA / CURSOS (ALTA FRECUENCIA) -->
+                <!-- GRUPO 1: MATRÍCULAS (MÁXIMA FRECUENCIA OPERATIVA) -->
+                <div>
+                    <div class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase">
+                        Matrículas
+                    </div>
+
+                    <div class="space-y-1">
+                        <!-- 1. Matrículas (e Inscripciones / Convalidaciones) -->
+                        <button
+                            @click="selectMainTab('matriculas')"
+                            :class="[
+                                activeMainTab === 'matriculas'
+                                    ? 'bg-emerald-50 text-[#2e8b57] font-bold border-l-4 border-[#2e8b57]'
+                                    : 'text-slate-700 hover:bg-slate-50 font-semibold',
+                                'w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm transition cursor-pointer'
+                            ]"
+                        >
+                            <div class="flex items-center gap-3">
+                                <svg class="h-5 w-5 text-[#2e8b57]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <span>Matrículas</span>
+                            </div>
+                            <span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-[#2e8b57]">
+                                {{ enrollmentsCount }}
+                            </span>
+                        </button>
+
+                        <!-- 2. Apertura de Cursos y Aulas -->
+                        <button
+                            @click="selectMainTab('aperturas')"
+                            :class="[
+                                activeMainTab === 'aperturas'
+                                    ? 'bg-emerald-50 text-[#2e8b57] font-bold border-l-4 border-[#2e8b57]'
+                                    : 'text-slate-700 hover:bg-slate-50 font-semibold',
+                                'w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm transition cursor-pointer'
+                            ]"
+                        >
+                            <div class="flex items-center gap-3">
+                                <svg class="h-5 w-5 text-[#2e8b57]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span>Apertura de Cursos</span>
+                            </div>
+                            <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+                                {{ scheduledCoursesCount ?? 4 }}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- GRUPO 2: OFERTA ACADÉMICA / CURSOS -->
                 <div>
                     <div class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase">
                         Cursos
@@ -110,7 +162,7 @@ function handleCurricularTabSelect(tab: CurricularTab) {
                     />
                 </div>
 
-                <!-- GRUPO 2: SEDES & AULAS (BAJA FRECUENCIA DE MODIFICACIÓN) -->
+                <!-- GRUPO 3: AMBIENTES / SEDES & AULAS -->
                 <div>
                     <div class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase">
                         Ambientes
@@ -179,33 +231,13 @@ function handleCurricularTabSelect(tab: CurricularTab) {
                     </div>
                 </div>
 
-                <!-- GRUPO 3: OPERACIONES DIARIAS -->
+                <!-- GRUPO 4: ASISTENCIAS Y OPERACIONES -->
                 <div>
                     <div class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase">
-                        Operaciones Diarias
+                        Asistencias
                     </div>
 
                     <div class="space-y-1">
-                        <button
-                            @click="selectMainTab('matriculas')"
-                            :class="[
-                                activeMainTab === 'matriculas'
-                                    ? 'bg-emerald-50 text-[#2e8b57] font-bold border-l-4 border-[#2e8b57]'
-                                    : 'text-slate-700 hover:bg-slate-50 font-semibold',
-                                'w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm transition cursor-pointer'
-                            ]"
-                        >
-                            <div class="flex items-center gap-3">
-                                <svg class="h-5 w-5 text-[#2e8b57]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                <span>Matrículas & Conval.</span>
-                            </div>
-                            <span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-[#2e8b57]">
-                                {{ enrollmentsCount }}
-                            </span>
-                        </button>
-
                         <button
                             @click="selectMainTab('asistencia')"
                             :class="[
