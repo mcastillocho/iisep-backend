@@ -27,6 +27,7 @@ resources/js/
 
 1. **Sidebar Independiente (`components/Admin/Sidebar/Sidebar.vue`)**:
    - Centraliza la cabecera institucional oficial con los colores del IISEP (`#2e8b57`), navegación lateral por grupos lógicos, selector de ambientes por sede y perfil del usuario.
+   - **Comportamiento Fijo e Independiente**: Posee altura fija de pantalla (`h-screen`, `md:sticky top-0`) con scroll interno autónomo (`overflow-y-auto flex-1`). Esto garantiza que al hacer scroll en la página principal, el sidebar se mantenga anclado a la izquierda y el pie con los datos del usuario permanezca siempre visible al fondo del viewport (`shrink-0`).
    - Es reutilizable en cualquier página del panel administrativo.
 
 2. **Menú Autónomo de Oferta Académica (`OfertaAcademicaMenu.vue`)**:

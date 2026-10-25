@@ -61,15 +61,23 @@ function handleCurricularTabSelect(tab: CurricularTab) {
 </script>
 
 <template>
+    <!-- Backdrop móvil para cerrar drawer -->
+    <div
+        v-if="isMobileOpen"
+        @click="emit('update:isMobileOpen', false)"
+        class="fixed inset-0 bg-slate-900/40 z-40 md:hidden backdrop-blur-xs transition-opacity"
+    ></div>
+
     <aside
         :class="[
             isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
-            'fixed md:static inset-y-0 left-0 z-50 w-72 md:w-80 bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-200 ease-in-out shadow-xs'
+            'fixed md:sticky top-0 inset-y-0 left-0 z-50 h-screen w-72 md:w-80 shrink-0 bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-200 ease-in-out shadow-xs'
         ]"
     >
-        <div class="overflow-y-auto">
+        <!-- Contenedor scrollable independiente del menú -->
+        <div class="overflow-y-auto flex-1 flex flex-col">
             <!-- Brand Header -->
-            <div class="p-6 border-b border-slate-100 flex items-center gap-3.5">
+            <div class="p-6 border-b border-slate-100 flex items-center gap-3.5 shrink-0 bg-white sticky top-0 z-10">
                 <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2e8b57] font-black text-white shadow-md shadow-emerald-700/20">
                     <span class="text-xl tracking-wider">II</span>
                 </div>
@@ -240,8 +248,8 @@ function handleCurricularTabSelect(tab: CurricularTab) {
             </nav>
         </div>
 
-        <!-- User Info at Bottom of Sidebar -->
-        <div class="p-5 border-t border-slate-100 bg-slate-50/80">
+        <!-- User Info at Bottom of Sidebar (Fixed) -->
+        <div class="shrink-0 p-5 border-t border-slate-100 bg-slate-50/80">
             <div class="flex items-center gap-3.5">
                 <div class="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 border border-emerald-300 text-sm font-bold text-[#2e8b57]">
                     ST
