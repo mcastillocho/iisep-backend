@@ -69,4 +69,12 @@ class Staff extends Model
     {
         return $this->belongsTo(Branch::class);
     }
+
+    /**
+     * Determina si el personal es Administrador General (no tiene sede asignada / branch_id es null).
+     */
+    public function isAdmin(): bool
+    {
+        return $this->branch_id === null;
+    }
 }

@@ -1,14 +1,21 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import SedesAulasView, {
     Branch,
     Classroom,
 } from '../../components/Admin/Pages/SedesAulasView.vue';
 import Sidebar from '../../components/Admin/Sidebar/Sidebar.vue';
 
-// --- DATOS MOCK INSTITUCIONALES (branches & classrooms) ---
-const branches = ref<Branch[]>([
+interface Props {
+    branches?: Branch[];
+    classrooms?: Classroom[];
+}
+
+const props = defineProps<Props>();
+
+// --- DATOS INSTITUCIONALES (fallback si no se proveen props) ---
+const defaultBranches: Branch[] = [
     {
         id: 1,
         name: 'Sede Comas',
@@ -23,9 +30,9 @@ const branches = ref<Branch[]>([
         address: 'Jr. Ricardo Palma 241 (2° piso de la RENIEC)',
         phone: '987710344',
     },
-]);
+];
 
-const classrooms = ref<Classroom[]>([
+const defaultClassrooms: Classroom[] = [
     {
         id: 1,
         branch_id: 1,
@@ -68,7 +75,11 @@ const classrooms = ref<Classroom[]>([
             'Taller de Uñas Acrílicas y Polygel (Lunes y Miércoles 16:00 - 19:00)',
         ],
     },
-]);
+];
+
+const branches = computed<Branch[]>(() => props.branches && props.branches.length > 0 ? props.branches : defaultBranches);
+const classrooms = computed<Classroom[]>(() => props.classrooms && props.classrooms.length > 0 ? props.classrooms : defaultClassrooms);
+
 
 type CurricularTab = 'carreras' | 'modulos' | 'talleres';
 const activeCurricularTab = ref<CurricularTab>('carreras');

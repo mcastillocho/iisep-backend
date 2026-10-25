@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Admin\BranchController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use Illuminate\Support\Facades\Route;
 
@@ -23,6 +24,10 @@ Route::middleware(['auth'])->prefix('admin')->group(function (): void {
     Route::inertia('/', 'Admin/Index')->name('admin');
     Route::inertia('/matriculas', 'Admin/Matriculas')->name('admin.matriculas');
     Route::inertia('/oferta-academica', 'Admin/OfertaAcademica')->name('admin.oferta-academica');
-    Route::inertia('/sedes-aulas', 'Admin/SedesAulas')->name('admin.sedes-aulas');
+
+    // Sedes y Aulas
+    Route::get('/sedes-aulas', [BranchController::class, 'index'])->name('admin.sedes-aulas');
+    Route::post('/sedes', [BranchController::class, 'store'])->name('admin.sedes.store');
+
     Route::inertia('/asistencias', 'Admin/Asistencias')->name('admin.asistencias');
 });

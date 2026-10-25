@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 export interface Branch {
@@ -32,6 +33,27 @@ const emit = defineEmits<{
     (e: 'update:selectedBranchId', branchId: number | 'all'): void;
     (e: 'notify', message: string): void;
 }>();
+
+interface AuthStaff {
+    id?: number;
+    branch_id?: number | null;
+    position?: string | null;
+}
+
+interface AuthUser {
+    id: number;
+    username: string;
+    full_name?: string;
+    staff?: AuthStaff | null;
+}
+
+// Verificación de Administrador General (sin sede asignada / branch_id === null)
+const page = usePage<{ auth?: { user?: AuthUser } }>();
+const isAdmin = computed(() => {
+    const user = page.props.auth?.user;
+    if (!user?.staff) return false;
+    return user.staff.branch_id === null;
+});
 
 // Filtro de búsqueda
 const searchClassroomQuery = ref('');
@@ -76,9 +98,9 @@ const editingBranchTotalCapacity = computed(() => {
     );
 });
 
-// --- MODAL DE NUEVA SEDE ---
+// --- MODAL DE NUEVA SEDE (Conectado al Backend /admin/sedes) ---
 const showNewBranchModal = ref(false);
-const newBranchForm = ref({
+const newBranchForm = useForm({
     name: '',
     code: '',
     address: '',
@@ -86,35 +108,33 @@ const newBranchForm = ref({
 });
 
 function openNewBranchModal() {
-    newBranchForm.value = {
-        name: '',
-        code: '',
-        address: '',
-        phone: '',
-    };
+    newBranchForm.reset();
+    newBranchForm.clearErrors();
     showNewBranchModal.value = true;
 }
 
 function saveNewBranch() {
-    if (!newBranchForm.value.name.trim()) return;
-    const newId =
-        props.branches.length > 0
-            ? Math.max(...props.branches.map((b) => b.id)) + 1
-            : 1;
-    props.branches.push({
-        id: newId,
-        name: newBranchForm.value.name.trim(),
-        code: newBranchForm.value.code.trim().toUpperCase() || `SED-${newId}`,
-        address:
-            newBranchForm.value.address.trim() || 'Dirección por registrar',
-        phone: newBranchForm.value.phone.trim() || '999999999',
+    if (!newBranchForm.name.trim()) return;
+
+    newBranchForm.post('/admin/sedes', {
+        preserveScroll: true,
+        onSuccess: () => {
+            emit(
+                'notify',
+                `Nueva sede "${newBranchForm.name}" registrada con éxito en el sistema.`,
+            );
+            showNewBranchModal.value = false;
+            newBranchForm.reset();
+        },
+        onError: (errors) => {
+            const firstError = Object.values(errors)[0];
+            if (firstError) {
+                emit('notify', String(firstError));
+            }
+        },
     });
-    emit(
-        'notify',
-        `Nueva sede "${newBranchForm.value.name}" creada con éxito.`,
-    );
-    showNewBranchModal.value = false;
 }
+
 
 // --- MODAL DE AULA (CREAR / EDITAR) ---
 const showClassroomModal = ref(false);
@@ -522,6 +542,7 @@ const filteredClassrooms = computed(() => {
 
                 <div class="flex items-center gap-3">
                     <button
+                        v-if="isAdmin"
                         @click="openNewBranchModal"
                         class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
                     >
@@ -927,7 +948,11 @@ const filteredClassrooms = computed(() => {
                             required
                             placeholder="Ej. Sede Los Olivos"
                             class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                            :class="{ 'border-rose-500 bg-rose-50': newBranchForm.errors.name }"
                         />
+                        <p v-if="newBranchForm.errors.name" class="mt-1 text-xs font-semibold text-rose-600">
+                            {{ newBranchForm.errors.name }}
+                        </p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -941,7 +966,11 @@ const filteredClassrooms = computed(() => {
                                 type="text"
                                 placeholder="Ej. LSO"
                                 class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm font-bold text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                :class="{ 'border-rose-500 bg-rose-50': newBranchForm.errors.code }"
                             />
+                            <p v-if="newBranchForm.errors.code" class="mt-1 text-xs font-semibold text-rose-600">
+                                {{ newBranchForm.errors.code }}
+                            </p>
                         </div>
 
                         <div>
@@ -982,9 +1011,10 @@ const filteredClassrooms = computed(() => {
                         </button>
                         <button
                             type="submit"
-                            class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
+                            :disabled="newBranchForm.processing"
+                            class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347] disabled:opacity-50"
                         >
-                            Crear Sede
+                            {{ newBranchForm.processing ? 'Registrando...' : 'Crear Sede' }}
                         </button>
                     </div>
                 </form>

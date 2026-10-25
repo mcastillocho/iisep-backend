@@ -13,4 +13,17 @@ enum DayOfWeek: string
     case VIERNES = 'viernes';
     case SABADO = 'sabado';
     case DOMINGO = 'domingo';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::LUNES => 'Lunes',
+            self::MARTES => 'Martes',
+            self::MIERCOLES => 'Miércoles',
+            self::JUEVES => 'Jueves',
+            self::VIERNES => 'Viernes',
+            self::SABADO => 'Sábado',
+            self::DOMINGO => 'Domingo',
+        };
+    }
 }
