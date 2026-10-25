@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import Sidebar from '../../components/Admin/Sidebar/Sidebar.vue';
 import OfertaAcademicaView from '../../components/Admin/Pages/OfertaAcademicaView.vue';
+import SedesAulasView from '../../components/Admin/Pages/SedesAulasView.vue';
 
 // --- INTERFACES ---
 
@@ -158,34 +159,6 @@ const classrooms = ref<Classroom[]>([
         ],
     },
 ]);
-
-// Búsqueda de aulas
-const searchClassroomQuery = ref('');
-
-const filteredClassrooms = computed(() => {
-    return classrooms.value.filter((room) => {
-        if (selectedBranchId.value !== 'all' && room.branch_id !== selectedBranchId.value) {
-            return false;
-        }
-        if (searchClassroomQuery.value.trim() !== '') {
-            const q = searchClassroomQuery.value.toLowerCase();
-            return (
-                room.name.toLowerCase().includes(q) ||
-                room.branch_name.toLowerCase().includes(q)
-            );
-        }
-        return true;
-    });
-});
-
-// Modal de Disponibilidad de Aula
-const selectedRoomForSchedule = ref<Classroom | null>(null);
-const showScheduleModal = ref(false);
-
-function viewRoomAvailability(room: Classroom) {
-    selectedRoomForSchedule.value = room;
-    showScheduleModal.value = true;
-}
 
 // 3. Catálogo Global de Módulos (para asignación a carreras)
 const allModulesPool = ref<ModuleItem[]>([
@@ -439,24 +412,6 @@ function triggerToast(msg: string) {
     }, 4000);
 }
 
-// Modal básico
-const showModal = ref(false);
-const modalEntityTitle = ref('');
-
-function openNewClassroomModal() {
-    modalEntityTitle.value = 'Nueva Aula / Ambiente Físico';
-    showModal.value = true;
-}
-
-function openEditClassroomModal(room: Classroom) {
-    modalEntityTitle.value = `Editar Aula: ${room.name}`;
-    showModal.value = true;
-}
-
-function saveModalData() {
-    showModal.value = false;
-    triggerToast(`Registro guardado correctamente.`);
-}
 </script>
 
 <template>
@@ -572,107 +527,14 @@ function saveModalData() {
             <!-- MAIN CONTENT AREA -->
             <main class="flex-1 p-8 max-w-7xl w-full mx-auto space-y-6">
 
-                <!-- 1. SECCIÓN: SEDES & AULAS -->
-                <div v-if="activeMainTab === 'infraestructura'" class="space-y-6">
-                    <div class="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between">
-                        <!-- Buscador -->
-                        <div class="relative flex-1 sm:max-w-md">
-                            <svg class="pointer-events-none absolute top-3 left-3.5 h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <input
-                                id="search-classroom-input"
-                                v-model="searchClassroomQuery"
-                                type="text"
-                                placeholder="Buscar aula por nombre o sede..."
-                                class="w-full rounded-lg border border-slate-300 bg-slate-50 py-2.5 pr-4 pl-11 text-sm text-slate-900 placeholder-slate-400 focus:border-[#2e8b57] focus:bg-white focus:ring-1 focus:ring-[#2e8b57] focus:outline-none"
-                            />
-                        </div>
-
-                        <!-- Botón para registrar nueva aula -->
-                        <div>
-                            <button
-                                id="btn-nueva-aula"
-                                @click="openNewClassroomModal"
-                                class="inline-flex items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#257347]"
-                            >
-                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                                <span>+ Nueva Aula</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Tabla de Aulas -->
-                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-sm text-slate-700">
-                                <thead class="border-b border-slate-200 bg-slate-50 text-xs font-bold tracking-wider text-slate-600 uppercase">
-                                    <tr>
-                                        <th scope="col" class="py-4 pr-4 pl-6">Nombre del Aula</th>
-                                        <th scope="col" class="px-4 py-4">Sede Asignada</th>
-                                        <th scope="col" class="px-4 py-4">Capacidad (Aforo)</th>
-                                        <th scope="col" class="px-4 py-4">Horarios & Disponibilidad</th>
-                                        <th scope="col" class="py-4 pr-6 pl-4 text-right">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100">
-                                    <tr
-                                        v-for="room in filteredClassrooms"
-                                        :key="room.id"
-                                        class="transition hover:bg-emerald-50/40"
-                                    >
-                                        <td class="py-4 pr-4 pl-6">
-                                            <div class="text-base font-bold text-slate-900">{{ room.name }}</div>
-                                        </td>
-
-                                        <td class="px-4 py-4 whitespace-nowrap">
-                                            <span class="inline-flex items-center gap-2 font-semibold text-slate-800">
-                                                <span class="h-2.5 w-2.5 rounded-full" :class="room.branch_name.includes('Comas') ? 'bg-[#2e8b57]' : 'bg-teal-600'"></span>
-                                                {{ room.branch_name }}
-                                            </span>
-                                        </td>
-
-                                        <td class="px-4 py-4 whitespace-nowrap font-mono font-bold text-slate-900">
-                                            <span v-if="room.capacity">{{ room.capacity }} vacantes</span>
-                                            <span v-else class="text-slate-400 font-normal italic">Sin límite</span>
-                                        </td>
-
-                                        <td class="px-4 py-4 whitespace-nowrap">
-                                            <button
-                                                @click="viewRoomAvailability(room)"
-                                                class="inline-flex items-center gap-1.5 text-xs font-bold text-[#2e8b57] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-md transition"
-                                            >
-                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
-                                                <span>Ver disponibilidad</span>
-                                            </button>
-                                        </td>
-
-                                        <td class="py-4 pr-6 pl-4 text-right whitespace-nowrap">
-                                            <button
-                                                @click="openEditClassroomModal(room)"
-                                                class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-[#2e8b57] transition"
-                                            >
-                                                <svg class="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                                </svg>
-                                                <span>Editar Aula</span>
-                                            </button>
-                                        </td>
-                                    </tr>
-
-                                    <tr v-if="filteredClassrooms.length === 0">
-                                        <td colspan="5" class="py-12 text-center text-slate-500 font-medium">
-                                            No se encontraron aulas en la sede seleccionada.
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                <!-- 1. SECCIÓN INDEPENDIENTE: SEDES & AULAS -->
+                <div v-if="activeMainTab === 'infraestructura'">
+                    <SedesAulasView
+                        :branches="branches"
+                        :classrooms="classrooms"
+                        v-model:selected-branch-id="selectedBranchId"
+                        @notify="triggerToast"
+                    />
                 </div>
 
                 <!-- 2. SECCIÓN INDEPENDIENTE: OFERTA ACADÉMICA (CARRERAS / MÓDULOS / TALLERES) -->
@@ -888,137 +750,5 @@ function saveModalData() {
             </main>
         </div>
 
-        <!-- MODAL: VER DISPONIBILIDAD DEL AULA -->
-        <div
-            v-if="showScheduleModal && selectedRoomForSchedule"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
-            @click.self="showScheduleModal = false"
-        >
-            <div class="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-7 shadow-2xl space-y-5">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-[#2e8b57]">
-                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-black text-slate-900">{{ selectedRoomForSchedule.name }}</h3>
-                            <p class="text-xs text-slate-500 font-medium">
-                                {{ selectedRoomForSchedule.branch_name }} &bull; Aforo: {{ selectedRoomForSchedule.capacity }} vacantes
-                            </p>
-                        </div>
-                    </div>
-                    <button
-                        @click="showScheduleModal = false"
-                        class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                    >
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="space-y-3">
-                    <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Cursos Programados en este Ambiente (course_schedules)
-                    </h4>
-
-                    <div v-if="selectedRoomForSchedule.current_scheduled_courses.length > 0" class="space-y-2">
-                        <div
-                            v-for="(sched, idx) in selectedRoomForSchedule.current_scheduled_courses"
-                            :key="idx"
-                            class="flex items-center justify-between p-3.5 rounded-lg border border-emerald-100 bg-emerald-50/50"
-                        >
-                            <span class="text-sm font-bold text-slate-800">{{ sched }}</span>
-                            <span class="rounded bg-emerald-100 text-[#2e8b57] text-xs font-bold px-2 py-0.5">En curso</span>
-                        </div>
-                    </div>
-                    <div v-else class="p-6 text-center text-slate-400 text-sm font-medium bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                        No hay cursos activos ocupando este ambiente actualmente. Totalmente disponible.
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-end border-t border-slate-100 pt-4">
-                    <button
-                        @click="showScheduleModal = false"
-                        class="rounded-lg bg-slate-800 hover:bg-slate-900 px-5 py-2 text-sm font-bold text-white transition"
-                    >
-                        Cerrar
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- MODAL GENÉRICO DE AULA -->
-        <div
-            v-if="showModal"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
-            @click.self="showModal = false"
-        >
-            <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
-                    <h3 class="text-lg font-bold text-slate-900">{{ modalEntityTitle }}</h3>
-                    <button
-                        @click="showModal = false"
-                        class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                    >
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-
-                <form @submit.prevent="saveModalData" class="mt-5 space-y-4">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-800">Nombre del Aula</label>
-                        <input
-                            type="text"
-                            required
-                            placeholder="Ej. Aula 102 - Teoría"
-                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
-                        />
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-bold text-slate-800">Sede</label>
-                            <select
-                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none font-semibold"
-                            >
-                                <option v-for="branch in branches" :key="branch.id" :value="branch.id">
-                                    {{ branch.name }}
-                                </option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-bold text-slate-800">Capacidad / Aforo</label>
-                            <input
-                                type="number"
-                                placeholder="Ej. 30 vacantes"
-                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
-                            />
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-end gap-3 border-t border-slate-100 pt-5 mt-6">
-                        <button
-                            type="button"
-                            @click="showModal = false"
-                            class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            type="submit"
-                            class="rounded-lg bg-[#2e8b57] hover:bg-[#257347] px-5 py-2 text-sm font-bold text-white shadow-xs transition"
-                        >
-                            Guardar
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
     </div>
 </template>

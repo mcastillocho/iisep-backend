@@ -94,10 +94,26 @@ function handleCurricularTabSelect(tab: CurricularTab) {
 
             <!-- Navigation Groups -->
             <nav class="px-4 py-4 space-y-4">
-                <!-- GRUPO 1: SEDES & AULAS (COLAPSABLE BAJO UN MISMO TÍTULO) -->
+                <!-- GRUPO 1: OFERTA ACADÉMICA / CURSOS (ALTA FRECUENCIA) -->
                 <div>
                     <div class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase">
-                        Ambientes & Sedes
+                        Cursos
+                    </div>
+
+                    <OfertaAcademicaMenu
+                        :active-main-tab="activeMainTab"
+                        :active-curricular-tab="activeCurricularTab"
+                        :careers-count="careersCount"
+                        :modules-count="modulesCount"
+                        :courses-count="coursesCount"
+                        @select-curricular="handleCurricularTabSelect"
+                    />
+                </div>
+
+                <!-- GRUPO 2: SEDES & AULAS (BAJA FRECUENCIA DE MODIFICACIÓN) -->
+                <div>
+                    <div class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase">
+                        Ambientes
                     </div>
 
                     <div class="space-y-1">
@@ -161,22 +177,6 @@ function handleCurricularTabSelect(tab: CurricularTab) {
                             </button>
                         </div>
                     </div>
-                </div>
-
-                <!-- GRUPO 2: OFERTA ACADÉMICA (COMPONENTE INDEPENDIENTE CON DESPLEGABLE) -->
-                <div>
-                    <div class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase">
-                        Cursos
-                    </div>
-
-                    <OfertaAcademicaMenu
-                        :active-main-tab="activeMainTab"
-                        :active-curricular-tab="activeCurricularTab"
-                        :careers-count="careersCount"
-                        :modules-count="modulesCount"
-                        :courses-count="coursesCount"
-                        @select-curricular="handleCurricularTabSelect"
-                    />
                 </div>
 
                 <!-- GRUPO 3: OPERACIONES DIARIAS -->

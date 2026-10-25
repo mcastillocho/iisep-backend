@@ -11,31 +11,39 @@ resources/js/
 ├── components/
 │   └── Admin/
 │       ├── Sidebar/
-│       │   ├── Sidebar.vue                # Sidebar vertical institucional completo
+│       │   ├── Sidebar.vue                # Sidebar vertical institucional con orden por frecuencia de uso
 │       │   └── OfertaAcademicaMenu.vue    # Menú colapsable específico para Carreras/Módulos/Talleres
 │       └── Pages/
-│           └── OfertaAcademicaView.vue    # Vista completa e independiente de Oferta Académica
+│           ├── OfertaAcademicaView.vue    # Vista completa e independiente de Oferta Académica (Carreras/Módulos/Talleres)
+│           └── SedesAulasView.vue         # Vista completa e independiente de Sedes y Aulas (estilo tarjetas y editor)
 └── pages/
     └── Admin/
-        ├── Index.vue                      # Dashboard central (/admin) con Sedes, Aulas, etc.
-        └── OfertaAcademica.vue            # Página autónoma de Inertia (/admin/oferta-academica)
+        ├── Index.vue                      # Dashboard central (/admin) modular y desacoplado
+        ├── OfertaAcademica.vue            # Página autónoma de Inertia (/admin/oferta-academica)
+        └── SedesAulas.vue                 # Página autónoma de Inertia (/admin/sedes-aulas)
 ```
 
 ---
 
 ## 2. Decisiones de Diseño y Desacoplamiento
 
-1. **Sidebar Independiente (`components/Admin/Sidebar/Sidebar.vue`)**:
-   - Centraliza la cabecera institucional oficial con los colores del IISEP (`#2e8b57`), navegación lateral por grupos lógicos, selector de ambientes por sede y perfil del usuario.
+1. **Sidebar con Orden por Frecuencia de Uso (`components/Admin/Sidebar/Sidebar.vue`)**:
+   - Centraliza la cabecera institucional oficial con los colores del IISEP (`#2e8b57`), navegación lateral y perfil del usuario.
+   - **Orden por Frecuencia de Uso**: Al tener baja modificación la infraestructura física, **Cursos (Oferta Académica)** se posiciona prioritariamente arriba, y **Ambientes** se ubica debajo.
    - **Comportamiento Fijo e Independiente**: Posee altura fija de pantalla (`h-screen`, `md:sticky top-0`) con scroll interno autónomo (`overflow-y-auto flex-1`). Esto garantiza que al hacer scroll en la página principal, el sidebar se mantenga anclado a la izquierda y el pie con los datos del usuario permanezca siempre visible al fondo del viewport (`shrink-0`).
-   - Es reutilizable en cualquier página del panel administrativo.
 
-2. **Menú Autónomo de Oferta Académica (`OfertaAcademicaMenu.vue`)**:
+2. **Vista Integral de Sedes y Aulas (`components/Admin/Pages/SedesAulasView.vue`)**:
+   - **Panel de Todas las Sedes (Estilo Carreras)**: Muestra cada sede como una tarjeta con su código institucional (`code`), dirección física (`address`), teléfono (`phone`), contador de ambientes y píldoras con las aulas existentes y sus vacantes.
+   - **Botón "+ Nueva Sede"**: Modal con formulario para registrar una nueva sede física con los campos de la base de datos (`name`, `code`, `address`, `phone`).
+   - **Editor Detallado de Sede**: Permite actualizar los datos físicos de la sede y gestionar directamente sus aulas (agregar nueva aula, editarla o eliminarla con aforo calculado en tiempo real).
+   - **Modal de Disponibilidad**: Permite consultar los horarios y cursos programados (`course_schedules`) en cada ambiente.
+
+3. **Menú Autónomo de Oferta Académica (`OfertaAcademicaMenu.vue`)**:
    - Opera como un submenú desplegable (acordeón) bajo un único título ("Oferta Académica"), similar al comportamiento de *Sedes & Aulas*.
    - Presenta las pestañas hijas: **Carreras**, **Módulos** y **Talleres** con sus contadores en tiempo real.
    - Está separado del resto de enlaces simples porque maneja su propio estado de apertura/cierre y eventos de navegación interna (`@select-curricular`).
 
-3. **Vista Integral de Oferta Académica (`components/Admin/Pages/OfertaAcademicaView.vue`)**:
+4. **Vista Integral de Oferta Académica (`components/Admin/Pages/OfertaAcademicaView.vue`)**:
    - Encapsula toda la interactividad del catálogo educativo:
      - Buscadores específicos por pestaña.
      - **Editor de Carrera**: gestión de vacantes, asignación de sedes habilitadas, secuencia de módulos correlativos con orden cronológico (`order: 1, 2, ...`), controles de subir/bajar orden y cálculo automático de duración en semanas (de solo lectura).
