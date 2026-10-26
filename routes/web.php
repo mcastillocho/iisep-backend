@@ -34,6 +34,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function (): void {
     Route::delete('/cursos-aperturados/{scheduledCourse}', [ScheduledCourseController::class, 'destroy'])->name('admin.scheduled-courses.destroy');
     Route::post('/matriculas', [ScheduledCourseController::class, 'storeEnrollment'])->name('admin.enrollments.store');
     Route::put('/matriculas/{enrollment}/status', [ScheduledCourseController::class, 'updateEnrollmentStatus'])->name('admin.enrollments.status');
+    Route::delete('/matriculas/{enrollment}', [ScheduledCourseController::class, 'destroyEnrollment'])->name('admin.enrollments.destroy');
+    Route::get('/estudiantes/buscar-dni', [ScheduledCourseController::class, 'searchStudentByDni'])->name('admin.students.search');
 
     // Oferta Académica, Carreras, Módulos y Talleres
     Route::get('/oferta-academica', [AcademicOfferController::class, 'index'])->name('admin.oferta-academica');

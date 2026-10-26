@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 import Sidebar from '../../components/Admin/Sidebar/Sidebar.vue';
 import OfertaAcademicaView from '../../components/Admin/Pages/OfertaAcademicaView.vue';
 import SedesAulasView from '../../components/Admin/Pages/SedesAulasView.vue';
+import AperturasView from '../../components/Admin/Pages/AperturasView.vue';
 import MatriculasView, {
     type EnrollmentRecord,
     type ScheduledCourseItem,
@@ -344,23 +345,19 @@ function triggerToast(msg: string) {
                 <!-- 3. SECCIÓN INDEPENDIENTE: MATRÍCULAS -->
                 <div v-if="activeMainTab === 'matriculas'">
                     <MatriculasView
-                        active-tab="inscripciones"
                         :branches="branches"
                         :classrooms="classrooms"
                         :courses="coursesList"
-                        :teachers="teachers"
                         :scheduled-courses="scheduledCourses"
                         :enrollments="enrollments"
                         :selected-branch-id="selectedBranchId"
-                        :show-subtabs-nav="false"
                         @notify="triggerToast"
                     />
                 </div>
 
                 <!-- 4. SECCIÓN INDEPENDIENTE: APERTURA DE CURSOS Y AULAS (LISTA) -->
                 <div v-if="activeMainTab === 'aperturas'">
-                    <MatriculasView
-                        active-tab="aperturas"
+                    <AperturasView
                         :branches="branches"
                         :classrooms="classrooms"
                         :courses="coursesList"
@@ -368,7 +365,6 @@ function triggerToast(msg: string) {
                         :scheduled-courses="scheduledCourses"
                         :enrollments="enrollments"
                         :selected-branch-id="selectedBranchId"
-                        :show-subtabs-nav="false"
                         @notify="triggerToast"
                     />
                 </div>
@@ -442,7 +438,7 @@ function triggerToast(msg: string) {
                             class="flex items-center gap-2 border-b border-slate-100 pb-3"
                         >
                             <div
-                                class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 text-purple-700"
+                                class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-[#2e8b57]"
                             >
                                 <svg
                                     class="h-6 w-6"
@@ -459,21 +455,11 @@ function triggerToast(msg: string) {
                                 </svg>
                             </div>
                             <h3 class="text-base font-bold text-slate-900">
-                                Lógica de Convalidación Atómica en Base de Datos
+                                Certificación y Acreditación Modular
                             </h3>
                         </div>
                         <p class="mt-3 text-sm leading-relaxed text-slate-700">
-                            En el CETPRO IISEP, las convalidaciones se almacenan
-                            directamente en la tabla
-                            <code
-                                class="rounded bg-slate-100 px-1 py-0.5 font-mono font-bold text-slate-900"
-                                >enrollments</code
-                            >
-                            mediante el valor de enum
-                            <code
-                                class="rounded bg-purple-50 px-1 py-0.5 font-mono font-bold text-purple-700"
-                                >'convalidado'</code
-                            >.
+                            En el CETPRO IISEP, los estudiantes acreditan sus módulos formativos completando los cursos dictados en cada periodo o presentando convalidaciones reconocidas por resolución institucional.
                         </p>
                         <div
                             class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4"
@@ -481,18 +467,10 @@ function triggerToast(msg: string) {
                             <h4
                                 class="text-xs font-bold tracking-wider text-[#2e8b57] uppercase"
                             >
-                                Cálculo de Certificado Modular Oficial
+                                Requisito de Emisión de Certificado
                             </h4>
-                            <code
-                                class="mt-2 block rounded-lg border border-emerald-200 bg-white p-3 font-mono text-sm font-bold text-[#2e8b57] shadow-2xs"
-                            >
-                                status IN ('completado', 'convalidado')
-                            </code>
                             <p class="mt-2 text-xs text-slate-600">
-                                Si todos los cursos pertenecientes al módulo
-                                cumplen esta condición, el sistema acredita el
-                                módulo sin requerir repetir materias ya
-                                sustentadas.
+                                Cuando un estudiante tiene todos los cursos del módulo en condición regular completada o formalmente convalidada, se habilita la emisión del Certificado Modular oficial sin requerir recursado de contenidos ya aprobados.
                             </p>
                         </div>
                     </div>

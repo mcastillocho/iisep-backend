@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import AperturasView from '../../components/Admin/Pages/AperturasView.vue';
 import MatriculasView, {
     Branch,
     Classroom,
@@ -172,14 +173,10 @@ function triggerToast(message: string) {
                 </div>
             </header>
 
-            <!-- MAIN BODY: PÁGINA INDEPENDIENTE DE MATRÍCULAS -->
+            <!-- MAIN BODY: PÁGINA INDEPENDIENTE DE MATRÍCULAS O APERTURAS -->
             <main class="max-w-7xl flex-1 space-y-6 p-8">
-                <MatriculasView
-                    :active-tab="
-                        activeMainTab === 'aperturas'
-                            ? 'aperturas'
-                            : 'inscripciones'
-                    "
+                <AperturasView
+                    v-if="activeMainTab === 'aperturas'"
                     :branches="props.branches"
                     :classrooms="props.classrooms"
                     :courses="props.coursesList"
@@ -187,15 +184,18 @@ function triggerToast(message: string) {
                     :scheduled-courses="props.scheduledCourses"
                     :enrollments="props.enrollments"
                     :selected-branch-id="selectedBranchId"
-                    :show-subtabs-nav="false"
                     @notify="triggerToast"
-                    @update:active-tab="
-                        (tab) =>
-                            (activeMainTab =
-                                tab === 'aperturas'
-                                    ? 'aperturas'
-                                    : 'matriculas')
-                    "
+                />
+
+                <MatriculasView
+                    v-else
+                    :branches="props.branches"
+                    :classrooms="props.classrooms"
+                    :courses="props.coursesList"
+                    :scheduled-courses="props.scheduledCourses"
+                    :enrollments="props.enrollments"
+                    :selected-branch-id="selectedBranchId"
+                    @notify="triggerToast"
                 />
             </main>
         </div>

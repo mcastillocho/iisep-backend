@@ -315,3 +315,60 @@ test('admin dashboard includes scheduled courses and enrollments', function () {
         ->has('enrollments')
     );
 });
+
+test('staff can search student by dni', function () {
+    $admin = createStaffUser('admin_search', 'admin', null);
+    $userStudent = User::create([
+        'first_name' => 'Marcos',
+        'paternal_surname' => 'Soto',
+        'document' => '74819203',
+        'document_type' => DocumentType::DNI,
+        'username' => 'msoto',
+        'password' => bcrypt('password'),
+    ]);
+
+    $response = $this->actingAs($admin)->getJson(route('admin.students.search', ['document' => '74819203']));
+
+    $response->assertOk();
+    $response->assertJson([
+        'found' => true,
+        'document' => '74819203',
+        'full_name' => 'Marcos Soto',
+        'already_enrolled' => false,
+    ]);
+});
+
+test('staff can withdraw student enrollment from scheduled course', function () {
+    $branch = Branch::create(['name' => 'Sede Central', 'code' => 'CEN']);
+    $coord = createStaffUser('coord_withdraw', 'coord', $branch->id);
+    $course = Course::create(['name' => 'Curso Baja', 'duration_in_weeks' => 2, 'is_workshop' => true]);
+
+    $sc = ScheduledCourse::create([
+        'branch_id' => $branch->id,
+        'course_id' => $course->id,
+        'start_date' => '2026-11-01',
+        'end_date' => '2026-11-30',
+    ]);
+
+    $userStudent = User::create([
+        'first_name' => 'Pedro',
+        'paternal_surname' => 'Navarro',
+        'document' => '75619283',
+        'document_type' => DocumentType::DNI,
+        'username' => 'pnavarro',
+        'password' => bcrypt('password'),
+    ]);
+    $student = Student::create(['user_id' => $userStudent->id]);
+
+    $enrollment = Enrollment::create([
+        'scheduled_course_id' => $sc->id,
+        'student_id' => $student->id,
+        'enrollment_date' => '2026-11-01',
+        'status' => EnrollmentStatus::ACTIVO,
+    ]);
+
+    $response = $this->actingAs($coord)->delete(route('admin.enrollments.destroy', $enrollment));
+
+    $response->assertSessionHasNoErrors();
+    $this->assertSoftDeleted('enrollments', ['id' => $enrollment->id]);
+});

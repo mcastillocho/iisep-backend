@@ -17,6 +17,7 @@ use App\Models\ScheduledCourse;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -246,13 +247,12 @@ class ScheduledCourseController extends Controller
             'classroom_id' => ['required', 'integer', 'exists:classrooms,id'],
             'teacher_id' => ['nullable', 'integer', 'exists:teachers,id'],
             'start_date' => ['required', 'date'],
-            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'end_date' => ['nullable', 'date'],
             'days' => ['required', 'array', 'min:1'],
             'days.*' => ['required', Rule::enum(DayOfWeek::class)],
             'start_time' => ['required', 'string'],
             'end_time' => ['required', 'string'],
         ], [
-            'end_date.after_or_equal' => 'La fecha de fin debe ser posterior o igual a la fecha de inicio.',
             'days.min' => 'Debe seleccionar al menos un día de la semana para el horario de clases.',
         ]);
 
@@ -271,12 +271,18 @@ class ScheduledCourseController extends Controller
             ]);
         }
 
+        // Cálculo seguro de fecha de fin según la duración curricular oficial del curso (evita inyecciones)
+        $course = Course::findOrFail($validated['course_id']);
+        $durationWeeks = (int) ($course->duration_in_weeks ?: 4);
+        $startDate = Carbon::parse($validated['start_date'], 'America/Lima');
+        $calculatedEndDate = $startDate->copy()->addWeeks($durationWeeks)->toDateString();
+
         $scheduledCourse = ScheduledCourse::create([
             'branch_id' => $validated['branch_id'],
             'course_id' => $validated['course_id'],
             'teacher_id' => $validated['teacher_id'] ?? null,
             'start_date' => $validated['start_date'],
-            'end_date' => $validated['end_date'],
+            'end_date' => $calculatedEndDate,
         ]);
 
         foreach ($validated['days'] as $dayVal) {
@@ -315,7 +321,7 @@ class ScheduledCourseController extends Controller
             'classroom_id' => ['required', 'integer', 'exists:classrooms,id'],
             'teacher_id' => ['nullable', 'integer', 'exists:teachers,id'],
             'start_date' => ['required', 'date'],
-            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'end_date' => ['nullable', 'date'],
             'days' => ['required', 'array', 'min:1'],
             'days.*' => ['required', Rule::enum(DayOfWeek::class)],
             'start_time' => ['required', 'string'],
@@ -337,12 +343,18 @@ class ScheduledCourseController extends Controller
             ]);
         }
 
+        // Cálculo seguro de fecha de fin según la duración curricular oficial del curso (evita inyecciones)
+        $course = Course::findOrFail($validated['course_id']);
+        $durationWeeks = (int) ($course->duration_in_weeks ?: 4);
+        $startDate = Carbon::parse($validated['start_date'], 'America/Lima');
+        $calculatedEndDate = $startDate->copy()->addWeeks($durationWeeks)->toDateString();
+
         $scheduledCourse->update([
             'branch_id' => $validated['branch_id'],
             'course_id' => $validated['course_id'],
             'teacher_id' => $validated['teacher_id'] ?? null,
             'start_date' => $validated['start_date'],
-            'end_date' => $validated['end_date'],
+            'end_date' => $calculatedEndDate,
         ]);
 
         // Recrear horarios del curso
@@ -408,10 +420,10 @@ class ScheduledCourseController extends Controller
 
         $validated = $request->validate([
             'scheduled_course_id' => ['required', 'integer', 'exists:scheduled_courses,id'],
-            'student_full_name' => ['required', 'string', 'max:255'],
+            'student_full_name' => ['nullable', 'string', 'max:255'],
             'student_document' => ['required', 'string', 'max:20'],
-            'enrollment_date' => ['required', 'date'],
-            'status' => ['required', Rule::enum(EnrollmentStatus::class)],
+            'enrollment_date' => ['nullable', 'date'],
+            'status' => ['nullable', Rule::enum(EnrollmentStatus::class)],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -420,7 +432,14 @@ class ScheduledCourseController extends Controller
         $userStudent = User::where('document', $cleanDocument)->first();
 
         if (! $userStudent) {
-            $nameParts = explode(' ', trim($validated['student_full_name']));
+            $fullName = trim((string) ($validated['student_full_name'] ?? ''));
+            if ($fullName === '') {
+                return back()->withErrors([
+                    'student_document' => 'El estudiante no está registrado. Ingrese los nombres y apellidos para darlo de alta.',
+                ]);
+            }
+
+            $nameParts = explode(' ', $fullName);
             $firstName = $nameParts[0] ?? 'Estudiante';
             $paternal = $nameParts[1] ?? 'IISEP';
             $maternal = $nameParts[2] ?? null;
@@ -440,15 +459,89 @@ class ScheduledCourseController extends Controller
             'user_id' => $userStudent->id,
         ]);
 
+        // Evitar matrícula duplicada activa en la misma apertura
+        $alreadyEnrolled = Enrollment::where('student_id', $student->id)
+            ->where('scheduled_course_id', $scheduledCourse->id)
+            ->whereNotIn('status', [EnrollmentStatus::RETIRADO->value, EnrollmentStatus::ANULADO->value])
+            ->exists();
+
+        if ($alreadyEnrolled) {
+            return back()->withErrors([
+                'student_document' => "El estudiante {$userStudent->full_name} ya está matriculado en este curso aperturado.",
+            ]);
+        }
+
+        $enrollmentDate = ! empty($validated['enrollment_date'])
+            ? $validated['enrollment_date']
+            : Carbon::now('America/Lima')->toDateString();
+
+        $status = ! empty($validated['status'])
+            ? EnrollmentStatus::from($validated['status'])
+            : EnrollmentStatus::ACTIVO;
+
         Enrollment::create([
             'scheduled_course_id' => $scheduledCourse->id,
             'student_id' => $student->id,
             'module_id' => $scheduledCourse->course?->module_id,
-            'enrollment_date' => $validated['enrollment_date'],
-            'status' => EnrollmentStatus::from($validated['status']),
+            'enrollment_date' => $enrollmentDate,
+            'status' => $status,
+            'notes' => $validated['notes'] ?? null,
         ]);
 
-        return back()->with('success', "Matrícula de {$userStudent->first_name} registrada exitosamente.");
+        return back()->with('success', "Estudiante {$userStudent->full_name} matriculado exitosamente.");
+    }
+
+    /**
+     * Búsqueda rápida de alumno por DNI para prellenado y validación en aperturas.
+     */
+    public function searchStudentByDni(Request $request): JsonResponse
+    {
+        $document = trim((string) $request->input('document'));
+        if (strlen($document) < 6) {
+            return response()->json(['found' => false]);
+        }
+
+        $user = User::where('document', $document)->first();
+        if (! $user) {
+            return response()->json(['found' => false]);
+        }
+
+        $courseId = $request->input('scheduled_course_id');
+        $isEnrolled = false;
+        if ($courseId && $user->student) {
+            $isEnrolled = Enrollment::where('student_id', $user->student->id)
+                ->where('scheduled_course_id', (int) $courseId)
+                ->whereNotIn('status', [EnrollmentStatus::RETIRADO->value, EnrollmentStatus::ANULADO->value])
+                ->exists();
+        }
+
+        return response()->json([
+            'found' => true,
+            'document' => $user->document,
+            'full_name' => $user->full_name,
+            'already_enrolled' => $isEnrolled,
+        ]);
+    }
+
+    /**
+     * Retira / elimina una matrícula de un curso aperturado.
+     */
+    public function destroyEnrollment(Request $request, Enrollment $enrollment): RedirectResponse
+    {
+        $staff = $request->user()?->staff;
+        if (! $staff) {
+            abort(403, 'Acceso denegado: no cuenta con perfil administrativo.');
+        }
+
+        $branchId = $enrollment->scheduledCourse?->branch_id;
+        if (! $staff->isAdmin() && ! $staff->isCoordinador($branchId) && ! $staff->isSecretaria($branchId)) {
+            abort(403, 'No tiene autorización para retirar matrículas en esta sede.');
+        }
+
+        $studentName = $enrollment->student?->user?->full_name ?? 'Estudiante';
+        $enrollment->delete();
+
+        return back()->with('success', "Matrícula de {$studentName} retirada correctamente.");
     }
 
     /**
