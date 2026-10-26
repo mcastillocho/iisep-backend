@@ -6,128 +6,22 @@ import MatriculasView, {
     Classroom,
     CourseOption,
     EnrollmentRecord,
+    ScheduledCourseItem,
+    TeacherItem,
 } from '../../components/Admin/Pages/MatriculasView.vue';
 import Sidebar from '../../components/Admin/Sidebar/Sidebar.vue';
 
-// --- DATOS MOCK INSTITUCIONALES ---
-const branches = ref<Branch[]>([
-    {
-        id: 1,
-        name: 'Sede Comas',
-        code: 'COM',
-        address: 'Av. Túpac Amaru 3845 (Frente a la Reniec de Comas)',
-        phone: '944206945',
-    },
-    {
-        id: 2,
-        name: 'Sede Puente Piedra',
-        code: 'PUP',
-        address: 'Jr. Ricardo Palma 241 (2° piso de la RENIEC)',
-        phone: '987710344',
-    },
-]);
+interface Props {
+    branches: Branch[];
+    classrooms: Classroom[];
+    coursesList: CourseOption[];
+    teachers: TeacherItem[];
+    scheduledCourses: ScheduledCourseItem[];
+    enrollments: EnrollmentRecord[];
+    initialTab?: 'inscripciones' | 'aperturas';
+}
 
-const classrooms = ref<Classroom[]>([
-    { id: 1, branch_id: 1, name: 'Aula 101 - Teoría', capacity: 35 },
-    { id: 2, branch_id: 1, name: 'Laboratorio de Cómputo 1', capacity: 24 },
-    { id: 3, branch_id: 2, name: 'Aula 201 - Multiusos', capacity: 30 },
-    {
-        id: 4,
-        branch_id: 2,
-        name: 'Taller de Estética y Cosmetología',
-        capacity: 20,
-    },
-]);
-
-const coursesList = ref<CourseOption[]>([
-    {
-        id: 1,
-        name: 'Excel Avanzado y Macros',
-        duration_in_weeks: 4,
-        module_name: 'Ofimática Empresarial',
-        is_workshop: false,
-    },
-    {
-        id: 2,
-        name: 'Arquitectura de Hardware y Diagnóstico',
-        duration_in_weeks: 4,
-        module_name: 'Ensamblaje y Mantenimiento de PC',
-        is_workshop: false,
-    },
-    {
-        id: 3,
-        name: 'Taller de Barber Shop y Cortes Urbanos',
-        duration_in_weeks: 6,
-        is_workshop: true,
-    },
-    {
-        id: 4,
-        name: 'Taller de Uñas Acrílicas y Polygel',
-        duration_in_weeks: 4,
-        is_workshop: true,
-    },
-    {
-        id: 5,
-        name: 'Taller de Reparación de Celulares y Tablets',
-        duration_in_weeks: 8,
-        is_workshop: true,
-    },
-]);
-
-const enrollments = ref<EnrollmentRecord[]>([
-    {
-        id: 1,
-        scheduled_course_id: 2,
-        student_full_name: 'Diego Mendoza Salazar',
-        student_document: '76543210',
-        course_name: 'Arquitectura de Hardware y Diagnóstico',
-        module_name: 'Ensamblaje y Mantenimiento de PC',
-        career_name: 'Computación e Informática',
-        branch_name: 'Sede Comas',
-        enrollment_date: '2026-10-01',
-        status: 'activo',
-        notes: 'Apoderado: Juan Carlos Mendoza',
-    },
-    {
-        id: 2,
-        scheduled_course_id: 2,
-        student_full_name: 'Valeria Rios Flores',
-        student_document: '78901234',
-        course_name: 'Arquitectura de Hardware y Diagnóstico',
-        module_name: 'Ensamblaje y Mantenimiento de PC',
-        career_name: 'Computación e Informática',
-        branch_name: 'Sede Comas',
-        enrollment_date: '2026-10-01',
-        status: 'activo',
-        notes: null,
-    },
-    {
-        id: 3,
-        scheduled_course_id: 1,
-        student_full_name: 'Valeria Rios Flores',
-        student_document: '78901234',
-        course_name: 'Excel Avanzado y Macros',
-        module_name: 'Ofimática Empresarial',
-        career_name: 'Computación e Informática',
-        branch_name: 'Sede Comas',
-        enrollment_date: '2026-03-05',
-        status: 'convalidado',
-        notes: 'Convalidado por estudios previos',
-    },
-    {
-        id: 4,
-        scheduled_course_id: 1,
-        student_full_name: 'Carlos Alberto Gomez Paredes',
-        student_document: '34567890',
-        course_name: 'Excel Avanzado y Macros',
-        module_name: 'Ofimática Empresarial',
-        career_name: null,
-        branch_name: 'Sede Comas',
-        enrollment_date: '2026-10-02',
-        status: 'activo',
-        notes: 'Módulo independiente libre (Docente IISEP)',
-    },
-]);
+const props = defineProps<Props>();
 
 type CurricularTab = 'carreras' | 'modulos' | 'talleres';
 const activeCurricularTab = ref<CurricularTab>('carreras');
@@ -139,7 +33,7 @@ const activeMainTab = ref<
     | 'aperturas'
     | 'asistencia'
     | 'resumen'
->('matriculas');
+>(props.initialTab === 'aperturas' ? 'aperturas' : 'matriculas');
 const selectedBranchId = ref<number | 'all'>('all');
 
 function handleMainTabChange(tab: string) {
@@ -242,13 +136,13 @@ function triggerToast(message: string) {
             v-model:active-curricular-tab="activeCurricularTab"
             v-model:selected-branch-id="selectedBranchId"
             v-model:is-mobile-open="isMobileSidebarOpen"
-            :branches="branches"
-            :classrooms-count="classrooms.length"
+            :branches="props.branches"
+            :classrooms-count="props.classrooms.length"
             :careers-count="3"
             :modules-count="5"
-            :courses-count="coursesList.length"
-            :enrollments-count="enrollments.length"
-            :scheduled-courses-count="4"
+            :courses-count="props.coursesList.length"
+            :enrollments-count="props.enrollments.length"
+            :scheduled-courses-count="props.scheduledCourses.length"
             @update:active-main-tab="handleMainTabChange"
         />
 
@@ -286,10 +180,12 @@ function triggerToast(message: string) {
                             ? 'aperturas'
                             : 'inscripciones'
                     "
-                    :branches="branches"
-                    :classrooms="classrooms"
-                    :courses="coursesList"
-                    :enrollments="enrollments"
+                    :branches="props.branches"
+                    :classrooms="props.classrooms"
+                    :courses="props.coursesList"
+                    :teachers="props.teachers"
+                    :scheduled-courses="props.scheduledCourses"
+                    :enrollments="props.enrollments"
                     :selected-branch-id="selectedBranchId"
                     :show-subtabs-nav="false"
                     @notify="triggerToast"

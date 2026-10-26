@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\BranchController;
 use App\Http\Controllers\Admin\CareerController;
 use App\Http\Controllers\Admin\ClassroomController;
 use App\Http\Controllers\Admin\ModuleController;
+use App\Http\Controllers\Admin\ScheduledCourseController;
 use App\Http\Controllers\Admin\WorkshopController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use Illuminate\Support\Facades\Route;
@@ -27,7 +28,12 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
 // Rutas Protegidas del Panel Administrativo (Requiere inicio de sesión de Staff)
 Route::middleware(['auth'])->prefix('admin')->group(function (): void {
     Route::get('/', [BranchController::class, 'dashboard'])->name('admin');
-    Route::inertia('/matriculas', 'Admin/Matriculas')->name('admin.matriculas');
+    Route::get('/matriculas', [ScheduledCourseController::class, 'index'])->name('admin.matriculas');
+    Route::post('/cursos-aperturados', [ScheduledCourseController::class, 'store'])->name('admin.scheduled-courses.store');
+    Route::put('/cursos-aperturados/{scheduledCourse}', [ScheduledCourseController::class, 'update'])->name('admin.scheduled-courses.update');
+    Route::delete('/cursos-aperturados/{scheduledCourse}', [ScheduledCourseController::class, 'destroy'])->name('admin.scheduled-courses.destroy');
+    Route::post('/matriculas', [ScheduledCourseController::class, 'storeEnrollment'])->name('admin.enrollments.store');
+    Route::put('/matriculas/{enrollment}/status', [ScheduledCourseController::class, 'updateEnrollmentStatus'])->name('admin.enrollments.status');
 
     // Oferta Académica, Carreras, Módulos y Talleres
     Route::get('/oferta-academica', [AcademicOfferController::class, 'index'])->name('admin.oferta-academica');

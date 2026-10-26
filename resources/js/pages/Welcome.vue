@@ -79,7 +79,7 @@ const branches = [
         address: 'Av. Túpac Amaru 3850 – La Pascana',
         reference: 'Al costado de Plaza Vea La Pascana',
         phones: ['970 518 364', '(01) 698-0498'],
-        schedule: 'Lunes a Sábado: 8:00 am - 8:00 pm',
+        schedule: 'Lunes a Domingo: 8:00 am - 8:00 pm',
         highlights: 'Talleres de cómputo equipados, cocina profesional y salones de estética.',
     },
     {
@@ -87,7 +87,7 @@ const branches = [
         address: 'Jr. Ricardo Palma 241',
         reference: '2do piso de la oficina RENIEC',
         phones: ['987 710 344'],
-        schedule: 'Lunes a Sábado: 8:00 am - 8:00 pm',
+        schedule: 'Lunes a Domingo: 8:00 am - 8:00 pm',
         highlights: 'Ubicación céntrica de rápido acceso con aulas climatizadas y talleres modernos.',
     },
 ];

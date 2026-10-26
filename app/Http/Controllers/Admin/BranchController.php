@@ -96,6 +96,7 @@ class BranchController extends Controller
         $data = array_merge(
             $this->getBranchData($request),
             AcademicOfferController::getOfferData($request),
+            ScheduledCourseController::getScheduledCourseData($request),
         );
 
         return Inertia::render('Admin/Index', $data);

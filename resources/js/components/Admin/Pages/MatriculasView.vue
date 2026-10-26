@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 export interface Branch {
@@ -25,6 +26,12 @@ export interface CourseOption {
     is_workshop: boolean;
 }
 
+export interface TeacherItem {
+    id: number;
+    full_name: string;
+    specialty: string;
+}
+
 export interface ScheduledCourseItem {
     id: number;
     course_id: number;
@@ -33,10 +40,14 @@ export interface ScheduledCourseItem {
     branch_name: string;
     classroom_id: number;
     classroom_name: string;
+    teacher_id?: number | null;
     teacher_name: string;
     start_date: string;
     end_date: string;
     day_of_week: string;
+    days?: string[];
+    start_time?: string;
+    end_time?: string;
     time_range: string;
     capacity: number;
     enrolled_count: number;
@@ -66,10 +77,22 @@ export interface EnrollmentRecord {
     notes: string | null;
 }
 
+interface AuthUser {
+    id: number;
+    username: string;
+    staff?: {
+        id: number;
+        branch_id: number | null;
+        position: string | null;
+    } | null;
+}
+
 interface Props {
     branches: Branch[];
     classrooms: Classroom[];
     courses: CourseOption[];
+    teachers?: TeacherItem[];
+    scheduledCourses?: ScheduledCourseItem[];
     enrollments: EnrollmentRecord[];
     selectedBranchId?: number | 'all';
     activeTab?: 'inscripciones' | 'aperturas';
@@ -77,6 +100,8 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+    teachers: () => [],
+    scheduledCourses: () => [],
     selectedBranchId: 'all',
     activeTab: 'inscripciones',
     showSubtabsNav: false,
@@ -103,77 +128,79 @@ function changeTab(tab: MatriculasTab) {
     emit('update:activeTab', tab);
 }
 
-// --- DATOS DE CURSOS APERTURADOS (MOCK BASADO EN scheduled_courses & course_schedules) ---
-const scheduledCourses = ref<ScheduledCourseItem[]>([
-    {
-        id: 1,
-        course_id: 1,
-        course_name: 'Excel Avanzado y Macros',
-        branch_id: 1,
-        branch_name: 'Sede Comas',
-        classroom_id: 1,
-        classroom_name: 'Aula 101 - Teoría',
-        teacher_name: 'Marco Antonio Rojas Quispe',
-        start_date: '2026-10-01',
-        end_date: '2026-10-31',
-        day_of_week: 'Martes y Jueves',
-        time_range: '18:00 - 20:00',
-        capacity: 35,
-        enrolled_count: 28,
-        status: 'en_curso',
-    },
-    {
-        id: 2,
-        course_id: 2,
-        course_name: 'Arquitectura de Hardware y Diagnóstico',
-        branch_id: 1,
-        branch_name: 'Sede Comas',
-        classroom_id: 2,
-        classroom_name: 'Laboratorio de Cómputo 1',
-        teacher_name: 'Marco Antonio Rojas Quispe',
-        start_date: '2026-10-01',
-        end_date: '2026-10-31',
-        day_of_week: 'Lunes y Miércoles',
-        time_range: '08:00 - 10:00',
-        capacity: 24,
-        enrolled_count: 20,
-        status: 'en_curso',
-    },
-    {
-        id: 3,
-        course_id: 3,
-        course_name: 'Taller de Barber Shop y Cortes Urbanos',
-        branch_id: 2,
-        branch_name: 'Sede Puente Piedra',
-        classroom_id: 3,
-        classroom_name: 'Aula 201 - Multiusos',
-        teacher_name: 'Carlos Alberto Gomez Paredes',
-        start_date: '2026-11-01',
-        end_date: '2026-12-15',
-        day_of_week: 'Sábados',
-        time_range: '14:00 - 18:00',
-        capacity: 30,
-        enrolled_count: 14,
-        status: 'programado',
-    },
-    {
-        id: 4,
-        course_id: 4,
-        course_name: 'Taller de Uñas Acrílicas y Polygel',
-        branch_id: 2,
-        branch_name: 'Sede Puente Piedra',
-        classroom_id: 4,
-        classroom_name: 'Taller de Estética y Cosmetología',
-        teacher_name: 'Patricia Silva Alvarado',
-        start_date: '2026-11-05',
-        end_date: '2026-12-05',
-        day_of_week: 'Lunes y Miércoles',
-        time_range: '16:00 - 19:00',
-        capacity: 20,
-        enrolled_count: 8,
-        status: 'programado',
-    },
-]);
+// Control de Perfiles y Autorizaciones
+const page = usePage<{ auth?: { user?: AuthUser } }>();
+
+const isAdmin = computed(() => {
+    const user = page.props.auth?.user;
+    if (!user?.staff) return false;
+    return user.staff.branch_id === null;
+});
+
+const isCoordinador = computed(() => {
+    const user = page.props.auth?.user;
+    if (!user?.staff) return false;
+    if (isAdmin.value) return true;
+    return user.staff.branch_id !== null && user.staff.position === 'coord';
+});
+
+const isSecretaria = computed(() => {
+    const user = page.props.auth?.user;
+    if (!user?.staff) return false;
+    return user.staff.branch_id !== null && user.staff.position === 'secre';
+});
+
+// REGLA CLAVE: "la secretaria puede matricular pero solo coordinacion puede crear uno nuevo curso/aula"
+const canManageAperturas = computed(() => {
+    if (isAdmin.value) return true;
+    if (isCoordinador.value) {
+        const staffBranch = page.props.auth?.user?.staff?.branch_id;
+        if (props.selectedBranchId === 'all') return true;
+        return staffBranch === props.selectedBranchId;
+    }
+    return false;
+});
+
+const canEnroll = computed(() => {
+    if (isAdmin.value) return true;
+    const staffBranch = page.props.auth?.user?.staff?.branch_id;
+    if (isCoordinador.value || isSecretaria.value) {
+        if (props.selectedBranchId === 'all') return true;
+        return staffBranch === props.selectedBranchId;
+    }
+    return false;
+});
+
+// --- ZONA HORARIA DE PERÚ (America/Lima) ---
+function getPeruToday(): string {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
+}
+
+function getPeruFutureDate(daysAhead: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() + daysAhead);
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(d);
+}
+
+function formatPeruDate(dateString: string): string {
+    if (!dateString) return '---';
+    const parts = dateString.split('-');
+    if (parts.length < 3) return dateString;
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
+    if (!year || !month || !day) return dateString;
+    const date = new Date(year, month - 1, day);
+    return new Intl.DateTimeFormat('es-PE', {
+        timeZone: 'America/Lima',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    }).format(date);
+}
+
+// Cursos programados computados desde props
+const scheduledCourses = computed(() => props.scheduledCourses);
 
 // --- 1. FILTROS Y ESTADOS PARA MATRÍCULAS ---
 const searchEnrollmentQuery = ref('');
@@ -209,66 +236,39 @@ const filteredEnrollments = computed(() => {
 
 // --- 2. MODAL NUEVA MATRÍCULA / CONVALIDACIÓN ---
 const showEnrollmentModal = ref(false);
-const enrollmentForm = ref({
+const enrollmentForm = useForm({
+    scheduled_course_id: 1,
     student_full_name: '',
     student_document: '',
-    scheduled_course_id: 1,
-    enrollment_date: new Date().toISOString().split('T')[0],
+    enrollment_date: getPeruToday(),
     status: 'activo' as EnrollmentStatus,
     notes: '',
 });
 
 function openNewEnrollmentModal(preselectedCourseId?: number) {
-    enrollmentForm.value = {
-        student_full_name: '',
-        student_document: '',
-        scheduled_course_id:
-            preselectedCourseId || scheduledCourses.value[0]?.id || 1,
-        enrollment_date: new Date().toISOString().split('T')[0],
-        status: 'activo',
-        notes: '',
-    };
+    if (!canEnroll.value) {
+        emit('notify', 'No cuenta con permisos para registrar matrículas en esta sede.');
+        return;
+    }
+    enrollmentForm.reset();
+    enrollmentForm.clearErrors();
+    enrollmentForm.scheduled_course_id =
+        preselectedCourseId || scheduledCourses.value[0]?.id || 1;
+    enrollmentForm.enrollment_date = getPeruToday();
+    enrollmentForm.status = 'activo';
+    enrollmentForm.notes = '';
     showEnrollmentModal.value = true;
 }
 
 function saveNewEnrollment() {
-    if (
-        !enrollmentForm.value.student_full_name.trim() ||
-        !enrollmentForm.value.student_document.trim()
-    )
-        return;
-    const sched = scheduledCourses.value.find(
-        (s) => s.id === Number(enrollmentForm.value.scheduled_course_id),
-    );
-    const newId =
-        props.enrollments.length > 0
-            ? Math.max(...props.enrollments.map((e) => e.id)) + 1
-            : 1;
-
-    props.enrollments.unshift({
-        id: newId,
-        scheduled_course_id: enrollmentForm.value.scheduled_course_id,
-        student_full_name: enrollmentForm.value.student_full_name.trim(),
-        student_document: enrollmentForm.value.student_document.trim(),
-        course_name: sched ? sched.course_name : 'Curso de Especialidad',
-        module_name: null,
-        career_name: null,
-        branch_name: sched ? sched.branch_name : 'Sede Comas',
-        classroom_name: sched ? sched.classroom_name : 'Aula 101',
-        enrollment_date: enrollmentForm.value.enrollment_date,
-        status: enrollmentForm.value.status,
-        notes: enrollmentForm.value.notes.trim() || null,
+    if (!canEnroll.value) return;
+    enrollmentForm.post('/admin/matriculas', {
+        preserveScroll: true,
+        onSuccess: () => {
+            showEnrollmentModal.value = false;
+            emit('notify', `Matrícula registrada con éxito para ${enrollmentForm.student_full_name}.`);
+        },
     });
-
-    if (sched) {
-        sched.enrolled_count++;
-    }
-
-    emit(
-        'notify',
-        `Matrícula registrada con éxito para ${enrollmentForm.value.student_full_name} (${enrollmentForm.value.status.toUpperCase()}).`,
-    );
-    showEnrollmentModal.value = false;
 }
 
 // --- 3. MODAL CAMBIAR ESTADO DE MATRÍCULA ---
@@ -278,6 +278,10 @@ const newStatusToApply = ref<EnrollmentStatus>('activo');
 const statusChangeNotes = ref('');
 
 function openChangeStatusModal(record: EnrollmentRecord) {
+    if (!canEnroll.value) {
+        emit('notify', 'No cuenta con permisos para modificar matrículas.');
+        return;
+    }
     selectedEnrollment.value = record;
     newStatusToApply.value = record.status;
     statusChangeNotes.value = record.notes || '';
@@ -285,98 +289,172 @@ function openChangeStatusModal(record: EnrollmentRecord) {
 }
 
 function applyStatusChange() {
-    if (!selectedEnrollment.value) return;
-    selectedEnrollment.value.status = newStatusToApply.value;
-    selectedEnrollment.value.notes = statusChangeNotes.value.trim() || null;
-    emit(
-        'notify',
-        `Estado de ${selectedEnrollment.value.student_full_name} actualizado a "${newStatusToApply.value.toUpperCase()}".`,
+    if (!selectedEnrollment.value || !canEnroll.value) return;
+    router.put(
+        `/admin/matriculas/${selectedEnrollment.value.id}/status`,
+        {
+            status: newStatusToApply.value,
+            notes: statusChangeNotes.value.trim() || null,
+        },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                showChangeStatusModal.value = false;
+                emit('notify', `Estado de ${selectedEnrollment.value?.student_full_name} actualizado.`);
+            },
+        },
     );
-    showChangeStatusModal.value = false;
 }
 
-// --- 4. MODAL APERTURAR NUEVO CURSO / AULA (scheduled_courses) ---
+// --- 4. MODAL APERTURAR / EDITAR CURSO Y AULA (scheduled_courses) ---
 const showScheduleCourseModal = ref(false);
-const scheduleCourseForm = ref({
+const editingScheduleCourseId = ref<number | null>(null);
+
+const scheduleForm = useForm({
     course_id: 1,
     branch_id: 1,
     classroom_id: 1,
-    teacher_name: '',
-    start_date: '',
-    end_date: '',
-    day_of_week: 'Lunes y Miércoles',
-    time_range: '18:00 - 20:00',
+    teacher_id: null as number | null,
+    start_date: getPeruToday(),
+    end_date: getPeruFutureDate(30),
+    days: ['lunes', 'miercoles'] as string[],
+    start_time: '18:00',
+    end_time: '20:00',
 });
+
+const weekDays = [
+    { value: 'lunes', label: 'Lunes' },
+    { value: 'martes', label: 'Martes' },
+    { value: 'miercoles', label: 'Miércoles' },
+    { value: 'jueves', label: 'Jueves' },
+    { value: 'viernes', label: 'Viernes' },
+    { value: 'sabado', label: 'Sábado' },
+    { value: 'domingo', label: 'Domingo' },
+];
+
+function toggleDay(dayVal: string) {
+    const idx = scheduleForm.days.indexOf(dayVal);
+    if (idx >= 0) {
+        if (scheduleForm.days.length > 1) {
+            scheduleForm.days.splice(idx, 1);
+        }
+    } else {
+        scheduleForm.days.push(dayVal);
+    }
+}
 
 // Aulas disponibles según la sede seleccionada en el formulario
 const availableClassroomsForBranch = computed(() => {
     return props.classrooms.filter(
-        (c) => c.branch_id === scheduleCourseForm.value.branch_id,
+        (c) => c.branch_id === scheduleForm.branch_id,
     );
 });
 
+// Sincronizar aula al cambiar la sede
+watch(
+    () => scheduleForm.branch_id,
+    (newBranchId) => {
+        const rooms = props.classrooms.filter((c) => c.branch_id === newBranchId);
+        if (rooms.length > 0 && !rooms.some((r) => r.id === scheduleForm.classroom_id)) {
+            scheduleForm.classroom_id = rooms[0].id;
+        }
+    },
+);
+
 function openNewScheduleCourseModal() {
-    scheduleCourseForm.value = {
-        course_id: props.courses[0]?.id || 1,
-        branch_id: props.branches[0]?.id || 1,
-        classroom_id: props.classrooms[0]?.id || 1,
-        teacher_name: '',
-        start_date: new Date().toISOString().split('T')[0],
-        end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split('T')[0],
-        day_of_week: 'Lunes y Miércoles',
-        time_range: '18:00 - 20:00',
-    };
+    if (!canManageAperturas.value) {
+        emit('notify', 'Solo el personal de Coordinación o Dirección General puede aperturar cursos.');
+        return;
+    }
+    editingScheduleCourseId.value = null;
+    scheduleForm.reset();
+    scheduleForm.clearErrors();
+
+    const initialBranchId =
+        props.selectedBranchId !== 'all'
+            ? props.selectedBranchId
+            : props.branches[0]?.id || 1;
+
+    scheduleForm.course_id = props.courses[0]?.id || 1;
+    scheduleForm.branch_id = initialBranchId;
+
+    const initialRooms = props.classrooms.filter((c) => c.branch_id === initialBranchId);
+    scheduleForm.classroom_id = initialRooms[0]?.id || props.classrooms[0]?.id || 1;
+
+    scheduleForm.teacher_id = props.teachers[0]?.id || null;
+    scheduleForm.start_date = getPeruToday();
+    scheduleForm.end_date = getPeruFutureDate(30);
+    scheduleForm.days = ['lunes', 'miercoles'];
+    scheduleForm.start_time = '18:00';
+    scheduleForm.end_time = '20:00';
+
     showScheduleCourseModal.value = true;
 }
 
-function saveNewScheduleCourse() {
-    const courseObj = props.courses.find(
-        (c) => c.id === Number(scheduleCourseForm.value.course_id),
-    );
-    const branchObj = props.branches.find(
-        (b) => b.id === Number(scheduleCourseForm.value.branch_id),
-    );
-    const classroomObj = props.classrooms.find(
-        (c) => c.id === Number(scheduleCourseForm.value.classroom_id),
-    );
+function openEditScheduleCourseModal(sched: ScheduledCourseItem) {
+    if (!canManageAperturas.value) {
+        emit('notify', 'Solo el personal de Coordinación o Dirección General puede modificar aperturas.');
+        return;
+    }
+    editingScheduleCourseId.value = sched.id;
+    scheduleForm.clearErrors();
 
-    const newId =
-        scheduledCourses.value.length > 0
-            ? Math.max(...scheduledCourses.value.map((s) => s.id)) + 1
-            : 1;
+    scheduleForm.course_id = sched.course_id;
+    scheduleForm.branch_id = sched.branch_id;
+    scheduleForm.classroom_id = sched.classroom_id;
+    scheduleForm.teacher_id = sched.teacher_id ?? null;
+    scheduleForm.start_date = sched.start_date;
+    scheduleForm.end_date = sched.end_date;
+    scheduleForm.days = sched.days && sched.days.length > 0 ? [...sched.days] : ['lunes', 'miercoles'];
+    scheduleForm.start_time = sched.start_time || '18:00';
+    scheduleForm.end_time = sched.end_time || '20:00';
 
-    scheduledCourses.value.unshift({
-        id: newId,
-        course_id: scheduleCourseForm.value.course_id,
-        course_name: courseObj ? courseObj.name : 'Nuevo Curso Programado',
-        branch_id: scheduleCourseForm.value.branch_id,
-        branch_name: branchObj ? branchObj.name : 'Sede Principal',
-        classroom_id: scheduleCourseForm.value.classroom_id,
-        classroom_name: classroomObj ? classroomObj.name : 'Aula Multiusos',
-        teacher_name:
-            scheduleCourseForm.value.teacher_name.trim() ||
-            'Docente por asignar',
-        start_date: scheduleCourseForm.value.start_date,
-        end_date: scheduleCourseForm.value.end_date,
-        day_of_week: scheduleCourseForm.value.day_of_week,
-        time_range: scheduleCourseForm.value.time_range,
-        capacity: classroomObj?.capacity || 30,
-        enrolled_count: 0,
-        status: 'programado',
-    });
+    showScheduleCourseModal.value = true;
+}
 
-    emit(
-        'notify',
-        `Curso "${courseObj?.name}" aperturado con éxito en ${classroomObj?.name}.`,
-    );
-    showScheduleCourseModal.value = false;
+function saveScheduleCourse() {
+    if (!canManageAperturas.value) return;
+
+    if (editingScheduleCourseId.value) {
+        scheduleForm.put(`/admin/cursos-aperturados/${editingScheduleCourseId.value}`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                showScheduleCourseModal.value = false;
+                emit('notify', 'Curso aperturado y horario actualizados con éxito.');
+            },
+        });
+    } else {
+        scheduleForm.post('/admin/cursos-aperturados', {
+            preserveScroll: true,
+            onSuccess: () => {
+                showScheduleCourseModal.value = false;
+                emit('notify', 'Curso aperturado exitosamente en la sede y aula asignada.');
+            },
+        });
+    }
+}
+
+function deleteScheduleCourse(sched: ScheduledCourseItem) {
+    if (!canManageAperturas.value) return;
+    if (sched.enrolled_count > 0) {
+        emit('notify', 'No se puede eliminar la apertura porque ya cuenta con estudiantes matriculados.');
+        return;
+    }
+
+    if (confirm(`¿Está seguro de eliminar la apertura del curso "${sched.course_name}" en ${sched.branch_name}?`)) {
+        router.delete(`/admin/cursos-aperturados/${sched.id}`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit('notify', 'Apertura de curso eliminada del sistema.');
+            },
+        });
+    }
 }
 
 // Búsqueda y filtros en Cursos Aperturados
 const searchScheduledQuery = ref('');
-const scheduledStatusFilter = ref<'all' | 'en_curso' | 'programado'>('all');
+const scheduledStatusFilter = ref<'all' | 'en_curso' | 'programado' | 'finalizado'>('all');
+const scheduledDayFilter = ref<'all' | 'domingo' | 'sabado' | 'semana'>('all');
 
 const filteredScheduledCourses = computed(() => {
     return scheduledCourses.value.filter((sched) => {
@@ -392,13 +470,26 @@ const filteredScheduledCourses = computed(() => {
         ) {
             return false;
         }
+        if (scheduledDayFilter.value !== 'all') {
+            const days = sched.days || [];
+            const dayText = (sched.day_of_week || '').toLowerCase();
+            if (scheduledDayFilter.value === 'domingo') {
+                if (!days.includes('domingo') && !dayText.includes('domingo')) return false;
+            } else if (scheduledDayFilter.value === 'sabado') {
+                if (!days.includes('sabado') && !dayText.includes('sábado') && !dayText.includes('sabado')) return false;
+            } else if (scheduledDayFilter.value === 'semana') {
+                const isOnlyWeekend = days.every((d) => d === 'sabado' || d === 'domingo');
+                if (isOnlyWeekend && days.length > 0) return false;
+            }
+        }
         if (searchScheduledQuery.value.trim() !== '') {
             const q = searchScheduledQuery.value.toLowerCase();
             return (
                 sched.course_name.toLowerCase().includes(q) ||
                 sched.classroom_name.toLowerCase().includes(q) ||
                 sched.teacher_name.toLowerCase().includes(q) ||
-                sched.branch_name.toLowerCase().includes(q)
+                sched.branch_name.toLowerCase().includes(q) ||
+                sched.day_of_week.toLowerCase().includes(q)
             );
         }
         return true;
@@ -507,6 +598,7 @@ const filteredScheduledCourses = computed(() => {
                     </div>
 
                     <button
+                        v-if="canEnroll"
                         @click="openNewEnrollmentModal()"
                         class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
                     >
@@ -624,7 +716,7 @@ const filteredScheduledCourses = computed(() => {
                                     Sede y Fecha
                                 </th>
                                 <th scope="col" class="px-4 py-4 text-center">
-                                    Estado (enum_enrollment_status)
+                                    Estado de Matrícula
                                 </th>
                                 <th
                                     scope="col"
@@ -683,7 +775,7 @@ const filteredScheduledCourses = computed(() => {
                                         {{ record.branch_name }}
                                     </div>
                                     <div class="font-mono text-slate-400">
-                                        Inscrito: {{ record.enrollment_date }}
+                                        Inscrito: {{ formatPeruDate(record.enrollment_date) }}
                                     </div>
                                 </td>
 
@@ -750,6 +842,7 @@ const filteredScheduledCourses = computed(() => {
                                     class="py-4 pr-6 pl-4 text-right whitespace-nowrap"
                                 >
                                     <button
+                                        v-if="canEnroll"
                                         @click="openChangeStatusModal(record)"
                                         class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-[#2e8b57]"
                                     >
@@ -783,53 +876,6 @@ const filteredScheduledCourses = computed(() => {
                         </tbody>
                     </table>
                 </div>
-            </div>
-
-            <!-- Tarjeta explicativa de la regla de negocio para convalidaciones -->
-            <div
-                class="space-y-3 rounded-xl border border-slate-200 bg-white p-6 shadow-xs"
-            >
-                <div class="flex items-center gap-2.5">
-                    <div
-                        class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-[#2e8b57]"
-                    >
-                        <svg
-                            class="h-5 w-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                    </div>
-                    <h3 class="text-sm font-bold text-slate-900">
-                        Lógica de Convalidación Atómica en Base de Datos (CETPRO
-                        IISEP)
-                    </h3>
-                </div>
-                <p class="text-xs leading-relaxed text-slate-600">
-                    En la base de datos de PostgreSQL, las convalidaciones se
-                    almacenan directamente en la tabla
-                    <code
-                        class="rounded bg-slate-100 px-1 py-0.5 font-mono font-bold text-slate-900"
-                        >enrollments</code
-                    >
-                    mediante el valor de enum
-                    <code
-                        class="rounded bg-purple-50 px-1 py-0.5 font-mono font-bold text-purple-700"
-                        >'convalidado'</code
-                    >. Para la acreditación de un certificado modular oficial,
-                    el sistema consulta:
-                    <span
-                        class="ml-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-mono font-bold text-[#2e8b57]"
-                        >status IN ('completado', 'convalidado')</span
-                    >.
-                </p>
             </div>
         </div>
 
@@ -867,6 +913,7 @@ const filteredScheduledCourses = computed(() => {
                     </div>
 
                     <button
+                        v-if="canManageAperturas"
                         @click="openNewScheduleCourseModal"
                         class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
                     >
@@ -885,6 +932,16 @@ const filteredScheduledCourses = computed(() => {
                         </svg>
                         <span>+ Aperturar Nuevo Curso / Aula</span>
                     </button>
+
+                    <div
+                        v-else-if="isSecretaria"
+                        class="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3.5 py-2 text-xs font-medium text-emerald-800"
+                    >
+                        <svg class="h-4 w-4 text-[#2e8b57]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Secretaría: Habilitada para matricular alumnos en cursos aperturados por Coordinación.</span>
+                    </div>
                 </div>
 
                 <!-- Filtros por estado del curso programado -->
@@ -928,6 +985,68 @@ const filteredScheduledCourses = computed(() => {
                     >
                         Programados
                     </button>
+                    <button
+                        @click="scheduledStatusFilter = 'finalizado'"
+                        :class="[
+                            scheduledStatusFilter === 'finalizado'
+                                ? 'bg-slate-700 font-bold text-white'
+                                : 'bg-slate-100 font-semibold text-slate-600 hover:bg-slate-200',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
+                        ]"
+                    >
+                        Finalizados
+                    </button>
+
+                    <!-- Divisor y Filtros por Día de Dictado (Lunes a Domingo) -->
+                    <span class="mx-1 text-slate-300">|</span>
+                    <span
+                        class="mr-1 text-xs font-bold tracking-wider text-slate-400 uppercase"
+                        >Días de Clase:</span
+                    >
+                    <button
+                        @click="scheduledDayFilter = 'all'"
+                        :class="[
+                            scheduledDayFilter === 'all'
+                                ? 'bg-slate-800 font-bold text-white'
+                                : 'bg-slate-100 font-semibold text-slate-600 hover:bg-slate-200',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
+                        ]"
+                    >
+                        Todos
+                    </button>
+                    <button
+                        @click="scheduledDayFilter = 'domingo'"
+                        :class="[
+                            scheduledDayFilter === 'domingo'
+                                ? 'bg-purple-700 font-bold text-white shadow-xs'
+                                : 'bg-purple-50 font-semibold text-purple-700 hover:bg-purple-100',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
+                        ]"
+                    >
+                        Solo Domingos
+                    </button>
+                    <button
+                        @click="scheduledDayFilter = 'sabado'"
+                        :class="[
+                            scheduledDayFilter === 'sabado'
+                                ? 'bg-indigo-700 font-bold text-white shadow-xs'
+                                : 'bg-indigo-50 font-semibold text-indigo-700 hover:bg-indigo-100',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
+                        ]"
+                    >
+                        Solo Sábados
+                    </button>
+                    <button
+                        @click="scheduledDayFilter = 'semana'"
+                        :class="[
+                            scheduledDayFilter === 'semana'
+                                ? 'bg-[#2e8b57] font-bold text-white shadow-xs'
+                                : 'bg-emerald-50 font-semibold text-[#2e8b57] hover:bg-emerald-100',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
+                        ]"
+                    >
+                        Lunes a Viernes
+                    </button>
                 </div>
             </div>
 
@@ -966,11 +1085,13 @@ const filteredScheduledCourses = computed(() => {
                                             :class="[
                                                 sched.status === 'en_curso'
                                                     ? 'border-emerald-200 bg-emerald-50 text-[#2e8b57]'
-                                                    : 'border-amber-200 bg-amber-50 text-amber-700',
+                                                    : sched.status === 'programado'
+                                                    ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                                    : 'border-slate-200 bg-slate-100 text-slate-600',
                                                 'rounded border px-2 py-0.5 font-mono text-[11px] font-bold uppercase',
                                             ]"
                                         >
-                                            {{ sched.status.replace('_', ' ') }}
+                                            {{ sched.status === 'en_curso' ? 'En Dictado' : sched.status === 'programado' ? 'Programado' : 'Finalizado' }}
                                         </span>
                                         <span
                                             class="font-mono text-xs font-medium text-slate-400"
@@ -1026,11 +1147,11 @@ const filteredScheduledCourses = computed(() => {
                                                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                                             />
                                         </svg>
-                                        <span>{{ sched.start_date }}</span>
+                                        <span>{{ formatPeruDate(sched.start_date) }}</span>
                                         <span class="font-normal text-slate-400"
                                             >al</span
                                         >
-                                        <span>{{ sched.end_date }}</span>
+                                        <span>{{ formatPeruDate(sched.end_date) }}</span>
                                     </div>
                                     <div
                                         class="mt-0.5 text-[11px] text-slate-400"
@@ -1103,7 +1224,9 @@ const filteredScheduledCourses = computed(() => {
                                     class="py-4 pr-6 pl-4 text-right whitespace-nowrap"
                                 >
                                     <div class="inline-flex items-center gap-2">
+                                        <!-- Matricular (Secretaría, Coordinación, Admin) -->
                                         <button
+                                            v-if="canEnroll"
                                             @click="
                                                 openNewEnrollmentModal(sched.id)
                                             "
@@ -1125,6 +1248,58 @@ const filteredScheduledCourses = computed(() => {
                                             </svg>
                                             <span>Matricular</span>
                                         </button>
+
+                                        <!-- Editar Apertura (Solo Coordinación y Admin) -->
+                                        <button
+                                            v-if="canManageAperturas"
+                                            @click="openEditScheduleCourseModal(sched)"
+                                            class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-[#2e8b57]"
+                                            title="Editar programación del curso y aula"
+                                        >
+                                            <svg
+                                                class="h-3.5 w-3.5 text-slate-500"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                />
+                                            </svg>
+                                            <span>Editar</span>
+                                        </button>
+
+                                        <!-- Eliminar Apertura (Solo Coordinación y Admin) -->
+                                        <button
+                                            v-if="canManageAperturas"
+                                            @click="deleteScheduleCourse(sched)"
+                                            :disabled="sched.enrolled_count > 0"
+                                            :class="[
+                                                sched.enrolled_count > 0
+                                                    ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
+                                                    : 'cursor-pointer border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100',
+                                                'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold shadow-2xs transition'
+                                            ]"
+                                            :title="sched.enrolled_count > 0 ? 'No se puede eliminar: tiene alumnos matriculados' : 'Eliminar apertura de curso'"
+                                        >
+                                            <svg
+                                                class="h-3.5 w-3.5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                />
+                                            </svg>
+                                            <span>Eliminar</span>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -1141,53 +1316,6 @@ const filteredScheduledCourses = computed(() => {
                         </tbody>
                     </table>
                 </div>
-            </div>
-
-            <!-- Tarjeta explicativa de la programación y vinculación física -->
-            <div
-                class="space-y-3 rounded-xl border border-slate-200 bg-white p-6 shadow-xs"
-            >
-                <div class="flex items-center gap-2.5">
-                    <div
-                        class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-[#2e8b57]"
-                    >
-                        <svg
-                            class="h-5 w-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                    </div>
-                    <h3 class="text-sm font-bold text-slate-900">
-                        Estructura Relacional de Aperturas (CETPRO IISEP)
-                    </h3>
-                </div>
-                <p class="text-xs leading-relaxed text-slate-600">
-                    Cada apertura genera un registro en
-                    <code
-                        class="rounded bg-slate-100 px-1 py-0.5 font-mono font-bold text-slate-900"
-                        >scheduled_courses</code
-                    >
-                    vinculando el curso, docente, sede y rango de fechas (<span
-                        class="font-mono font-bold text-slate-700"
-                        >start_date, end_date</span
-                    >). Los turnos y aulas físicas asociadas se persisten en
-                    <code
-                        class="rounded bg-slate-100 px-1 py-0.5 font-mono font-bold text-slate-900"
-                        >course_schedules</code
-                    >
-                    (<span class="font-mono font-bold text-slate-700"
-                        >classroom_id, day_of_week, start_time, end_time</span
-                    >), garantizando la validación de cruce de horarios antes de
-                    su apertura.
-                </p>
             </div>
         </div>
 
@@ -1285,7 +1413,7 @@ const filteredScheduledCourses = computed(() => {
 
                     <div>
                         <label class="block text-sm font-bold text-slate-800"
-                            >Estado de Matrícula (enum_enrollment_status)</label
+                            >Estado de Matrícula</label
                         >
                         <select
                             v-model="enrollmentForm.status"
@@ -1317,6 +1445,15 @@ const filteredScheduledCourses = computed(() => {
                         ></textarea>
                     </div>
 
+                    <!-- Alerta de Errores de Validación -->
+                    <div
+                        v-if="enrollmentForm.hasErrors"
+                        class="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 space-y-1"
+                    >
+                        <p class="font-bold">Por favor revise los siguientes campos:</p>
+                        <p v-for="(err, key) in enrollmentForm.errors" :key="key">&bull; {{ err }}</p>
+                    </div>
+
                     <div
                         class="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-5"
                     >
@@ -1329,9 +1466,19 @@ const filteredScheduledCourses = computed(() => {
                         </button>
                         <button
                             type="submit"
-                            class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
+                            :disabled="enrollmentForm.processing"
+                            class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347] disabled:opacity-50"
                         >
-                            Registrar Matrícula
+                            <svg
+                                v-if="enrollmentForm.processing"
+                                class="h-4 w-4 animate-spin text-white"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                            >
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                            </svg>
+                            <span>Registrar Matrícula</span>
                         </button>
                     </div>
                 </form>
@@ -1431,7 +1578,7 @@ const filteredScheduledCourses = computed(() => {
         </div>
 
         <!-- ============================================== -->
-        <!-- MODAL: APERTURAR NUEVO CURSO / AULA (scheduled_courses) -->
+        <!-- MODAL: APERTURAR / EDITAR CURSO Y AULA (scheduled_courses) -->
         <!-- ============================================== -->
         <div
             v-if="showScheduleCourseModal"
@@ -1439,18 +1586,22 @@ const filteredScheduledCourses = computed(() => {
             @click.self="showScheduleCourseModal = false"
         >
             <div
-                class="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+                class="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
             >
                 <div
                     class="flex items-center justify-between border-b border-slate-100 pb-4"
                 >
                     <div>
                         <h3 class="text-lg font-bold text-slate-900">
-                            Aperturar Curso y Aula por Periodo
+                            {{
+                                editingScheduleCourseId
+                                    ? 'Editar Programación de Curso y Aula'
+                                    : 'Aperturar Curso y Aula por Periodo'
+                            }}
                         </h3>
                         <p class="text-xs text-slate-500">
                             Programa la oferta de un curso en un ambiente físico
-                            durante un lapso de tiempo.
+                            con sus horarios semanales (Zona horaria: Perú).
                         </p>
                     </div>
                     <button
@@ -1462,15 +1613,25 @@ const filteredScheduledCourses = computed(() => {
                 </div>
 
                 <form
-                    @submit.prevent="saveNewScheduleCourse"
+                    @submit.prevent="saveScheduleCourse"
                     class="mt-5 space-y-4"
                 >
+                    <!-- Alerta de Errores de Validación -->
+                    <div
+                        v-if="scheduleForm.hasErrors"
+                        class="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 space-y-1"
+                    >
+                        <p class="font-bold">Por favor revise los siguientes campos:</p>
+                        <p v-for="(err, key) in scheduleForm.errors" :key="key">&bull; {{ err }}</p>
+                    </div>
+
                     <div>
                         <label class="block text-sm font-bold text-slate-800"
                             >Curso o Taller a Aperturar</label
                         >
                         <select
-                            v-model="scheduleCourseForm.course_id"
+                            v-model="scheduleForm.course_id"
+                            required
                             class="mt-1.5 w-full cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                         >
                             <option
@@ -1479,9 +1640,10 @@ const filteredScheduledCourses = computed(() => {
                                 :value="c.id"
                             >
                                 {{ c.name }} ({{ c.duration_in_weeks }} semanas)
-                                {{ c.is_workshop ? '&bull; Taller Libre' : '' }}
+                                {{ c.is_workshop ? '&bull; Taller Libre' : (c.module_name ? `&bull; Módulo: ${c.module_name}` : '') }}
                             </option>
                         </select>
+                        <p v-if="scheduleForm.errors.course_id" class="mt-1 text-xs text-rose-600">{{ scheduleForm.errors.course_id }}</p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -1491,7 +1653,8 @@ const filteredScheduledCourses = computed(() => {
                                 >Sede</label
                             >
                             <select
-                                v-model="scheduleCourseForm.branch_id"
+                                v-model="scheduleForm.branch_id"
+                                required
                                 class="mt-1.5 w-full cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             >
                                 <option
@@ -1502,6 +1665,7 @@ const filteredScheduledCourses = computed(() => {
                                     {{ b.name }} ({{ b.code }})
                                 </option>
                             </select>
+                            <p v-if="scheduleForm.errors.branch_id" class="mt-1 text-xs text-rose-600">{{ scheduleForm.errors.branch_id }}</p>
                         </div>
 
                         <div>
@@ -1510,7 +1674,8 @@ const filteredScheduledCourses = computed(() => {
                                 >Aula / Ambiente Físico</label
                             >
                             <select
-                                v-model="scheduleCourseForm.classroom_id"
+                                v-model="scheduleForm.classroom_id"
+                                required
                                 class="mt-1.5 w-full cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             >
                                 <option
@@ -1518,10 +1683,13 @@ const filteredScheduledCourses = computed(() => {
                                     :key="room.id"
                                     :value="room.id"
                                 >
-                                    {{ room.name }} ({{ room.capacity }}
-                                    vacantes)
+                                    {{ room.name }} ({{ room.capacity ?? 'Sin aforo' }} vacantes)
                                 </option>
                             </select>
+                            <p v-if="availableClassroomsForBranch.length === 0" class="mt-1 text-[11px] text-amber-600">
+                                No hay aulas disponibles en esta sede.
+                            </p>
+                            <p v-if="scheduleForm.errors.classroom_id" class="mt-1 text-xs text-rose-600">{{ scheduleForm.errors.classroom_id }}</p>
                         </div>
                     </div>
 
@@ -1532,11 +1700,12 @@ const filteredScheduledCourses = computed(() => {
                                 >Fecha de Inicio (Periodo)</label
                             >
                             <input
-                                v-model="scheduleCourseForm.start_date"
+                                v-model="scheduleForm.start_date"
                                 type="date"
                                 required
                                 class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             />
+                            <p v-if="scheduleForm.errors.start_date" class="mt-1 text-xs text-rose-600">{{ scheduleForm.errors.start_date }}</p>
                         </div>
 
                         <div>
@@ -1545,52 +1714,86 @@ const filteredScheduledCourses = computed(() => {
                                 >Fecha de Fin (Periodo)</label
                             >
                             <input
-                                v-model="scheduleCourseForm.end_date"
+                                v-model="scheduleForm.end_date"
                                 type="date"
                                 required
                                 class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             />
+                            <p v-if="scheduleForm.errors.end_date" class="mt-1 text-xs text-rose-600">{{ scheduleForm.errors.end_date }}</p>
                         </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Días de Clase (Horarios semanales)</label
+                        >
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                v-for="d in weekDays"
+                                :key="d.value"
+                                @click="toggleDay(d.value)"
+                                :class="[
+                                    scheduleForm.days.includes(d.value)
+                                        ? 'bg-[#2e8b57] text-white font-bold shadow-xs'
+                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-semibold',
+                                    'cursor-pointer rounded-lg px-3.5 py-1.5 text-xs transition'
+                                ]"
+                            >
+                                {{ d.label }}
+                            </button>
+                        </div>
+                        <p v-if="scheduleForm.errors.days" class="mt-1 text-xs text-rose-600">{{ scheduleForm.errors.days }}</p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label
                                 class="block text-sm font-bold text-slate-800"
-                                >Días de Clase (course_schedules)</label
+                                >Hora de Inicio</label
                             >
                             <input
-                                v-model="scheduleCourseForm.day_of_week"
-                                type="text"
-                                placeholder="Ej. Lunes y Miércoles"
-                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                v-model="scheduleForm.start_time"
+                                type="time"
+                                required
+                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             />
+                            <p v-if="scheduleForm.errors.start_time" class="mt-1 text-xs text-rose-600">{{ scheduleForm.errors.start_time }}</p>
                         </div>
 
                         <div>
                             <label
                                 class="block text-sm font-bold text-slate-800"
-                                >Rango Horario</label
+                                >Hora de Fin</label
                             >
                             <input
-                                v-model="scheduleCourseForm.time_range"
-                                type="text"
-                                placeholder="Ej. 18:00 - 20:00"
+                                v-model="scheduleForm.end_time"
+                                type="time"
+                                required
                                 class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             />
+                            <p v-if="scheduleForm.errors.end_time" class="mt-1 text-xs text-rose-600">{{ scheduleForm.errors.end_time }}</p>
                         </div>
                     </div>
 
                     <div>
                         <label class="block text-sm font-bold text-slate-800"
-                            >Docente a Cargo (Opcional)</label
+                            >Docente Asignado (Opcional)</label
                         >
-                        <input
-                            v-model="scheduleCourseForm.teacher_name"
-                            type="text"
-                            placeholder="Ej. Ing. Marco Antonio Rojas Quispe"
-                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
-                        />
+                        <select
+                            v-model="scheduleForm.teacher_id"
+                            class="mt-1.5 w-full cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                        >
+                            <option :value="null">-- Docente por asignar / Sin docente --</option>
+                            <option
+                                v-for="t in teachers"
+                                :key="t.id"
+                                :value="t.id"
+                            >
+                                {{ t.full_name }} ({{ t.specialty }})
+                            </option>
+                        </select>
+                        <p v-if="scheduleForm.errors.teacher_id" class="mt-1 text-xs text-rose-600">{{ scheduleForm.errors.teacher_id }}</p>
                     </div>
 
                     <div
@@ -1605,9 +1808,23 @@ const filteredScheduledCourses = computed(() => {
                         </button>
                         <button
                             type="submit"
-                            class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
+                            :disabled="scheduleForm.processing"
+                            class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347] disabled:opacity-50"
                         >
-                            Aperturar Curso
+                            <svg
+                                v-if="scheduleForm.processing"
+                                class="h-4 w-4 animate-spin text-white"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                            >
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                            </svg>
+                            <span>{{
+                                editingScheduleCourseId
+                                    ? 'Guardar Cambios'
+                                    : 'Aperturar Curso'
+                            }}</span>
                         </button>
                     </div>
                 </form>

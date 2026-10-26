@@ -42,7 +42,9 @@ const selectedBranchId = ref<number | 'all'>(
 function handleMainTabChange(tab: string) {
     if (tab === 'curricular') {
         router.visit('/admin/oferta-academica');
-    } else if (tab === 'matriculas' || tab === 'aperturas') {
+    } else if (tab === 'aperturas') {
+        router.visit('/admin/matriculas?tab=aperturas');
+    } else if (tab === 'matriculas') {
         router.visit('/admin/matriculas');
     } else if (tab === 'asistencia') {
         router.visit('/admin/asistencias');

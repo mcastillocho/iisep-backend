@@ -6,6 +6,8 @@ import OfertaAcademicaView from '../../components/Admin/Pages/OfertaAcademicaVie
 import SedesAulasView from '../../components/Admin/Pages/SedesAulasView.vue';
 import MatriculasView, {
     type EnrollmentRecord,
+    type ScheduledCourseItem,
+    type TeacherItem,
 } from '../../components/Admin/Pages/MatriculasView.vue';
 import AsistenciasView from '../../components/Admin/Pages/AsistenciasView.vue';
 
@@ -94,6 +96,9 @@ interface Props {
     careers?: Career[];
     allModulesPool?: ModuleItem[];
     coursesList?: CourseItem[];
+    teachers?: TeacherItem[];
+    scheduledCourses?: ScheduledCourseItem[];
+    enrollments?: EnrollmentRecord[];
 }
 
 const props = defineProps<Props>();
@@ -104,62 +109,9 @@ const classrooms = computed<Classroom[]>(() => props.classrooms ?? []);
 const careers = computed<Career[]>(() => props.careers ?? []);
 const allModulesPool = computed<ModuleItem[]>(() => props.allModulesPool ?? []);
 const coursesList = computed<CourseItem[]>(() => props.coursesList ?? []);
-
-// 6. Matrículas
-const enrollments = ref<EnrollmentRecord[]>([
-    {
-        id: 1,
-        scheduled_course_id: 2,
-        student_full_name: 'Diego Mendoza Salazar',
-        student_document: '76543210',
-        course_name: 'Arquitectura de Hardware y Diagnóstico',
-        module_name: 'Ensamblaje y Mantenimiento de PC',
-        career_name: 'Computación e Informática',
-        branch_name: 'Sede Comas',
-        enrollment_date: '2026-10-01',
-        status: 'activo',
-        notes: 'Apoderado: Juan Carlos Mendoza',
-    },
-    {
-        id: 2,
-        scheduled_course_id: 2,
-        student_full_name: 'Valeria Rios Flores',
-        student_document: '78901234',
-        course_name: 'Arquitectura de Hardware y Diagnóstico',
-        module_name: 'Ensamblaje y Mantenimiento de PC',
-        career_name: 'Computación e Informática',
-        branch_name: 'Sede Comas',
-        enrollment_date: '2026-10-01',
-        status: 'activo',
-        notes: null,
-    },
-    {
-        id: 3,
-        scheduled_course_id: 1,
-        student_full_name: 'Valeria Rios Flores',
-        student_document: '78901234',
-        course_name: 'Excel Avanzado y Macros',
-        module_name: 'Ofimática Empresarial',
-        career_name: 'Computación e Informática',
-        branch_name: 'Sede Comas',
-        enrollment_date: '2026-03-05',
-        status: 'convalidado',
-        notes: 'Convalidado por estudios previos',
-    },
-    {
-        id: 4,
-        scheduled_course_id: 1,
-        student_full_name: 'Carlos Alberto Gomez Paredes',
-        student_document: '34567890',
-        course_name: 'Excel Avanzado y Macros',
-        module_name: 'Ofimática Empresarial',
-        career_name: null,
-        branch_name: 'Sede Comas',
-        enrollment_date: '2026-10-02',
-        status: 'activo',
-        notes: 'Módulo independiente libre (Docente IISEP)',
-    },
-]);
+const teachers = computed<TeacherItem[]>(() => props.teachers ?? []);
+const scheduledCourses = computed<ScheduledCourseItem[]>(() => props.scheduledCourses ?? []);
+const enrollments = computed<EnrollmentRecord[]>(() => props.enrollments ?? []);
 
 // --- TOAST NOTIFICATIONS ---
 const toastMessage = ref('');
@@ -261,7 +213,7 @@ function triggerToast(msg: string) {
             :modules-count="allModulesPool.length"
             :courses-count="coursesList.length"
             :enrollments-count="enrollments.length"
-            :scheduled-courses-count="4"
+            :scheduled-courses-count="scheduledCourses.length"
             @clear-editing-career="() => {}"
         />
 
@@ -396,6 +348,8 @@ function triggerToast(msg: string) {
                         :branches="branches"
                         :classrooms="classrooms"
                         :courses="coursesList"
+                        :teachers="teachers"
+                        :scheduled-courses="scheduledCourses"
                         :enrollments="enrollments"
                         :selected-branch-id="selectedBranchId"
                         :show-subtabs-nav="false"
@@ -410,6 +364,8 @@ function triggerToast(msg: string) {
                         :branches="branches"
                         :classrooms="classrooms"
                         :courses="coursesList"
+                        :teachers="teachers"
+                        :scheduled-courses="scheduledCourses"
                         :enrollments="enrollments"
                         :selected-branch-id="selectedBranchId"
                         :show-subtabs-nav="false"
