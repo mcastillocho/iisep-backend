@@ -36,21 +36,29 @@ class WorkshopController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
             'duration_in_weeks' => ['required', 'integer', 'min:1', 'max:52'],
+            'module_id' => ['nullable', 'integer', 'exists:modules,id'],
+            'is_workshop' => ['nullable', 'boolean'],
         ], [
-            'name.required' => 'El nombre del taller es obligatorio.',
+            'name.required' => 'El nombre del curso o taller es obligatorio.',
             'duration_in_weeks.required' => 'La duración en semanas es obligatoria.',
             'duration_in_weeks.min' => 'La duración mínima es de 1 semana.',
         ]);
+
+        $isWorkshop = $request->has('is_workshop')
+            ? (bool) $validated['is_workshop']
+            : empty($validated['module_id']);
 
         $workshop = Course::create([
             'name' => trim($validated['name']),
             'description' => ! empty($validated['description']) ? trim($validated['description']) : null,
             'duration_in_weeks' => (int) $validated['duration_in_weeks'],
-            'is_workshop' => true,
-            'module_id' => null,
+            'is_workshop' => $isWorkshop,
+            'module_id' => ! empty($validated['module_id']) ? (int) $validated['module_id'] : null,
         ]);
 
-        return redirect()->back()->with('success', "Taller \"{$workshop->name}\" registrado exitosamente.");
+        $label = $isWorkshop ? 'Taller' : 'Curso';
+
+        return redirect()->back()->with('success', "{$label} \"{$workshop->name}\" registrado exitosamente.");
     }
 
     /**
@@ -68,18 +76,29 @@ class WorkshopController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
             'duration_in_weeks' => ['required', 'integer', 'min:1', 'max:52'],
+            'module_id' => ['nullable', 'integer', 'exists:modules,id'],
+            'is_workshop' => ['nullable', 'boolean'],
         ], [
-            'name.required' => 'El nombre del taller es obligatorio.',
+            'name.required' => 'El nombre del curso o taller es obligatorio.',
             'duration_in_weeks.required' => 'La duración en semanas es obligatoria.',
             'duration_in_weeks.min' => 'La duración mínima es de 1 semana.',
         ]);
 
-        $course->update([
+        $updateData = [
             'name' => trim($validated['name']),
             'description' => ! empty($validated['description']) ? trim($validated['description']) : null,
             'duration_in_weeks' => (int) $validated['duration_in_weeks'],
-            'is_workshop' => true,
-        ]);
+        ];
+
+        if ($request->has('module_id')) {
+            $updateData['module_id'] = ! empty($validated['module_id']) ? (int) $validated['module_id'] : null;
+        }
+
+        if ($request->has('is_workshop')) {
+            $updateData['is_workshop'] = (bool) $validated['is_workshop'];
+        }
+
+        $course->update($updateData);
 
         return redirect()->back()->with('success', "Taller \"{$course->name}\" actualizado exitosamente.");
     }

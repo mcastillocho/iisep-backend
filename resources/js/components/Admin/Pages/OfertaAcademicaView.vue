@@ -42,6 +42,14 @@ export interface Career {
     students_count?: number;
 }
 
+export interface ModuleCourseItem {
+    id: number;
+    name: string;
+    description: string;
+    duration_in_weeks: number;
+    is_workshop: boolean;
+}
+
 export interface ModuleItem {
     id: number;
     name: string;
@@ -50,6 +58,7 @@ export interface ModuleItem {
     careers_associated: string[];
     courses_count: number;
     has_dependencies?: boolean;
+    courses?: ModuleCourseItem[];
 }
 
 export interface CourseItem {
@@ -104,13 +113,15 @@ const canManageWorkshops = computed(() => isCoordinador.value || isAdmin.value);
 const canManageModules = computed(() => isCoordinador.value || isAdmin.value);
 const canManageCareers = computed(() => isCoordinador.value || isAdmin.value);
 
-// --- MODAL DE TALLER (CREAR / EDITAR) ---
+// --- MODAL DE TALLER / CURSO (CREAR / EDITAR) ---
 const showWorkshopModal = ref(false);
 const editingWorkshopId = ref<number | null>(null);
 const workshopForm = useForm({
     name: '',
     description: '',
     duration_in_weeks: 4,
+    module_id: null as number | null,
+    is_workshop: true,
 });
 
 function openNewWorkshopModal() {
@@ -118,6 +129,8 @@ function openNewWorkshopModal() {
     workshopForm.reset();
     workshopForm.clearErrors();
     workshopForm.duration_in_weeks = 4;
+    workshopForm.module_id = null;
+    workshopForm.is_workshop = true;
     showWorkshopModal.value = true;
 }
 
@@ -127,11 +140,15 @@ function openEditWorkshopModal(curso: CourseItem) {
     workshopForm.name = curso.name;
     workshopForm.description = curso.description || '';
     workshopForm.duration_in_weeks = curso.duration_in_weeks || 4;
+    workshopForm.module_id = curso.module_id || null;
+    workshopForm.is_workshop = curso.is_workshop;
     showWorkshopModal.value = true;
 }
 
 function saveWorkshop() {
     if (!workshopForm.name.trim()) return;
+
+    const label = workshopForm.is_workshop ? 'Taller' : 'Curso';
 
     if (editingWorkshopId.value) {
         workshopForm.put(`/admin/talleres/${editingWorkshopId.value}`, {
@@ -139,7 +156,7 @@ function saveWorkshop() {
             onSuccess: () => {
                 emit(
                     'notify',
-                    `Taller "${workshopForm.name}" actualizado con éxito.`,
+                    `${label} "${workshopForm.name}" actualizado con éxito.`,
                 );
                 showWorkshopModal.value = false;
             },
@@ -154,7 +171,7 @@ function saveWorkshop() {
             onSuccess: () => {
                 emit(
                     'notify',
-                    `Nuevo taller "${workshopForm.name}" registrado con éxito.`,
+                    `Nuevo ${label.toLowerCase()} "${workshopForm.name}" registrado con éxito.`,
                 );
                 showWorkshopModal.value = false;
                 workshopForm.reset();
@@ -189,44 +206,104 @@ function deleteWorkshop(workshopId: number) {
     });
 }
 
-// --- MODAL DE MÓDULO FORMATIVO (CREAR / EDITAR) ---
-const showModuleModal = ref(false);
-const editingModuleId = ref<number | null>(null);
-const moduleForm = useForm({
-    name: '',
-    description: '',
-    duration_in_weeks: 8,
+// --- VISTA DETALLADA / EDICIÓN DE MÓDULO FORMATIVO ---
+const editingModule = ref<{
+    id: number;
+    name: string;
+    description: string;
+    duration_in_weeks: number;
+    careers_associated: string[];
+    courses: ModuleCourseItem[];
+} | null>(null);
+
+const selectedCourseToAddId = ref<number | ''>('');
+
+// Cursos del catálogo aún no asignados a este módulo
+const availableCoursesToAdd = computed(() => {
+    if (!editingModule.value) return [];
+    const assignedIds = new Set(editingModule.value.courses.map((c) => c.id));
+    return props.coursesList.filter((c) => !assignedIds.has(c.id));
 });
 
-function openNewModuleModal() {
-    editingModuleId.value = null;
-    moduleForm.reset();
-    moduleForm.clearErrors();
-    moduleForm.duration_in_weeks = 8;
-    showModuleModal.value = true;
+const calculatedModuleCourseWeeks = computed(() => {
+    if (!editingModule.value || !editingModule.value.courses) return 0;
+    return editingModule.value.courses.reduce(
+        (acc, c) => acc + (c.duration_in_weeks || 0),
+        0,
+    );
+});
+
+function startCreatingModule() {
+    editingModule.value = {
+        id: 0,
+        name: '',
+        description: '',
+        duration_in_weeks: 8,
+        careers_associated: [],
+        courses: [],
+    };
 }
 
-function openEditModuleModal(modulo: ModuleItem) {
-    editingModuleId.value = modulo.id;
-    moduleForm.clearErrors();
-    moduleForm.name = modulo.name;
-    moduleForm.description = modulo.description || '';
-    moduleForm.duration_in_weeks = modulo.duration_in_weeks || 8;
-    showModuleModal.value = true;
+function startEditingModule(modulo: ModuleItem) {
+    editingModule.value = {
+        id: modulo.id,
+        name: modulo.name,
+        description: modulo.description || '',
+        duration_in_weeks: modulo.duration_in_weeks || 8,
+        careers_associated: modulo.careers_associated
+            ? [...modulo.careers_associated]
+            : [],
+        courses: modulo.courses ? JSON.parse(JSON.stringify(modulo.courses)) : [],
+    };
 }
 
-function saveModule() {
-    if (!moduleForm.name.trim()) return;
+function cancelModuleEditing() {
+    editingModule.value = null;
+}
 
-    if (editingModuleId.value) {
-        moduleForm.put(`/admin/modulos/${editingModuleId.value}`, {
+function addCourseToModule() {
+    if (!editingModule.value || selectedCourseToAddId.value === '') return;
+    const course = props.coursesList.find(
+        (c) => c.id === Number(selectedCourseToAddId.value),
+    );
+    if (course) {
+        editingModule.value.courses.push({
+            id: course.id,
+            name: course.name,
+            description: course.description || '',
+            duration_in_weeks: course.duration_in_weeks || 4,
+            is_workshop: course.is_workshop,
+        });
+        selectedCourseToAddId.value = '';
+    }
+}
+
+function removeCourseFromModule(index: number) {
+    if (!editingModule.value) return;
+    editingModule.value.courses.splice(index, 1);
+}
+
+function saveModuleChanges() {
+    if (!editingModule.value || !editingModule.value.name.trim()) return;
+
+    const payload = {
+        name: editingModule.value.name.trim(),
+        description: editingModule.value.description
+            ? editingModule.value.description.trim()
+            : null,
+        duration_in_weeks: Number(editingModule.value.duration_in_weeks) || 8,
+        course_ids: editingModule.value.courses.map((c) => c.id),
+    };
+
+    if (editingModule.value.id && editingModule.value.id > 0) {
+        router.put(`/admin/modulos/${editingModule.value.id}`, payload, {
             preserveScroll: true,
             onSuccess: () => {
                 emit(
                     'notify',
-                    `Módulo "${moduleForm.name}" actualizado con éxito.`,
+                    `Módulo "${editingModule.value?.name}" actualizado con éxito.`,
                 );
-                showModuleModal.value = false;
+                editingModule.value = null;
             },
             onError: (errors) => {
                 const firstError = Object.values(errors)[0];
@@ -234,15 +311,14 @@ function saveModule() {
             },
         });
     } else {
-        moduleForm.post('/admin/modulos', {
+        router.post('/admin/modulos', payload, {
             preserveScroll: true,
             onSuccess: () => {
                 emit(
                     'notify',
-                    `Nuevo módulo "${moduleForm.name}" registrado con éxito.`,
+                    `Nuevo módulo "${editingModule.value?.name}" registrado con éxito.`,
                 );
-                showModuleModal.value = false;
-                moduleForm.reset();
+                editingModule.value = null;
             },
             onError: (errors) => {
                 const firstError = Object.values(errors)[0];
@@ -250,6 +326,113 @@ function saveModule() {
             },
         });
     }
+}
+
+// --- MODAL RÁPIDO: CREAR MÓDULO DESDE LA EDICIÓN DE CARRERA ---
+const showQuickModuleModal = ref(false);
+const quickModuleForm = useForm({
+    name: '',
+    duration_in_weeks: 8,
+    description: '',
+});
+
+function openQuickModuleModal() {
+    quickModuleForm.reset();
+    quickModuleForm.clearErrors();
+    quickModuleForm.duration_in_weeks = 8;
+    showQuickModuleModal.value = true;
+}
+
+function saveQuickModule() {
+    if (!quickModuleForm.name.trim()) return;
+
+    quickModuleForm.post('/admin/modulos', {
+        preserveScroll: true,
+        onSuccess: () => {
+            emit('notify', `Módulo "${quickModuleForm.name}" creado con éxito.`);
+            showQuickModuleModal.value = false;
+            if (editingCareer.value) {
+                const found = props.allModulesPool.find(
+                    (m) =>
+                        m.name.toLowerCase() ===
+                        quickModuleForm.name.trim().toLowerCase(),
+                );
+                editingCareer.value.modules.push({
+                    id: found ? found.id : Date.now(),
+                    name: quickModuleForm.name.trim(),
+                    duration_in_weeks: quickModuleForm.duration_in_weeks,
+                    order: editingCareer.value.modules.length + 1,
+                });
+            }
+            quickModuleForm.reset();
+        },
+        onError: (errors) => {
+            const firstError = Object.values(errors)[0];
+            if (firstError) emit('notify', String(firstError));
+        },
+    });
+}
+
+// --- MODAL RÁPIDO: CREAR CURSO / TALLER DESDE LA EDICIÓN DE MÓDULO ---
+const showQuickCourseModal = ref(false);
+const quickCourseForm = useForm({
+    name: '',
+    duration_in_weeks: 4,
+    description: '',
+    is_workshop: false,
+});
+
+function openQuickCourseModal() {
+    quickCourseForm.reset();
+    quickCourseForm.clearErrors();
+    quickCourseForm.duration_in_weeks = 4;
+    quickCourseForm.is_workshop = false;
+    showQuickCourseModal.value = true;
+}
+
+function saveQuickCourse() {
+    if (!quickCourseForm.name.trim()) return;
+
+    const payload = {
+        name: quickCourseForm.name.trim(),
+        duration_in_weeks: quickCourseForm.duration_in_weeks,
+        description: quickCourseForm.description
+            ? quickCourseForm.description.trim()
+            : null,
+        is_workshop: quickCourseForm.is_workshop,
+        module_id:
+            editingModule.value?.id && editingModule.value.id > 0
+                ? editingModule.value.id
+                : null,
+    };
+
+    router.post('/admin/talleres', payload, {
+        preserveScroll: true,
+        onSuccess: () => {
+            const label = quickCourseForm.is_workshop ? 'Taller' : 'Curso';
+            emit('notify', `${label} "${quickCourseForm.name}" creado con éxito.`);
+            showQuickCourseModal.value = false;
+            if (editingModule.value) {
+                const found = props.coursesList.find(
+                    (c) =>
+                        c.name.toLowerCase() ===
+                        quickCourseForm.name.trim().toLowerCase(),
+                );
+                editingModule.value.courses.push({
+                    id: found ? found.id : Date.now(),
+                    name: quickCourseForm.name.trim(),
+                    description: quickCourseForm.description || '',
+                    duration_in_weeks: quickCourseForm.duration_in_weeks,
+                    is_workshop: quickCourseForm.is_workshop,
+                });
+            }
+            quickCourseForm.reset();
+        },
+        onError: (errors) => {
+            const firstError = Object.values(errors)[0];
+            if (firstError) emit('notify', String(firstError));
+        },
+    });
 }
 
 function deleteModule(moduleId: number) {
@@ -640,6 +823,15 @@ const filteredCourses = computed(() => {
                         >
                             + Asignar a Carrera
                         </button>
+                        <button
+                            v-if="canManageModules"
+                            type="button"
+                            @click="openQuickModuleModal"
+                            class="cursor-pointer rounded-lg border border-[#2e8b57] bg-emerald-50 px-3.5 py-2 text-xs font-bold text-[#2e8b57] transition hover:bg-emerald-100 whitespace-nowrap"
+                            title="Crear un nuevo módulo y agregarlo directamente a esta carrera"
+                        >
+                            + Crear Nuevo Módulo
+                        </button>
                     </div>
                 </div>
 
@@ -761,7 +953,237 @@ const filteredCourses = computed(() => {
             </div>
         </div>
 
-        <!-- 2. VISTAS REGULARES: CARRERAS / MÓDULOS / TALLERES -->
+        <!-- 2. VISTA DETALLADA: EDITAR MÓDULO FORMATIVO -->
+        <div
+            v-else-if="editingModule"
+            class="space-y-6 rounded-xl border border-slate-200 bg-white p-7 shadow-xs"
+        >
+            <div
+                class="flex items-center justify-between border-b border-slate-100 pb-4"
+            >
+                <div class="flex items-center gap-3">
+                    <button
+                        @click="cancelModuleEditing"
+                        class="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-bold text-slate-600 transition hover:text-slate-900"
+                    >
+                        &larr; Volver a Módulos
+                    </button>
+                    <h2 class="text-xl font-black text-slate-900">
+                        {{
+                            editingModule.id
+                                ? 'Editando Módulo Formativo:'
+                                : 'Nuevo Módulo Formativo:'
+                        }}
+                        <span class="text-[#2e8b57]">{{
+                            editingModule.name || 'Sin título'
+                        }}</span>
+                    </h2>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button
+                        type="button"
+                        @click="cancelModuleEditing"
+                        class="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        @click="saveModuleChanges"
+                        class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#257347]"
+                    >
+                        Guardar Cambios
+                    </button>
+                </div>
+            </div>
+
+            <!-- Formulario de Datos Básicos del Módulo -->
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-bold text-slate-800"
+                        >Nombre del Módulo Formativo</label
+                    >
+                    <input
+                        v-model="editingModule.name"
+                        type="text"
+                        placeholder="Ej. Ofimática Empresarial y Gestión Documental"
+                        class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                    />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-800"
+                        >Duración (en semanas)</label
+                    >
+                    <input
+                        v-model.number="editingModule.duration_in_weeks"
+                        type="number"
+                        min="1"
+                        max="52"
+                        class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                    />
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-slate-800"
+                    >Descripción / Competencias</label
+                >
+                <textarea
+                    v-model="editingModule.description"
+                    rows="3"
+                    placeholder="Describe el alcance, objetivos y competencias del módulo formativo..."
+                    class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                ></textarea>
+            </div>
+
+            <!-- Panel de Cursos Asignados al Módulo -->
+            <div class="space-y-4 pt-2">
+                <div
+                    class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">
+                            Cursos y Talleres del Módulo
+                        </h3>
+                        <p class="text-xs text-slate-500">
+                            Asigna los cursos o talleres prácticos que forman parte de este módulo formativo.
+                            Total de semanas sumadas:
+                            <span class="font-bold text-[#2e8b57]">
+                                {{ calculatedModuleCourseWeeks }} semanas
+                            </span>.
+                        </p>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <select
+                            v-model="selectedCourseToAddId"
+                            class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 focus:border-[#2e8b57] focus:outline-none"
+                        >
+                            <option value="">
+                                -- Seleccionar Curso / Taller Existente --
+                            </option>
+                            <option
+                                v-for="course in availableCoursesToAdd"
+                                :key="course.id"
+                                :value="course.id"
+                            >
+                                {{ course.name }} ({{ course.duration_in_weeks }} sem) {{ course.is_workshop ? '[Taller]' : '[Curso]' }}
+                            </option>
+                        </select>
+                        <button
+                            @click="addCourseToModule"
+                            :disabled="selectedCourseToAddId === ''"
+                            class="cursor-pointer rounded-lg bg-[#2e8b57] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#257347] disabled:bg-slate-300"
+                        >
+                            + Asignar a Módulo
+                        </button>
+                        <button
+                            v-if="canManageWorkshops"
+                            type="button"
+                            @click="openQuickCourseModal"
+                            class="cursor-pointer rounded-lg border border-[#2e8b57] bg-emerald-50 px-3.5 py-2 text-xs font-bold text-[#2e8b57] transition hover:bg-emerald-100 whitespace-nowrap"
+                            title="Crear un nuevo curso o taller y vincularlo directamente a este módulo"
+                        >
+                            + Crear Nuevo Curso / Taller
+                        </button>
+                    </div>
+                </div>
+
+                <div
+                    class="overflow-hidden rounded-xl border border-slate-200 bg-white"
+                >
+                    <table class="w-full text-left text-sm text-slate-700">
+                        <thead
+                            class="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 uppercase"
+                        >
+                            <tr>
+                                <th class="w-16 px-4 py-3 text-center">#</th>
+                                <th class="px-4 py-3">
+                                    Nombre del Curso / Materia
+                                </th>
+                                <th class="px-4 py-3">Tipo</th>
+                                <th class="px-4 py-3">Duración</th>
+                                <th class="w-24 px-4 py-3 text-right">
+                                    Quitar
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr
+                                v-for="(course, index) in editingModule.courses"
+                                :key="course.id"
+                                class="hover:bg-slate-50"
+                            >
+                                <td
+                                    class="bg-slate-50/50 px-4 py-3 text-center font-mono font-bold text-slate-900"
+                                >
+                                    {{ index + 1 }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="font-bold text-slate-900">
+                                        {{ course.name }}
+                                    </div>
+                                    <div
+                                        v-if="course.description"
+                                        class="line-clamp-1 text-xs text-slate-400"
+                                    >
+                                        {{ course.description }}
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span
+                                        :class="
+                                            course.is_workshop
+                                                ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                                : 'border-blue-200 bg-blue-50 text-blue-700'
+                                        "
+                                        class="inline-block rounded border px-2 py-0.5 text-xs font-bold"
+                                    >
+                                        {{
+                                            course.is_workshop
+                                                ? 'Taller'
+                                                : 'Curso'
+                                        }}
+                                    </span>
+                                </td>
+                                <td
+                                    class="px-4 py-3 font-mono font-bold text-[#2e8b57]"
+                                >
+                                    {{ course.duration_in_weeks }} semanas
+                                </td>
+                                <td class="px-4 py-3 text-right">
+                                    <button
+                                        @click="removeCourseFromModule(index)"
+                                        class="cursor-pointer text-xs font-bold text-red-500 hover:text-red-700"
+                                        title="Quitar curso de este módulo"
+                                    >
+                                        ✕
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr
+                                v-if="
+                                    !editingModule.courses ||
+                                    editingModule.courses.length === 0
+                                "
+                            >
+                                <td
+                                    colspan="5"
+                                    class="py-8 text-center font-medium text-slate-400"
+                                >
+                                    Este módulo formativo aún no cuenta con cursos o talleres
+                                    asignados. Usa el selector arriba para asignar o crear el primero.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. VISTAS REGULARES: CARRERAS / MÓDULOS / TALLERES -->
         <div v-else class="space-y-6">
             <!-- Pestañas Superiores -->
             <div class="border-b border-slate-200">
@@ -809,7 +1231,7 @@ const filteredCourses = computed(() => {
                             'flex cursor-pointer items-center gap-2 border-b-2 px-1 py-3 text-sm whitespace-nowrap',
                         ]"
                     >
-                        <span>Talleres</span>
+                        <span>Talleres / Cursos</span>
                         <span
                             class="rounded-full bg-slate-100 px-2.5 py-0.5 font-mono text-xs text-slate-600"
                         >
@@ -842,7 +1264,7 @@ const filteredCourses = computed(() => {
                         v-else
                         v-model="searchCourseQuery"
                         type="text"
-                        placeholder="Buscar taller práctico..."
+                        placeholder="Buscar curso o taller..."
                         class="w-full rounded-lg border border-slate-300 bg-slate-50 py-2.5 pr-4 pl-10 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                     />
                     <div
@@ -887,7 +1309,7 @@ const filteredCourses = computed(() => {
                     </button>
                     <button
                         v-else-if="currentTab === 'modulos' && canManageModules"
-                        @click="openNewModuleModal"
+                        @click="startCreatingModule"
                         class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
                     >
                         <svg
@@ -923,7 +1345,7 @@ const filteredCourses = computed(() => {
                                 d="M12 4v16m8-8H4"
                             />
                         </svg>
-                        <span>+ Nuevo Taller</span>
+                        <span>+ Nuevo Taller / Curso</span>
                     </button>
                 </div>
             </div>
@@ -1149,7 +1571,7 @@ const filteredCourses = computed(() => {
                                         class="inline-flex items-center gap-2"
                                     >
                                         <button
-                                            @click="openEditModuleModal(modulo)"
+                                            @click="startEditingModule(modulo)"
                                             class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-[#2e8b57]"
                                         >
                                             <svg
@@ -1308,8 +1730,8 @@ const filteredCourses = computed(() => {
                     <h3 class="text-lg font-bold text-slate-900">
                         {{
                             editingWorkshopId
-                                ? 'Editar Taller Práctico'
-                                : 'Registrar Nuevo Taller Práctico'
+                                ? (workshopForm.is_workshop ? 'Editar Taller Práctico' : 'Editar Curso / Materia')
+                                : (workshopForm.is_workshop ? 'Registrar Nuevo Taller Práctico' : 'Registrar Nuevo Curso / Materia')
                         }}
                     </h3>
                     <button
@@ -1323,13 +1745,13 @@ const filteredCourses = computed(() => {
                 <form @submit.prevent="saveWorkshop" class="mt-5 space-y-4">
                     <div>
                         <label class="block text-sm font-bold text-slate-800"
-                            >Nombre del Taller</label
+                            >Nombre del Curso / Taller</label
                         >
                         <input
                             v-model="workshopForm.name"
                             type="text"
                             required
-                            placeholder="Ej. Taller de Barber Shop y Cortes Urbanos"
+                            placeholder="Ej. Taller de Barber Shop / Fundamentos Contables"
                             class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             :class="{
                                 'border-rose-500 bg-rose-50':
@@ -1344,39 +1766,86 @@ const filteredCourses = computed(() => {
                         </p>
                     </div>
 
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-800"
+                                >Duración (en semanas)</label
+                            >
+                            <input
+                                v-model.number="workshopForm.duration_in_weeks"
+                                type="number"
+                                required
+                                min="1"
+                                max="52"
+                                placeholder="Ej. 6 semanas"
+                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                :class="{
+                                    'border-rose-500 bg-rose-50':
+                                        workshopForm.errors.duration_in_weeks,
+                                }"
+                            />
+                            <p
+                                v-if="workshopForm.errors.duration_in_weeks"
+                                class="mt-1 text-xs font-semibold text-rose-600"
+                            >
+                                {{ workshopForm.errors.duration_in_weeks }}
+                            </p>
+                        </div>
+
+                        <div class="flex flex-col justify-center pt-5">
+                            <label class="flex cursor-pointer items-center gap-2">
+                                <input
+                                    v-model="workshopForm.is_workshop"
+                                    type="checkbox"
+                                    class="h-4 w-4 rounded text-[#2e8b57] focus:ring-[#2e8b57]"
+                                />
+                                <span class="text-xs font-bold text-slate-700">
+                                    ¿Es Taller Práctico?
+                                </span>
+                            </label>
+                            <span class="text-[11px] text-slate-400">
+                                Habilita oferta individual
+                            </span>
+                        </div>
+                    </div>
+
                     <div>
                         <label class="block text-sm font-bold text-slate-800"
-                            >Duración (en semanas)</label
+                            >Módulo Formativo Asociado (Opcional)</label
                         >
-                        <input
-                            v-model.number="workshopForm.duration_in_weeks"
-                            type="number"
-                            required
-                            min="1"
-                            max="52"
-                            placeholder="Ej. 6 semanas"
-                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                        <select
+                            v-model="workshopForm.module_id"
+                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             :class="{
                                 'border-rose-500 bg-rose-50':
-                                    workshopForm.errors.duration_in_weeks,
+                                    workshopForm.errors.module_id,
                             }"
-                        />
+                        >
+                            <option :value="null">-- Ninguno (Taller o Curso Independiente) --</option>
+                            <option
+                                v-for="mod in allModulesPool"
+                                :key="mod.id"
+                                :value="mod.id"
+                            >
+                                {{ mod.name }} ({{ mod.duration_in_weeks }} semanas)
+                            </option>
+                        </select>
                         <p
-                            v-if="workshopForm.errors.duration_in_weeks"
+                            v-if="workshopForm.errors.module_id"
                             class="mt-1 text-xs font-semibold text-rose-600"
                         >
-                            {{ workshopForm.errors.duration_in_weeks }}
+                            {{ workshopForm.errors.module_id }}
                         </p>
                     </div>
 
                     <div>
                         <label class="block text-sm font-bold text-slate-800"
-                            >Descripción / Habilidades Aprendidas</label
+                            >Descripción / Temario</label
                         >
                         <textarea
                             v-model="workshopForm.description"
                             rows="3"
-                            placeholder="Describe brevemente las técnicas y contenidos del taller..."
+                            placeholder="Describe brevemente las técnicas y contenidos del taller o curso..."
                             class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             :class="{
                                 'border-rose-500 bg-rose-50':
@@ -1409,7 +1878,7 @@ const filteredCourses = computed(() => {
                             {{
                                 workshopForm.processing
                                     ? 'Guardando...'
-                                    : 'Guardar Taller'
+                                    : (workshopForm.is_workshop ? 'Guardar Taller' : 'Guardar Curso')
                             }}
                         </button>
                     </div>
@@ -1417,11 +1886,11 @@ const filteredCourses = computed(() => {
             </div>
         </div>
 
-        <!-- MODAL DE MÓDULO FORMATIVO (CREAR / EDITAR) -->
+        <!-- MODAL RÁPIDO: CREAR MÓDULO FORMATIVO (DESDE EDICIÓN DE CARRERA) -->
         <div
-            v-if="showModuleModal"
+            v-if="showQuickModuleModal"
             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
-            @click.self="showModuleModal = false"
+            @click.self="showQuickModuleModal = false"
         >
             <div
                 class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
@@ -1430,41 +1899,37 @@ const filteredCourses = computed(() => {
                     class="flex items-center justify-between border-b border-slate-100 pb-4"
                 >
                     <h3 class="text-lg font-bold text-slate-900">
-                        {{
-                            editingModuleId
-                                ? 'Editar Módulo Formativo'
-                                : 'Registrar Nuevo Módulo Formativo'
-                        }}
+                        Registrar Nuevo Módulo Formativo
                     </h3>
                     <button
-                        @click="showModuleModal = false"
+                        @click="showQuickModuleModal = false"
                         class="cursor-pointer rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                     >
                         &times;
                     </button>
                 </div>
 
-                <form @submit.prevent="saveModule" class="mt-5 space-y-4">
+                <form @submit.prevent="saveQuickModule" class="mt-5 space-y-4">
                     <div>
                         <label class="block text-sm font-bold text-slate-800"
                             >Nombre del Módulo</label
                         >
                         <input
-                            v-model="moduleForm.name"
+                            v-model="quickModuleForm.name"
                             type="text"
                             required
                             placeholder="Ej. Ofimática Empresarial"
                             class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             :class="{
                                 'border-rose-500 bg-rose-50':
-                                    moduleForm.errors.name,
+                                    quickModuleForm.errors.name,
                             }"
                         />
                         <p
-                            v-if="moduleForm.errors.name"
+                            v-if="quickModuleForm.errors.name"
                             class="mt-1 text-xs font-semibold text-rose-600"
                         >
-                            {{ moduleForm.errors.name }}
+                            {{ quickModuleForm.errors.name }}
                         </p>
                     </div>
 
@@ -1473,7 +1938,7 @@ const filteredCourses = computed(() => {
                             >Duración (en semanas)</label
                         >
                         <input
-                            v-model.number="moduleForm.duration_in_weeks"
+                            v-model.number="quickModuleForm.duration_in_weeks"
                             type="number"
                             min="1"
                             max="52"
@@ -1481,14 +1946,14 @@ const filteredCourses = computed(() => {
                             class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             :class="{
                                 'border-rose-500 bg-rose-50':
-                                    moduleForm.errors.duration_in_weeks,
+                                    quickModuleForm.errors.duration_in_weeks,
                             }"
                         />
                         <p
-                            v-if="moduleForm.errors.duration_in_weeks"
+                            v-if="quickModuleForm.errors.duration_in_weeks"
                             class="mt-1 text-xs font-semibold text-rose-600"
                         >
-                            {{ moduleForm.errors.duration_in_weeks }}
+                            {{ quickModuleForm.errors.duration_in_weeks }}
                         </p>
                     </div>
 
@@ -1497,20 +1962,20 @@ const filteredCourses = computed(() => {
                             >Descripción / Competencias</label
                         >
                         <textarea
-                            v-model="moduleForm.description"
+                            v-model="quickModuleForm.description"
                             rows="3"
                             placeholder="Describe el alcance y competencias desarrolladas en este módulo formativo..."
                             class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                             :class="{
                                 'border-rose-500 bg-rose-50':
-                                    moduleForm.errors.description,
+                                    quickModuleForm.errors.description,
                             }"
                         ></textarea>
                         <p
-                            v-if="moduleForm.errors.description"
+                            v-if="quickModuleForm.errors.description"
                             class="mt-1 text-xs font-semibold text-rose-600"
                         >
-                            {{ moduleForm.errors.description }}
+                            {{ quickModuleForm.errors.description }}
                         </p>
                     </div>
 
@@ -1519,20 +1984,157 @@ const filteredCourses = computed(() => {
                     >
                         <button
                             type="button"
-                            @click="showModuleModal = false"
+                            @click="showQuickModuleModal = false"
                             class="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
-                            :disabled="moduleForm.processing"
+                            :disabled="quickModuleForm.processing"
                             class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347] disabled:opacity-50"
                         >
                             {{
-                                moduleForm.processing
+                                quickModuleForm.processing
                                     ? 'Guardando...'
-                                    : 'Guardar Módulo'
+                                    : 'Guardar y Asignar'
+                            }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- MODAL RÁPIDO: CREAR CURSO / TALLER (DESDE EDICIÓN DE MÓDULO) -->
+        <div
+            v-if="showQuickCourseModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
+            @click.self="showQuickCourseModal = false"
+        >
+            <div
+                class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+            >
+                <div
+                    class="flex items-center justify-between border-b border-slate-100 pb-4"
+                >
+                    <h3 class="text-lg font-bold text-slate-900">
+                        Registrar Nuevo Curso o Taller
+                    </h3>
+                    <button
+                        @click="showQuickCourseModal = false"
+                        class="cursor-pointer rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    >
+                        &times;
+                    </button>
+                </div>
+
+                <form @submit.prevent="saveQuickCourse" class="mt-5 space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Nombre del Curso / Taller</label
+                        >
+                        <input
+                            v-model="quickCourseForm.name"
+                            type="text"
+                            required
+                            placeholder="Ej. Word y Redacción de Informes"
+                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                            :class="{
+                                'border-rose-500 bg-rose-50':
+                                    quickCourseForm.errors.name,
+                            }"
+                        />
+                        <p
+                            v-if="quickCourseForm.errors.name"
+                            class="mt-1 text-xs font-semibold text-rose-600"
+                        >
+                            {{ quickCourseForm.errors.name }}
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-800"
+                                >Duración (en semanas)</label
+                            >
+                            <input
+                                v-model.number="quickCourseForm.duration_in_weeks"
+                                type="number"
+                                min="1"
+                                max="52"
+                                required
+                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                :class="{
+                                    'border-rose-500 bg-rose-50':
+                                        quickCourseForm.errors.duration_in_weeks,
+                                }"
+                            />
+                            <p
+                                v-if="quickCourseForm.errors.duration_in_weeks"
+                                class="mt-1 text-xs font-semibold text-rose-600"
+                            >
+                                {{ quickCourseForm.errors.duration_in_weeks }}
+                            </p>
+                        </div>
+
+                        <div class="flex flex-col justify-center pt-5">
+                            <label class="flex cursor-pointer items-center gap-2">
+                                <input
+                                    v-model="quickCourseForm.is_workshop"
+                                    type="checkbox"
+                                    class="h-4 w-4 rounded text-[#2e8b57] focus:ring-[#2e8b57]"
+                                />
+                                <span class="text-xs font-bold text-slate-700">
+                                    ¿Es Taller Práctico?
+                                </span>
+                            </label>
+                            <span class="text-[11px] text-slate-400">
+                                Habilita oferta individual
+                            </span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Descripción / Temario</label
+                        >
+                        <textarea
+                            v-model="quickCourseForm.description"
+                            rows="3"
+                            placeholder="Describe el temario o competencias del curso..."
+                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                            :class="{
+                                'border-rose-500 bg-rose-50':
+                                    quickCourseForm.errors.description,
+                            }"
+                        ></textarea>
+                        <p
+                            v-if="quickCourseForm.errors.description"
+                            class="mt-1 text-xs font-semibold text-rose-600"
+                        >
+                            {{ quickCourseForm.errors.description }}
+                        </p>
+                    </div>
+
+                    <div
+                        class="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-5"
+                    >
+                        <button
+                            type="button"
+                            @click="showQuickCourseModal = false"
+                            class="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="quickCourseForm.processing"
+                            class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347] disabled:opacity-50"
+                        >
+                            {{
+                                quickCourseForm.processing
+                                    ? 'Guardando...'
+                                    : 'Guardar y Asignar'
                             }}
                         </button>
                     </div>

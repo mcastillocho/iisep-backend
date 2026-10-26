@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Course;
 use App\Models\Module;
 use App\Models\Staff;
 use Illuminate\Http\RedirectResponse;
@@ -36,6 +37,8 @@ class ModuleController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
             'duration_in_weeks' => ['required', 'integer', 'min:1', 'max:52'],
+            'course_ids' => ['nullable', 'array'],
+            'course_ids.*' => ['required', 'integer', 'exists:courses,id'],
         ], [
             'name.required' => 'El nombre del módulo formativo es obligatorio.',
             'duration_in_weeks.required' => 'La duración en semanas es obligatoria.',
@@ -47,6 +50,10 @@ class ModuleController extends Controller
             'description' => ! empty($validated['description']) ? trim($validated['description']) : null,
             'duration_in_weeks' => (int) $validated['duration_in_weeks'],
         ]);
+
+        if (! empty($validated['course_ids'])) {
+            Course::whereIn('id', $validated['course_ids'])->update(['module_id' => $module->id]);
+        }
 
         return redirect()->back()->with('success', "Módulo \"{$module->name}\" registrado exitosamente.");
     }
@@ -66,6 +73,8 @@ class ModuleController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
             'duration_in_weeks' => ['required', 'integer', 'min:1', 'max:52'],
+            'course_ids' => ['nullable', 'array'],
+            'course_ids.*' => ['required', 'integer', 'exists:courses,id'],
         ], [
             'name.required' => 'El nombre del módulo formativo es obligatorio.',
             'duration_in_weeks.required' => 'La duración en semanas es obligatoria.',
@@ -77,6 +86,17 @@ class ModuleController extends Controller
             'description' => ! empty($validated['description']) ? trim($validated['description']) : null,
             'duration_in_weeks' => (int) $validated['duration_in_weeks'],
         ]);
+
+        if (array_key_exists('course_ids', $validated)) {
+            $courseIds = $validated['course_ids'] ?? [];
+            Course::where('module_id', $module->id)
+                ->whereNotIn('id', $courseIds)
+                ->update(['module_id' => null]);
+
+            if (! empty($courseIds)) {
+                Course::whereIn('id', $courseIds)->update(['module_id' => $module->id]);
+            }
+        }
 
         return redirect()->back()->with('success', "Módulo \"{$module->name}\" actualizado correctamente.");
     }

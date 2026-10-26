@@ -181,3 +181,75 @@ test('can delete a module without dependencies', function () {
         'id' => $module->id,
     ]);
 });
+
+test('can create a module and assign courses', function () {
+    $admin = createModuleStaffUser('admin_user5', 'admin', null);
+
+    $course1 = Course::create([
+        'name' => 'Introducción a Algoritmos',
+        'duration_in_weeks' => 4,
+        'is_workshop' => false,
+    ]);
+    $course2 = Course::create([
+        'name' => 'Estructura de Datos',
+        'duration_in_weeks' => 4,
+        'is_workshop' => false,
+    ]);
+
+    $response = $this->actingAs($admin)->post(route('admin.modules.store'), [
+        'name' => 'Fundamentos de Programación',
+        'duration_in_weeks' => 8,
+        'course_ids' => [$course1->id, $course2->id],
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $module = Module::where('name', 'Fundamentos de Programación')->first();
+    expect($module)->not->toBeNull();
+
+    $this->assertDatabaseHas('courses', [
+        'id' => $course1->id,
+        'module_id' => $module->id,
+    ]);
+    $this->assertDatabaseHas('courses', [
+        'id' => $course2->id,
+        'module_id' => $module->id,
+    ]);
+});
+
+test('can update a module and sync course_ids (assign and unassign)', function () {
+    $admin = createModuleStaffUser('admin_user6', 'admin', null);
+
+    $module = Module::create([
+        'name' => 'Módulo Base',
+        'duration_in_weeks' => 8,
+    ]);
+
+    $course1 = Course::create([
+        'module_id' => $module->id,
+        'name' => 'Curso 1',
+        'duration_in_weeks' => 4,
+    ]);
+    $course2 = Course::create([
+        'module_id' => null,
+        'name' => 'Curso 2',
+        'duration_in_weeks' => 4,
+    ]);
+
+    // Update with course2 only (unassigning course1)
+    $response = $this->actingAs($admin)->put(route('admin.modules.update', $module), [
+        'name' => 'Módulo Base Actualizado',
+        'duration_in_weeks' => 8,
+        'course_ids' => [$course2->id],
+    ]);
+
+    $response->assertSessionHasNoErrors();
+
+    $this->assertDatabaseHas('courses', [
+        'id' => $course1->id,
+        'module_id' => null,
+    ]);
+    $this->assertDatabaseHas('courses', [
+        'id' => $course2->id,
+        'module_id' => $module->id,
+    ]);
+});

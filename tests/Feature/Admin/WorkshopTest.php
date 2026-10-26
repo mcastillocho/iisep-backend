@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\DocumentType;
 use App\Models\Branch;
 use App\Models\Course;
+use App\Models\Module;
 use App\Models\ScheduledCourse;
 use App\Models\Staff;
 use App\Models\User;
@@ -162,5 +163,28 @@ test('branch coordinator can delete a workshop without scheduled courses', funct
     $response->assertSessionHasNoErrors();
     $this->assertSoftDeleted('courses', [
         'id' => $workshop->id,
+    ]);
+});
+
+test('can create a course directly attached to a module', function () {
+    $admin = createWorkshopStaffUser('admin_user_mod', 'admin', null);
+    $module = Module::create([
+        'name' => 'Módulo Contable',
+        'duration_in_weeks' => 12,
+    ]);
+
+    $response = $this->actingAs($admin)->post(route('admin.workshops.store'), [
+        'name' => 'Contabilidad Básica I',
+        'duration_in_weeks' => 4,
+        'description' => 'Libros contables y asientos.',
+        'is_workshop' => false,
+        'module_id' => $module->id,
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $this->assertDatabaseHas('courses', [
+        'name' => 'Contabilidad Básica I',
+        'module_id' => $module->id,
+        'is_workshop' => false,
     ]);
 });
