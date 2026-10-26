@@ -616,6 +616,10 @@ class ScheduledCourseController extends Controller
         $hasGuardian = (bool) ($validated['has_guardian'] ?? false);
         if ($hasGuardian && ! empty($validated['guardian_document'])) {
             $guardianDoc = trim($validated['guardian_document']);
+            if ($guardianDoc === $cleanDocument) {
+                return back()->withErrors(['guardian_document' => 'El estudiante no puede ser su propio apoderado.']);
+            }
+
             $guardianFirst = trim((string) ($validated['guardian_first_name'] ?? ''));
             $guardianPat = trim((string) ($validated['guardian_paternal_surname'] ?? ''));
             $guardianMat = trim((string) ($validated['guardian_maternal_surname'] ?? ''));
@@ -643,6 +647,12 @@ class ScheduledCourseController extends Controller
                         'password' => bcrypt($guardianDoc),
                     ]);
                 }
+
+                // Guardar al apoderado también como estudiante sin curso en la base de datos
+                Student::firstOrCreate([
+                    'user_id' => $guardianUser->id,
+                ]);
+
                 $student->update(['guardian_id' => $guardianUser->id]);
             }
         }
@@ -693,6 +703,11 @@ class ScheduledCourseController extends Controller
         $user = User::where('document', $document)->first();
         if (! $user) {
             return response()->json(['found' => false]);
+        }
+
+        if (! $user->student) {
+            Student::firstOrCreate(['user_id' => $user->id]);
+            $user->load('student');
         }
 
         $courseId = $request->input('scheduled_course_id');
@@ -822,38 +837,31 @@ class ScheduledCourseController extends Controller
         $cleanDoc = trim($validated['document']);
         $user = User::where('document', $cleanDoc)->first();
 
-        if ($user && $user->student) {
-            return back()->withErrors(['document' => "Ya existe un alumno registrado con el DNI {$cleanDoc}."]);
+        if ($user) {
+            return back()->withErrors(['document' => "Ya existe una persona registrada con el DNI {$cleanDoc} ({$user->full_name})."]);
         }
 
-        if (! $user) {
-            $user = User::create([
-                'first_name' => trim($validated['first_name']),
-                'paternal_surname' => trim($validated['paternal_surname']),
-                'maternal_surname' => ! empty($validated['maternal_surname']) ? trim($validated['maternal_surname']) : null,
-                'document' => $cleanDoc,
-                'document_type' => DocumentType::DNI,
-                'birth_date' => ! empty($validated['birth_date']) ? $validated['birth_date'] : null,
-                'phone' => ! empty($validated['phone']) ? trim($validated['phone']) : null,
-                'email' => ! empty($validated['email']) ? trim($validated['email']) : null,
-                'username' => 'est_'.$cleanDoc,
-                'password' => bcrypt($cleanDoc),
-            ]);
-        } else {
-            $user->update([
-                'first_name' => trim($validated['first_name']),
-                'paternal_surname' => trim($validated['paternal_surname']),
-                'maternal_surname' => ! empty($validated['maternal_surname']) ? trim($validated['maternal_surname']) : null,
-                'birth_date' => ! empty($validated['birth_date']) ? $validated['birth_date'] : $user->birth_date,
-                'phone' => ! empty($validated['phone']) ? trim($validated['phone']) : $user->phone,
-                'email' => ! empty($validated['email']) ? trim($validated['email']) : $user->email,
-            ]);
-        }
+        $user = User::create([
+            'first_name' => trim($validated['first_name']),
+            'paternal_surname' => trim($validated['paternal_surname']),
+            'maternal_surname' => ! empty($validated['maternal_surname']) ? trim($validated['maternal_surname']) : null,
+            'document' => $cleanDoc,
+            'document_type' => DocumentType::DNI,
+            'birth_date' => ! empty($validated['birth_date']) ? $validated['birth_date'] : null,
+            'phone' => ! empty($validated['phone']) ? trim($validated['phone']) : null,
+            'email' => ! empty($validated['email']) ? trim($validated['email']) : null,
+            'username' => 'est_'.$cleanDoc,
+            'password' => bcrypt($cleanDoc),
+        ]);
 
         $guardianId = null;
         $hasGuardian = (bool) ($validated['has_guardian'] ?? false);
         if ($hasGuardian && ! empty($validated['guardian_document'])) {
             $guardianDoc = trim($validated['guardian_document']);
+            if ($guardianDoc === $cleanDoc) {
+                return back()->withErrors(['guardian_document' => 'El estudiante no puede ser su propio apoderado.']);
+            }
+
             $guardianFirst = trim((string) ($validated['guardian_first_name'] ?? ''));
             $guardianPat = trim((string) ($validated['guardian_paternal_surname'] ?? ''));
             $guardianMat = trim((string) ($validated['guardian_maternal_surname'] ?? ''));
@@ -886,6 +894,12 @@ class ScheduledCourseController extends Controller
                     'password' => bcrypt($guardianDoc),
                 ]);
             }
+
+            // Guardar al apoderado también como estudiante sin curso en la base de datos
+            Student::firstOrCreate([
+                'user_id' => $guardianUser->id,
+            ]);
+
             $guardianId = $guardianUser->id;
         }
 
@@ -952,6 +966,10 @@ class ScheduledCourseController extends Controller
         $hasGuardian = (bool) ($validated['has_guardian'] ?? false);
         if ($hasGuardian && ! empty($validated['guardian_document'])) {
             $guardianDoc = trim($validated['guardian_document']);
+            if ($guardianDoc === trim($validated['document'])) {
+                return back()->withErrors(['guardian_document' => 'El estudiante no puede ser su propio apoderado.']);
+            }
+
             $guardianFirst = trim((string) ($validated['guardian_first_name'] ?? ''));
             $guardianPat = trim((string) ($validated['guardian_paternal_surname'] ?? ''));
             $guardianMat = trim((string) ($validated['guardian_maternal_surname'] ?? ''));
@@ -984,6 +1002,11 @@ class ScheduledCourseController extends Controller
                     'password' => bcrypt($guardianDoc),
                 ]);
             }
+
+            // Guardar al apoderado también como estudiante sin curso en la base de datos
+            Student::firstOrCreate([
+                'user_id' => $guardianUser->id,
+            ]);
 
             $student->update(['guardian_id' => $guardianUser->id]);
         } else {

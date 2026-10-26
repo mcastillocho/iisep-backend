@@ -4,10 +4,12 @@ import { ref } from 'vue';
 import AperturasView from '../../components/Admin/Pages/AperturasView.vue';
 import MatriculasView, {
     Branch,
+    CareerOption,
     Classroom,
     CourseOption,
     EnrollmentRecord,
     ScheduledCourseItem,
+    StudentRecord,
     TeacherItem,
 } from '../../components/Admin/Pages/MatriculasView.vue';
 import Sidebar from '../../components/Admin/Sidebar/Sidebar.vue';
@@ -15,10 +17,12 @@ import Sidebar from '../../components/Admin/Sidebar/Sidebar.vue';
 interface Props {
     branches: Branch[];
     classrooms: Classroom[];
+    careers?: CareerOption[];
     coursesList: CourseOption[];
     teachers: TeacherItem[];
     scheduledCourses: ScheduledCourseItem[];
     enrollments: EnrollmentRecord[];
+    students?: StudentRecord[];
     initialTab?: 'inscripciones' | 'aperturas';
 }
 
@@ -44,7 +48,7 @@ function handleMainTabChange(tab: string) {
         router.visit('/admin/sedes-aulas');
     } else if (tab === 'asistencia') {
         router.visit('/admin/asistencias');
-    } else if (tab === 'matriculas') {
+    } else if (tab === 'matriculas' || tab === 'alumnos') {
         activeMainTab.value = 'matriculas';
     } else if (tab === 'aperturas') {
         activeMainTab.value = 'aperturas';
@@ -143,6 +147,7 @@ function triggerToast(message: string) {
             :modules-count="5"
             :courses-count="props.coursesList.length"
             :enrollments-count="props.enrollments.length"
+            :students-count="props.students?.length ?? props.enrollments.length"
             :scheduled-courses-count="props.scheduledCourses.length"
             @update:active-main-tab="handleMainTabChange"
         />
@@ -150,31 +155,30 @@ function triggerToast(message: string) {
         <!-- CONTENIDO PRINCIPAL A LA DERECHA -->
         <div class="flex min-w-0 flex-1 flex-col">
             <!-- Top bar -->
-            <header
-                class="flex flex-col gap-4 border-b border-slate-200 bg-white px-8 py-5 shadow-2xs sm:flex-row sm:items-center sm:justify-between"
-            >
-                <div>
-                    <h1 class="text-2xl font-black text-slate-900">
-                        <span v-if="activeMainTab === 'aperturas'"
-                            >Apertura de Cursos y Aulas</span
-                        >
-                        <span v-else>Matrículas & Convalidaciones</span>
-                    </h1>
-                    <p class="mt-0.5 text-sm font-medium text-slate-500">
-                        <span v-if="activeMainTab === 'aperturas'"
-                            >Programación de periodos formativos, horarios y
-                            asignación de aulas físicas</span
-                        >
-                        <span v-else
-                            >Inscripciones de estudiantes, convalidaciones de
-                            módulos y seguimiento de estados</span
-                        >
-                    </p>
+            <header class="border-b border-slate-200 bg-white shadow-2xs">
+                <div class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-8 py-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 class="text-2xl font-black text-slate-900">
+                            <span v-if="activeMainTab === 'aperturas'"
+                                >Apertura de Cursos y Aulas</span
+                            >
+                            <span v-else>Alumnos &amp; Matrículas</span>
+                        </h1>
+                        <p class="mt-0.5 text-sm font-medium text-slate-500">
+                            <span v-if="activeMainTab === 'aperturas'"
+                                >Programación de periodos formativos, horarios y
+                                asignación de aulas físicas</span
+                            >
+                            <span v-else
+                                >Directorio de estudiantes, apoderados y gestión de cursos y matrículas</span
+                            >
+                        </p>
+                    </div>
                 </div>
             </header>
 
             <!-- MAIN BODY: PÁGINA INDEPENDIENTE DE MATRÍCULAS O APERTURAS -->
-            <main class="max-w-7xl flex-1 space-y-6 p-8">
+            <main class="mx-auto w-full max-w-7xl flex-1 space-y-6 p-8">
                 <AperturasView
                     v-if="activeMainTab === 'aperturas'"
                     :branches="props.branches"
@@ -191,9 +195,11 @@ function triggerToast(message: string) {
                     v-else
                     :branches="props.branches"
                     :classrooms="props.classrooms"
+                    :careers="props.careers"
                     :courses="props.coursesList"
                     :scheduled-courses="props.scheduledCourses"
                     :enrollments="props.enrollments"
+                    :students="props.students"
                     :selected-branch-id="selectedBranchId"
                     @notify="triggerToast"
                 />

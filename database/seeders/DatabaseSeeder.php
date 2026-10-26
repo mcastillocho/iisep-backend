@@ -508,6 +508,10 @@ class DatabaseSeeder extends Seeder
             'password' => 'padre123',
         ]);
 
+        // Apoderados registrados también como estudiantes sin cursos
+        Student::create(['user_id' => $userPadre->id]);
+        Student::create(['user_id' => $userMadre->id]);
+
         // 6.6 Alumnos
         // Alumno 1: Diego Mendoza Salazar (Menor de edad, hijo de Juan Carlos)
         $userDiego = User::create([
@@ -522,7 +526,10 @@ class DatabaseSeeder extends Seeder
             'username' => 'dmendoza',
             'password' => 'alumno123',
         ]);
-        $studentDiego = Student::create(['user_id' => $userDiego->id]);
+        $studentDiego = Student::create([
+            'user_id' => $userDiego->id,
+            'guardian_id' => $userPadre->id,
+        ]);
 
         // Alumna 2: Valeria Rios Flores
         $userValeria = User::create([
@@ -597,7 +604,10 @@ class DatabaseSeeder extends Seeder
             'username' => 'jquispe',
             'password' => 'alumno123',
         ]);
-        $studentJoseLuis = Student::create(['user_id' => $userJoseLuis->id]);
+        $studentJoseLuis = Student::create([
+            'user_id' => $userJoseLuis->id,
+            'guardian_id' => $userMadre->id,
+        ]);
 
         // Alumna 7: Maria Elena Cordova Benites
         $userMariaElena = User::create([

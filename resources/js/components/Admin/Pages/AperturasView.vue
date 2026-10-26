@@ -545,12 +545,45 @@ async function handleDniSearchAndEnroll() {
             unregisteredGuardianDocument.value = '';
             unregisteredGuardianPhone.value = '';
             unregisteredGuardianEmail.value = '';
+            unregisteredGuardianFoundName.value = '';
             unregisteredErrorMsg.value = '';
             showUnregisteredStudentModal.value = true;
         }
     } catch {
         quickSearching.value = false;
         emit('notify', 'Error al verificar el DNI en el servidor.');
+    }
+}
+
+const unregisteredGuardianFoundName = ref('');
+let unregisteredGuardianDniTimer: ReturnType<typeof setTimeout> | null = null;
+
+function handleUnregisteredGuardianDniInput() {
+    unregisteredGuardianFoundName.value = '';
+    const doc = unregisteredGuardianDocument.value.trim();
+    if (doc.length >= 8) {
+        if (doc === unregisteredDni.value.trim()) {
+            unregisteredErrorMsg.value = 'El estudiante no puede ser su propio apoderado.';
+            return;
+        }
+        if (unregisteredGuardianDniTimer) clearTimeout(unregisteredGuardianDniTimer);
+        unregisteredGuardianDniTimer = setTimeout(async () => {
+            try {
+                const res = await fetch(`/admin/estudiantes/buscar-dni?document=${encodeURIComponent(doc)}`);
+                const data = await res.json();
+                if (data.found) {
+                    unregisteredGuardianFoundName.value = data.full_name;
+                    unregisteredGuardianFirstName.value = data.first_name || '';
+                    unregisteredGuardianPaternalSurname.value = data.paternal_surname || '';
+                    unregisteredGuardianMaternalSurname.value = data.maternal_surname || '';
+                    if (data.phone) unregisteredGuardianPhone.value = data.phone;
+                    if (data.email) unregisteredGuardianEmail.value = data.email;
+                    unregisteredErrorMsg.value = '';
+                }
+            } catch {
+                // ignore
+            }
+        }, 300);
     }
 }
 
@@ -1799,9 +1832,13 @@ function openFullRegistrationFromQuickModal() {
                                             v-model="unregisteredGuardianDocument"
                                             type="text"
                                             maxlength="8"
+                                            @input="handleUnregisteredGuardianDniInput"
                                             placeholder="Ej. 09876543"
                                             class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-mono font-bold text-slate-900 focus:border-[#2e8b57] focus:outline-none"
                                         />
+                                        <p v-if="unregisteredGuardianFoundName" class="mt-1 text-xs text-emerald-700 font-bold flex items-center gap-1">
+                                            <span>✓ Apoderado encontrado: {{ unregisteredGuardianFoundName }}</span>
+                                        </p>
                                     </div>
                                     <div>
                                         <label class="block text-xs font-bold text-slate-700">Teléfono Apoderado</label>

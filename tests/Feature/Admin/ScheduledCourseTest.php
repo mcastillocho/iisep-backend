@@ -515,6 +515,7 @@ test('staff from secretaria upwards can store student and guardian', function ()
 
     $guardianUser = User::where('document', '08765432')->first();
     expect($guardianUser)->not->toBeNull();
+    expect($guardianUser->student)->not->toBeNull();
     expect($studentUser->student->guardian_id)->toBe($guardianUser->id);
     expect($studentUser->student->guardian->full_name)->toBe('Elena Rios Mendoza');
 });
@@ -557,6 +558,7 @@ test('staff can update student and guardian data', function () {
     expect($student->guardian)->not->toBeNull();
     expect($student->guardian->first_name)->toBe('Manuel');
     expect($student->guardian->document)->toBe('10293847');
+    expect($student->guardian->student)->not->toBeNull();
 });
 
 test('alumnos page returns students list with guardian and enrollments', function () {
@@ -579,4 +581,51 @@ test('alumnos page returns students list with guardian and enrollments', functio
         ->has('students')
         ->where('students.0.document', '72345678')
     );
+});
+
+test('guardian is saved as student without courses and cannot be re-registered with another name', function () {
+    $branch = Branch::create(['name' => 'Sede Central', 'code' => 'CEN']);
+    $coord = createStaffUser('coord_guardian_test', 'coord', $branch->id);
+
+    // 1. Registrar alumno con apoderado
+    $this->actingAs($coord)->post(route('admin.students.store'), [
+        'first_name' => 'Ana',
+        'paternal_surname' => 'Perez',
+        'document' => '71112222',
+        'has_guardian' => true,
+        'guardian_first_name' => 'Rosa',
+        'guardian_paternal_surname' => 'Perez',
+        'guardian_document' => '09998888',
+    ])->assertSessionHasNoErrors();
+
+    // El apoderado debe existir como Student
+    $guardianUser = User::where('document', '09998888')->first();
+    expect($guardianUser)->not->toBeNull();
+    expect($guardianUser->student)->not->toBeNull();
+
+    // 2. Intentar registrar a otra persona como alumno usando el DNI del apoderado
+    $response = $this->actingAs($coord)->post(route('admin.students.store'), [
+        'first_name' => 'Carlos',
+        'paternal_surname' => 'Gomez',
+        'document' => '09998888', // Mismo DNI del apoderado
+    ]);
+
+    $response->assertSessionHasErrors(['document']);
+});
+
+test('student cannot be their own guardian', function () {
+    $branch = Branch::create(['name' => 'Sede Central', 'code' => 'CEN']);
+    $coord = createStaffUser('coord_self_guardian', 'coord', $branch->id);
+
+    $response = $this->actingAs($coord)->post(route('admin.students.store'), [
+        'first_name' => 'Pedro',
+        'paternal_surname' => 'Morales',
+        'document' => '73334444',
+        'has_guardian' => true,
+        'guardian_first_name' => 'Pedro',
+        'guardian_paternal_surname' => 'Morales',
+        'guardian_document' => '73334444', // Mismo DNI
+    ]);
+
+    $response->assertSessionHasErrors(['guardian_document']);
 });

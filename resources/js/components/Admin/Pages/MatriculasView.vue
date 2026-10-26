@@ -328,6 +328,10 @@ function closeStudentDetail() {
 // ========================================================
 const showStudentModal = ref(false);
 const isEditingStudent = ref(false);
+const existingStudentDniName = ref('');
+const guardianFoundName = ref('');
+let studentDniTimer: ReturnType<typeof setTimeout> | null = null;
+let guardianDniTimer: ReturnType<typeof setTimeout> | null = null;
 
 const studentForm = useForm({
     id: 0,
@@ -347,12 +351,63 @@ const studentForm = useForm({
     guardian_email: '',
 });
 
+function handleStudentFormDniInput() {
+    existingStudentDniName.value = '';
+    const doc = studentForm.document.trim();
+    if (doc.length >= 8 && !isEditingStudent.value) {
+        if (studentDniTimer) clearTimeout(studentDniTimer);
+        studentDniTimer = setTimeout(async () => {
+            try {
+                const res = await fetch(`/admin/estudiantes/buscar-dni?document=${encodeURIComponent(doc)}`);
+                const data = await res.json();
+                if (data.found) {
+                    existingStudentDniName.value = data.full_name;
+                    studentForm.errors.document = `El DNI ya pertenece a ${data.full_name}.`;
+                }
+            } catch {
+                // ignore
+            }
+        }, 300);
+    }
+}
+
+function handleGuardianFormDniInput() {
+    guardianFoundName.value = '';
+    const doc = studentForm.guardian_document.trim();
+    if (doc.length >= 8) {
+        if (doc === studentForm.document.trim()) {
+            studentForm.errors.guardian_document = 'El apoderado no puede tener el mismo DNI que el estudiante.';
+            return;
+        }
+        if (guardianDniTimer) clearTimeout(guardianDniTimer);
+        guardianDniTimer = setTimeout(async () => {
+            try {
+                const res = await fetch(`/admin/estudiantes/buscar-dni?document=${encodeURIComponent(doc)}`);
+                const data = await res.json();
+                if (data.found) {
+                    guardianFoundName.value = data.full_name;
+                    studentForm.guardian_first_name = data.first_name || '';
+                    studentForm.guardian_paternal_surname = data.paternal_surname || '';
+                    studentForm.guardian_maternal_surname = data.maternal_surname || '';
+                    if (data.phone) studentForm.guardian_phone = data.phone;
+                    if (data.email) studentForm.guardian_email = data.email;
+                    delete studentForm.errors.guardian_document;
+                }
+            } catch {
+                // ignore
+            }
+        }, 300);
+    }
+}
+
 function openCreateStudentModal() {
     if (!canEditStudent.value) {
         emit('notify', 'No cuenta con permisos para registrar nuevos alumnos.');
         return;
     }
     isEditingStudent.value = false;
+    existingStudentDniName.value = '';
+    guardianFoundName.value = '';
     studentForm.reset();
     studentForm.clearErrors();
     studentForm.has_guardian = false;
@@ -365,6 +420,8 @@ function openEditStudentModal(student: StudentRecord) {
         return;
     }
     isEditingStudent.value = true;
+    existingStudentDniName.value = '';
+    guardianFoundName.value = student.guardian ? student.guardian.full_name : '';
     studentForm.clearErrors();
     studentForm.id = student.id;
     studentForm.first_name = student.first_name;
@@ -398,6 +455,16 @@ function openEditStudentModal(student: StudentRecord) {
 
 function saveStudent() {
     if (!canEditStudent.value) return;
+
+    if (studentForm.has_guardian && studentForm.guardian_document && studentForm.guardian_document === studentForm.document) {
+        studentForm.errors.guardian_document = 'El apoderado no puede tener el mismo DNI que el estudiante.';
+        return;
+    }
+
+    if (!isEditingStudent.value && existingStudentDniName.value) {
+        studentForm.errors.document = `El DNI ya pertenece a ${existingStudentDniName.value}.`;
+        return;
+    }
 
     if (isEditingStudent.value) {
         studentForm.put(`/admin/alumnos/${studentForm.id}`, {
@@ -1635,9 +1702,13 @@ function withdrawEnrollment(enr: { id: number; course_name: string }, studentNam
                                     v-model="studentForm.document"
                                     type="text"
                                     maxlength="8"
+                                    @input="handleStudentFormDniInput"
                                     placeholder="Ej. 74819203"
                                     class="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-mono font-bold text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                                 />
+                                <p v-if="existingStudentDniName && !isEditingStudent" class="mt-1 text-xs text-amber-700 font-bold flex items-center gap-1">
+                                    <span>⚠️ DNI ya registrado: {{ existingStudentDniName }}</span>
+                                </p>
                                 <p v-if="studentForm.errors.document" class="mt-1 text-xs text-red-600 font-bold">
                                     {{ studentForm.errors.document }}
                                 </p>
@@ -1728,9 +1799,13 @@ function withdrawEnrollment(enr: { id: number; course_name: string }, studentNam
                                         v-model="studentForm.guardian_document"
                                         type="text"
                                         maxlength="8"
+                                        @input="handleGuardianFormDniInput"
                                         placeholder="Ej. 09876543"
                                         class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-mono font-bold text-slate-900 focus:border-[#2e8b57] focus:outline-none"
                                     />
+                                    <p v-if="guardianFoundName" class="mt-1 text-xs text-emerald-700 font-bold flex items-center gap-1">
+                                        <span>✓ Apoderado encontrado: {{ guardianFoundName }}</span>
+                                    </p>
                                     <p v-if="studentForm.errors.guardian_document" class="mt-1 text-xs text-red-600 font-bold">
                                         {{ studentForm.errors.guardian_document }}
                                     </p>
