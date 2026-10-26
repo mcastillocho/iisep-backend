@@ -46,6 +46,7 @@ export interface ModuleItem {
     duration_in_weeks: number;
     careers_associated: string[];
     courses_count: number;
+    has_dependencies?: boolean;
 }
 
 export interface CourseItem {
@@ -95,8 +96,9 @@ const isCoordinador = computed(() => {
     return user.staff.branch_id !== null && user.staff.position === 'coord';
 });
 
-// Los talleres los puede modificar el personal de Coordinación de Sede para arriba (Coordinador y Director General)
+// Los talleres y módulos los puede modificar el personal de Coordinación de Sede para arriba (Coordinador y Director General)
 const canManageWorkshops = computed(() => isCoordinador.value || isAdmin.value);
+const canManageModules = computed(() => isCoordinador.value || isAdmin.value);
 
 // --- MODAL DE TALLER (CREAR / EDITAR) ---
 const showWorkshopModal = ref(false);
@@ -175,6 +177,96 @@ function deleteWorkshop(workshopId: number) {
         preserveScroll: true,
         onSuccess: () => {
             emit('notify', `Taller "${workshop.name}" eliminado.`);
+        },
+        onError: (errors) => {
+            const firstError = Object.values(errors)[0];
+            if (firstError) emit('notify', String(firstError));
+        },
+    });
+}
+
+// --- MODAL DE MÓDULO FORMATIVO (CREAR / EDITAR) ---
+const showModuleModal = ref(false);
+const editingModuleId = ref<number | null>(null);
+const moduleForm = useForm({
+    name: '',
+    description: '',
+    duration_in_weeks: 8,
+});
+
+function openNewModuleModal() {
+    editingModuleId.value = null;
+    moduleForm.reset();
+    moduleForm.clearErrors();
+    moduleForm.duration_in_weeks = 8;
+    showModuleModal.value = true;
+}
+
+function openEditModuleModal(modulo: ModuleItem) {
+    editingModuleId.value = modulo.id;
+    moduleForm.clearErrors();
+    moduleForm.name = modulo.name;
+    moduleForm.description = modulo.description || '';
+    moduleForm.duration_in_weeks = modulo.duration_in_weeks || 8;
+    showModuleModal.value = true;
+}
+
+function saveModule() {
+    if (!moduleForm.name.trim()) return;
+
+    if (editingModuleId.value) {
+        moduleForm.put(`/admin/modulos/${editingModuleId.value}`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit(
+                    'notify',
+                    `Módulo "${moduleForm.name}" actualizado con éxito.`,
+                );
+                showModuleModal.value = false;
+            },
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                if (firstError) emit('notify', String(firstError));
+            },
+        });
+    } else {
+        moduleForm.post('/admin/modulos', {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit(
+                    'notify',
+                    `Nuevo módulo "${moduleForm.name}" registrado con éxito.`,
+                );
+                showModuleModal.value = false;
+                moduleForm.reset();
+            },
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                if (firstError) emit('notify', String(firstError));
+            },
+        });
+    }
+}
+
+function deleteModule(moduleId: number) {
+    const mod = props.allModulesPool.find((m) => m.id === moduleId);
+    if (!mod) return;
+    if (
+        mod.has_dependencies ||
+        mod.courses_count > 0 ||
+        (mod.careers_associated && mod.careers_associated.length > 0)
+    ) {
+        alert(
+            'No se puede eliminar este módulo formativo porque tiene cursos o carreras asociadas.',
+        );
+        return;
+    }
+    if (!confirm(`¿Estás seguro de eliminar el módulo "${mod.name}"?`)) return;
+
+    router.delete(`/admin/modulos/${moduleId}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            emit('notify', `Módulo "${mod.name}" eliminado.`);
         },
         onError: (errors) => {
             const firstError = Object.values(errors)[0];
@@ -719,8 +811,8 @@ const filteredCourses = computed(() => {
                         <span>Nueva Carrera</span>
                     </button>
                     <button
-                        v-else-if="currentTab === 'modulos'"
-                        @click="emit('notify', 'Crear nuevo módulo formativo')"
+                        v-else-if="currentTab === 'modulos' && canManageModules"
+                        @click="openNewModuleModal"
                         class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
                     >
                         <svg
@@ -956,31 +1048,46 @@ const filteredCourses = computed(() => {
                                 >
                                     {{ modulo.courses_count }} cursos
                                 </td>
-                                <td class="px-6 py-4 text-right">
-                                    <button
-                                        @click="
-                                            emit(
-                                                'notify',
-                                                `Editar módulo: ${modulo.name}`,
-                                            )
-                                        "
-                                        class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-[#2e8b57]"
+                                <td class="px-6 py-4 text-right whitespace-nowrap">
+                                    <div
+                                        v-if="canManageModules"
+                                        class="inline-flex items-center gap-2"
                                     >
-                                        <svg
-                                            class="h-4 w-4 text-slate-500"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
+                                        <button
+                                            @click="openEditModuleModal(modulo)"
+                                            class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-[#2e8b57]"
                                         >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
-                                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                                            />
-                                        </svg>
-                                        <span>Editar</span>
-                                    </button>
+                                            <svg
+                                                class="h-4 w-4 text-slate-500"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                                />
+                                            </svg>
+                                            <span>Editar</span>
+                                        </button>
+                                        <button
+                                            @click="deleteModule(modulo.id)"
+                                            :disabled="Boolean(modulo.has_dependencies || modulo.courses_count > 0 || (modulo.careers_associated && modulo.careers_associated.length > 0))"
+                                            :title="Boolean(modulo.has_dependencies || modulo.courses_count > 0 || (modulo.careers_associated && modulo.careers_associated.length > 0)) ? 'No se puede eliminar: tiene cursos o carreras asociadas' : 'Eliminar módulo'"
+                                            class="text-xs font-bold transition"
+                                            :class="Boolean(modulo.has_dependencies || modulo.courses_count > 0 || (modulo.careers_associated && modulo.careers_associated.length > 0)) ? 'cursor-not-allowed text-slate-500 hover:text-slate-500' : 'cursor-pointer text-red-500 hover:text-red-700'"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                    <span
+                                        v-else
+                                        class="text-xs text-slate-400 italic"
+                                    >
+                                        Solo lectura
+                                    </span>
                                 </td>
                             </tr>
                         </tbody>
@@ -1208,6 +1315,129 @@ const filteredCourses = computed(() => {
                                 workshopForm.processing
                                     ? 'Guardando...'
                                     : 'Guardar Taller'
+                            }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- MODAL DE MÓDULO FORMATIVO (CREAR / EDITAR) -->
+        <div
+            v-if="showModuleModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
+            @click.self="showModuleModal = false"
+        >
+            <div
+                class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+            >
+                <div
+                    class="flex items-center justify-between border-b border-slate-100 pb-4"
+                >
+                    <h3 class="text-lg font-bold text-slate-900">
+                        {{
+                            editingModuleId
+                                ? 'Editar Módulo Formativo'
+                                : 'Registrar Nuevo Módulo Formativo'
+                        }}
+                    </h3>
+                    <button
+                        @click="showModuleModal = false"
+                        class="cursor-pointer rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    >
+                        &times;
+                    </button>
+                </div>
+
+                <form @submit.prevent="saveModule" class="mt-5 space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Nombre del Módulo</label
+                        >
+                        <input
+                            v-model="moduleForm.name"
+                            type="text"
+                            required
+                            placeholder="Ej. Ofimática Empresarial"
+                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                            :class="{
+                                'border-rose-500 bg-rose-50':
+                                    moduleForm.errors.name,
+                            }"
+                        />
+                        <p
+                            v-if="moduleForm.errors.name"
+                            class="mt-1 text-xs font-semibold text-rose-600"
+                        >
+                            {{ moduleForm.errors.name }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Duración (en semanas)</label
+                        >
+                        <input
+                            v-model.number="moduleForm.duration_in_weeks"
+                            type="number"
+                            min="1"
+                            max="52"
+                            required
+                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                            :class="{
+                                'border-rose-500 bg-rose-50':
+                                    moduleForm.errors.duration_in_weeks,
+                            }"
+                        />
+                        <p
+                            v-if="moduleForm.errors.duration_in_weeks"
+                            class="mt-1 text-xs font-semibold text-rose-600"
+                        >
+                            {{ moduleForm.errors.duration_in_weeks }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Descripción / Competencias</label
+                        >
+                        <textarea
+                            v-model="moduleForm.description"
+                            rows="3"
+                            placeholder="Describe el alcance y competencias desarrolladas en este módulo formativo..."
+                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                            :class="{
+                                'border-rose-500 bg-rose-50':
+                                    moduleForm.errors.description,
+                            }"
+                        ></textarea>
+                        <p
+                            v-if="moduleForm.errors.description"
+                            class="mt-1 text-xs font-semibold text-rose-600"
+                        >
+                            {{ moduleForm.errors.description }}
+                        </p>
+                    </div>
+
+                    <div
+                        class="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-5"
+                    >
+                        <button
+                            type="button"
+                            @click="showModuleModal = false"
+                            class="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="moduleForm.processing"
+                            class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347] disabled:opacity-50"
+                        >
+                            {{
+                                moduleForm.processing
+                                    ? 'Guardando...'
+                                    : 'Guardar Módulo'
                             }}
                         </button>
                     </div>

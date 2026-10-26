@@ -61,7 +61,7 @@ class AcademicOfferController extends Controller
             ->all();
 
         $modules = Module::query()
-            ->withCount('courses')
+            ->withCount(['courses', 'careers', 'enrollments'])
             ->with('careers')
             ->orderBy('id')
             ->get()
@@ -71,7 +71,8 @@ class AcademicOfferController extends Controller
                 'description' => $m->description ?? '',
                 'duration_in_weeks' => $m->duration_in_weeks ?? 8,
                 'careers_associated' => $m->careers->pluck('name')->all(),
-                'courses_count' => $m->courses_count,
+                'courses_count' => (int) $m->courses_count,
+                'has_dependencies' => ($m->courses_count > 0 || $m->careers_count > 0 || $m->enrollments_count > 0),
             ])
             ->values()
             ->all();
