@@ -159,11 +159,53 @@ function triggerToast(message: string) {
                             <span class="text-[#2e8b57] capitalize">{{
                                 activeCurricularTab
                             }}</span>
+                            <span
+                                v-if="selectedBranchId !== 'all'"
+                                class="text-lg font-bold text-[#2e8b57]"
+                            >
+                                &bull;
+                                {{
+                                    branches.find((b) => b.id === selectedBranchId)
+                                        ?.name
+                                }}
+                            </span>
                         </h1>
                         <p class="mt-0.5 text-sm font-medium text-slate-500">
                             Catálogo de formación técnica, módulos certificables y
                             talleres prácticos del CETPRO IISEP
                         </p>
+                    </div>
+
+                    <!-- Selector de Sede en la Barra Superior -->
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2">
+                            <svg
+                                class="h-4 w-4 text-[#2e8b57]"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                                />
+                            </svg>
+                            <select
+                                v-model="selectedBranchId"
+                                class="cursor-pointer bg-transparent text-sm font-bold text-slate-800 focus:outline-none"
+                            >
+                                <option v-if="canViewAllBranches" :value="'all'">Todas las Sedes</option>
+                                <option
+                                    v-for="branch in (userStaffBranchId ? branches.filter(b => b.id === userStaffBranchId) : branches)"
+                                    :key="branch.id"
+                                    :value="branch.id"
+                                >
+                                    {{ branch.name }}
+                                </option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -176,6 +218,7 @@ function triggerToast(message: string) {
                     :careers="careers"
                     :all-modules-pool="allModulesPool"
                     :courses-list="coursesList"
+                    :selected-branch-id="selectedBranchId"
                     @notify="triggerToast"
                 />
             </main>

@@ -80,10 +80,12 @@ interface Props {
     careers: Career[];
     allModulesPool: ModuleItem[];
     coursesList: CourseItem[];
+    selectedBranchId?: number | 'all';
 }
 
 const props = withDefaults(defineProps<Props>(), {
     activeTab: 'carreras',
+    selectedBranchId: 'all',
 });
 
 const emit = defineEmits<{
@@ -638,9 +640,14 @@ function addModuleToCareer() {
 
 // Filtros calculados
 const filteredCareers = computed(() => {
-    if (!searchCareerQuery.value.trim()) return props.careers;
+    let list = props.careers;
+    if (props.selectedBranchId && props.selectedBranchId !== 'all') {
+        const branchNum = Number(props.selectedBranchId);
+        list = list.filter((c) => c.available_branch_ids && c.available_branch_ids.includes(branchNum));
+    }
+    if (!searchCareerQuery.value.trim()) return list;
     const q = searchCareerQuery.value.toLowerCase();
-    return props.careers.filter(
+    return list.filter(
         (c) =>
             c.name.toLowerCase().includes(q) ||
             c.description.toLowerCase().includes(q),

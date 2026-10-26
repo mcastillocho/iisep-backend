@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import {
+    hasActiveEnrollmentInBranch,
+    isStudentInBranch,
+} from '../../../utils/studentBranchFilter';
 
 export interface Branch {
     id: number;
@@ -168,6 +172,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
     (e: 'notify', message: string): void;
+    (e: 'update:selectedBranchId', branchId: number | 'all'): void;
 }>();
 
 // Auth y Roles
@@ -247,38 +252,48 @@ const selectedBranchFilter = ref<number | 'all'>('all');
 watch(
     () => props.selectedBranchId,
     (newVal) => {
-        if (newVal !== undefined) {
+        if (newVal !== undefined && newVal !== selectedBranchFilter.value) {
             selectedBranchFilter.value = newVal;
         }
     },
     { immediate: true },
 );
 
-const filteredStudents = computed(() => {
-    const list = props.students || [];
-    return list.filter((student) => {
-        // Filtrado por sede si se seleccionó una sede específica
-        if (selectedBranchFilter.value !== 'all') {
-            const enrollments = student.enrollments || [];
-            const hasEnrollmentInBranch = enrollments.some(
-                (e) => String(e.branch_id) === String(selectedBranchFilter.value),
-            );
-            if (enrollments.length > 0 && !hasEnrollmentInBranch) {
-                return false;
-            }
-        }
+function handleBranchFilterChange() {
+    emit('update:selectedBranchId', selectedBranchFilter.value);
+}
 
-        // Filtro por estado de matrícula
-        const enrollments = student.enrollments || [];
+// Alumnos que pertenecen a la sede actualmente seleccionada
+const currentBranchStudents = computed(() => {
+    const list = props.students || [];
+    return list.filter((student) => isStudentInBranch(student, selectedBranchFilter.value, list));
+});
+
+// Conteo total para la sede actual
+const totalStudentsInCurrentBranchCount = computed(() => currentBranchStudents.value.length);
+
+// Conteo con matrícula activa para la sede actual
+const withActiveInCurrentBranchCount = computed(() => {
+    return currentBranchStudents.value.filter((student) =>
+        hasActiveEnrollmentInBranch(student, selectedBranchFilter.value),
+    ).length;
+});
+
+// Conteo sin matrícula activa para la sede actual
+const withoutActiveInCurrentBranchCount = computed(() => {
+    return currentBranchStudents.value.filter(
+        (student) => !hasActiveEnrollmentInBranch(student, selectedBranchFilter.value),
+    ).length;
+});
+
+const filteredStudents = computed(() => {
+    const list = currentBranchStudents.value;
+    return list.filter((student) => {
+        // Filtro por estado de matrícula en la sede seleccionada
+        const hasActive = hasActiveEnrollmentInBranch(student, selectedBranchFilter.value);
         if (studentFilterStatus.value === 'with_active') {
-            const hasActive = enrollments.some((e) =>
-                ['activo', 'convalidado', 'preinscrito'].includes(e.status),
-            );
             if (!hasActive) return false;
         } else if (studentFilterStatus.value === 'without_active') {
-            const hasActive = enrollments.some((e) =>
-                ['activo', 'convalidado', 'preinscrito'].includes(e.status),
-            );
             if (hasActive) return false;
         }
 
@@ -302,7 +317,7 @@ const filteredStudents = computed(() => {
                   (student.guardian.phone || '').includes(q)
                 : false;
 
-            const matchCourses = enrollments.some((e) =>
+            const matchCourses = (student.enrollments || []).some((e) =>
                 (e.course_name || '').toLowerCase().includes(q) ||
                 (e.career_name && e.career_name.toLowerCase().includes(q)),
             );
@@ -1496,7 +1511,7 @@ function withdrawEnrollment(enr: { id: number; course_name: string }, studentNam
                             'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
                         ]"
                     >
-                        Todos ({{ (props.students || []).length }})
+                        Todos ({{ totalStudentsInCurrentBranchCount }})
                     </button>
                     <button
                         type="button"
@@ -1508,7 +1523,7 @@ function withdrawEnrollment(enr: { id: number; course_name: string }, studentNam
                             'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
                         ]"
                     >
-                        Con Matrícula Activa
+                        Con Matrícula Activa ({{ withActiveInCurrentBranchCount }})
                     </button>
                     <button
                         type="button"
@@ -1520,7 +1535,7 @@ function withdrawEnrollment(enr: { id: number; course_name: string }, studentNam
                             'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
                         ]"
                     >
-                        Sin Matrícula Activa
+                        Sin Matrícula Activa ({{ withoutActiveInCurrentBranchCount }})
                     </button>
                 </div>
 
@@ -1529,6 +1544,7 @@ function withdrawEnrollment(enr: { id: number; course_name: string }, studentNam
                     <span class="text-xs font-bold tracking-wider text-slate-400 uppercase">Sede:</span>
                     <select
                         v-model="selectedBranchFilter"
+                        @change="handleBranchFilterChange"
                         class="cursor-pointer rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 shadow-2xs focus:border-[#2e8b57] focus:outline-none"
                     >
                         <option value="all">Todas las Sedes</option>
@@ -1664,6 +1680,19 @@ function withdrawEnrollment(enr: { id: number; course_name: string }, studentNam
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Resumen inferior del listado filtrado -->
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/70 px-4 py-2.5 text-xs font-medium text-slate-500">
+                    <span>
+                        Mostrando <strong class="text-slate-800">{{ filteredStudents.length }}</strong> de <strong class="text-slate-800">{{ totalStudentsInCurrentBranchCount }}</strong> {{ totalStudentsInCurrentBranchCount === 1 ? 'alumno' : 'alumnos' }}
+                    </span>
+                    <span v-if="selectedBranchFilter !== 'all'" class="text-slate-500">
+                        Sede activa: <strong class="text-[#2e8b57]">{{ props.branches.find(b => b.id === selectedBranchFilter)?.name }}</strong>
+                    </span>
+                    <span v-else class="text-slate-400">
+                        Mostrando todas las sedes
+                    </span>
                 </div>
             </div>
         </div>

@@ -193,7 +193,7 @@ function triggerToast(message: string) {
                             >
                                 <option v-if="canViewAllBranches" :value="'all'">Todas las Sedes</option>
                                 <option
-                                    v-for="branch in branches"
+                                    v-for="branch in (userStaffBranchId ? branches.filter(b => b.id === userStaffBranchId) : branches)"
                                     :key="branch.id"
                                     :value="branch.id"
                                 >

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, router, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import AperturasView from '../../components/Admin/Pages/AperturasView.vue';
 import MatriculasView, {
     Branch,
@@ -12,6 +12,7 @@ import MatriculasView, {
     StudentRecord,
     TeacherItem,
 } from '../../components/Admin/Pages/MatriculasView.vue';
+import { isStudentInBranch } from '../../utils/studentBranchFilter';
 import Sidebar from '../../components/Admin/Sidebar/Sidebar.vue';
 
 interface Props {
@@ -39,7 +40,33 @@ const activeMainTab = ref<
     | 'asistencia'
     | 'resumen'
 >(props.initialTab === 'aperturas' ? 'aperturas' : 'matriculas');
-const selectedBranchId = ref<number | 'all'>('all');
+
+// Control de acceso territorial por Sede
+const page = usePage();
+const userStaffBranchId = computed<number | null>(() => {
+    return (page.props.auth as any)?.user?.staff?.branch_id ?? null;
+});
+
+const canViewAllBranches = computed(() => userStaffBranchId.value === null);
+
+// Si tiene sede asignada, preselecciona su sede; si es admin global (null), selecciona 'all'
+const selectedBranchId = ref<number | 'all'>(
+    userStaffBranchId.value !== null ? userStaffBranchId.value : 'all',
+);
+
+// Conteo reactivo según la sede seleccionada
+const currentBranchStudents = computed(() => {
+    const list = props.students || [];
+    return list.filter((student) => isStudentInBranch(student, selectedBranchId.value, list));
+});
+
+const currentBranchStudentsCount = computed(() => currentBranchStudents.value.length);
+
+const currentBranchScheduledCoursesCount = computed(() => {
+    if (selectedBranchId.value === 'all') return props.scheduledCourses.length;
+    const branchStr = String(selectedBranchId.value);
+    return props.scheduledCourses.filter((sc) => String(sc.branch_id) === branchStr).length;
+});
 
 function handleMainTabChange(tab: string) {
     if (tab === 'curricular') {
@@ -147,8 +174,8 @@ function triggerToast(message: string) {
             :modules-count="5"
             :courses-count="props.coursesList.length"
             :enrollments-count="props.enrollments.length"
-            :students-count="props.students?.length ?? props.enrollments.length"
-            :scheduled-courses-count="props.scheduledCourses.length"
+            :students-count="currentBranchStudentsCount"
+            :scheduled-courses-count="currentBranchScheduledCoursesCount"
             @update:active-main-tab="handleMainTabChange"
         />
 
@@ -163,6 +190,16 @@ function triggerToast(message: string) {
                                 >Apertura de Cursos y Aulas</span
                             >
                             <span v-else>Alumnos &amp; Matrículas</span>
+                            <span
+                                v-if="selectedBranchId !== 'all'"
+                                class="text-lg font-bold text-[#2e8b57]"
+                            >
+                                &bull;
+                                {{
+                                    props.branches.find((b) => b.id === selectedBranchId)
+                                        ?.name
+                                }}
+                            </span>
                         </h1>
                         <p class="mt-0.5 text-sm font-medium text-slate-500">
                             <span v-if="activeMainTab === 'aperturas'"
@@ -173,6 +210,38 @@ function triggerToast(message: string) {
                                 >Directorio de estudiantes, apoderados y gestión de cursos y matrículas</span
                             >
                         </p>
+                    </div>
+
+                    <!-- Selector de Sede en la Barra Superior -->
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2">
+                            <svg
+                                class="h-4 w-4 text-[#2e8b57]"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                                />
+                            </svg>
+                            <select
+                                v-model="selectedBranchId"
+                                class="cursor-pointer bg-transparent text-sm font-bold text-slate-800 focus:outline-none"
+                            >
+                                <option v-if="canViewAllBranches" :value="'all'">Todas las Sedes</option>
+                                <option
+                                    v-for="branch in (userStaffBranchId ? props.branches.filter(b => b.id === userStaffBranchId) : props.branches)"
+                                    :key="branch.id"
+                                    :value="branch.id"
+                                >
+                                    {{ branch.name }}
+                                </option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -200,7 +269,7 @@ function triggerToast(message: string) {
                     :scheduled-courses="props.scheduledCourses"
                     :enrollments="props.enrollments"
                     :students="props.students"
-                    :selected-branch-id="selectedBranchId"
+                    v-model:selected-branch-id="selectedBranchId"
                     @notify="triggerToast"
                 />
             </main>

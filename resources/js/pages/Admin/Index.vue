@@ -11,6 +11,7 @@ import MatriculasView, {
     type StudentRecord,
     type TeacherItem,
 } from '../../components/Admin/Pages/MatriculasView.vue';
+import { isStudentInBranch } from '../../utils/studentBranchFilter';
 import AsistenciasView from '../../components/Admin/Pages/AsistenciasView.vue';
 
 // --- INTERFACES ---
@@ -116,6 +117,11 @@ const teachers = computed<TeacherItem[]>(() => props.teachers ?? []);
 const scheduledCourses = computed<ScheduledCourseItem[]>(() => props.scheduledCourses ?? []);
 const enrollments = computed<EnrollmentRecord[]>(() => props.enrollments ?? []);
 const students = computed<StudentRecord[]>(() => props.students ?? []);
+
+const currentBranchStudentsCount = computed(() => {
+    const list = students.value;
+    return list.filter((s) => isStudentInBranch(s, selectedBranchId.value, list)).length;
+});
 
 function handleMainTabChange(tab: string) {
     if (tab === 'curricular') {
@@ -231,7 +237,7 @@ function triggerToast(msg: string) {
             :modules-count="allModulesPool.length"
             :courses-count="coursesList.length"
             :enrollments-count="enrollments.length"
-            :students-count="students.length"
+            :students-count="currentBranchStudentsCount"
             :scheduled-courses-count="scheduledCourses.length"
             @update:active-main-tab="handleMainTabChange"
             @clear-editing-career="() => {}"
