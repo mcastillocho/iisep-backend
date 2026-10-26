@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Admin\AcademicOfferController;
 use App\Http\Controllers\Admin\BranchController;
 use App\Http\Controllers\Admin\ClassroomController;
+use App\Http\Controllers\Admin\WorkshopController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,7 +26,12 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
 Route::middleware(['auth'])->prefix('admin')->group(function (): void {
     Route::get('/', [BranchController::class, 'dashboard'])->name('admin');
     Route::inertia('/matriculas', 'Admin/Matriculas')->name('admin.matriculas');
-    Route::inertia('/oferta-academica', 'Admin/OfertaAcademica')->name('admin.oferta-academica');
+
+    // Oferta Académica y Talleres
+    Route::get('/oferta-academica', [AcademicOfferController::class, 'index'])->name('admin.oferta-academica');
+    Route::post('/talleres', [WorkshopController::class, 'store'])->name('admin.workshops.store');
+    Route::put('/talleres/{course}', [WorkshopController::class, 'update'])->name('admin.workshops.update');
+    Route::delete('/talleres/{course}', [WorkshopController::class, 'destroy'])->name('admin.workshops.destroy');
 
     // Sedes y Aulas
     Route::get('/sedes-aulas', [BranchController::class, 'index'])->name('admin.sedes-aulas');

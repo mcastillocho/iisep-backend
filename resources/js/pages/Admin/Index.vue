@@ -61,6 +61,8 @@ interface CourseItem {
     description: string;
     duration_in_weeks: number;
     is_workshop: boolean;
+    has_scheduled_courses?: boolean;
+    scheduled_courses_count?: number;
 }
 
 // --- ESTADOS DE NAVEGACIÓN ---
@@ -90,170 +92,19 @@ const activeCurricularTab = ref<CurricularTab>('carreras');
 interface Props {
     branches?: Branch[];
     classrooms?: Classroom[];
+    careers?: Career[];
+    allModulesPool?: ModuleItem[];
+    coursesList?: CourseItem[];
 }
 
 const props = defineProps<Props>();
 
-// Datos de Sedes y Aulas obtenidos exclusivamente de la base de datos
+// Datos de Sedes, Aulas y Oferta Académica obtenidos exclusivamente de la base de datos
 const branches = computed<Branch[]>(() => props.branches ?? []);
 const classrooms = computed<Classroom[]>(() => props.classrooms ?? []);
-
-// 3. Catálogo Global de Módulos (para asignación a carreras)
-const allModulesPool = ref<ModuleItem[]>([
-    {
-        id: 1,
-        name: 'Ofimática Empresarial',
-        description:
-            'Word, Excel avanzado, PowerPoint y gestión de documentos en la nube.',
-        duration_in_weeks: 8,
-        careers_associated: ['Computación e Informática'],
-        courses_count: 1,
-    },
-    {
-        id: 2,
-        name: 'Ensamblaje y Mantenimiento de PC',
-        description:
-            'Diagnóstico de hardware, armado de computadoras, instalación de SO y redes LAN.',
-        duration_in_weeks: 8,
-        careers_associated: ['Computación e Informática'],
-        courses_count: 1,
-    },
-    {
-        id: 3,
-        name: 'Cajero Bancario y Comercial',
-        description:
-            'Detección de billetes, sistemas financieros, arqueo de caja y servicio al cliente.',
-        duration_in_weeks: 8,
-        careers_associated: ['Logística y Almacenes'],
-        courses_count: 0,
-    },
-    {
-        id: 4,
-        name: 'Pastelería y Repostería Fina',
-        description:
-            'Técnicas de masas, horneado, decoración y postres internacionales.',
-        duration_in_weeks: 12,
-        careers_associated: ['Gastronomía y Arte Culinario'],
-        courses_count: 0,
-    },
-    {
-        id: 5,
-        name: 'Desarrollo Web y Programación Front-End',
-        description:
-            'HTML5, CSS3, JavaScript y desarrollo de aplicaciones web interactivas.',
-        duration_in_weeks: 16,
-        careers_associated: [],
-        courses_count: 2,
-    },
-]);
-
-// 4. Carreras Técnicas (careers)
-const careers = ref<Career[]>([
-    {
-        id: 1,
-        name: 'Computación e Informática',
-        description:
-            'Carrera técnica profesional de desarrollo de software, administración de redes y soporte técnico.',
-        estimated_capacity: 40,
-        available_branch_ids: [1, 2],
-        modules: [
-            {
-                id: 1,
-                name: 'Ofimática Empresarial',
-                duration_in_weeks: 8,
-                order: 1,
-            },
-            {
-                id: 2,
-                name: 'Ensamblaje y Mantenimiento de PC',
-                duration_in_weeks: 8,
-                order: 2,
-            },
-        ],
-    },
-    {
-        id: 2,
-        name: 'Logística y Almacenes',
-        description:
-            'Especialista en administración de inventarios, cadena de suministro y comercio exterior.',
-        estimated_capacity: 30,
-        available_branch_ids: [1],
-        modules: [
-            {
-                id: 3,
-                name: 'Cajero Bancario y Comercial',
-                duration_in_weeks: 8,
-                order: 1,
-            },
-        ],
-    },
-    {
-        id: 3,
-        name: 'Gastronomía y Arte Culinario',
-        description:
-            'Formación integral en técnicas culinarias nacionales e internacionales y gestión de restaurantes.',
-        estimated_capacity: 25,
-        available_branch_ids: [1, 2],
-        modules: [
-            {
-                id: 4,
-                name: 'Pastelería y Repostería Fina',
-                duration_in_weeks: 12,
-                order: 1,
-            },
-        ],
-    },
-]);
-
-// 5. Cursos y Talleres Libres
-const coursesList = ref<CourseItem[]>([
-    {
-        id: 1,
-        module_id: 1,
-        module_name: 'Ofimática Empresarial',
-        name: 'Excel Avanzado y Macros',
-        description:
-            'Fórmulas lógicas, tablas dinámicas, dashboards y automatización VBA.',
-        duration_in_weeks: 4,
-        is_workshop: false,
-    },
-    {
-        id: 2,
-        module_id: 2,
-        module_name: 'Ensamblaje y Mantenimiento de PC',
-        name: 'Arquitectura de Hardware y Diagnóstico',
-        description:
-            'Detección de fallas en placas, memorias, fuentes y almacenamiento.',
-        duration_in_weeks: 4,
-        is_workshop: false,
-    },
-    {
-        id: 3,
-        module_id: null,
-        name: 'Taller de Barber Shop y Cortes Urbanos',
-        description:
-            'Técnicas de degradado, fade, afeitado tradicional y perfilado de barba.',
-        duration_in_weeks: 6,
-        is_workshop: true,
-    },
-    {
-        id: 4,
-        module_id: null,
-        name: 'Taller de Uñas Acrílicas y Polygel',
-        description: 'Esculpido en acrílico, encapsulados, mano alzada y 3D.',
-        duration_in_weeks: 4,
-        is_workshop: true,
-    },
-    {
-        id: 5,
-        module_id: null,
-        name: 'Taller de Reparación de Celulares y Tablets',
-        description:
-            'Cambio de pantallas, micro-soldadura, diagnóstico de placas y flasheo.',
-        duration_in_weeks: 8,
-        is_workshop: true,
-    },
-]);
+const careers = computed<Career[]>(() => props.careers ?? []);
+const allModulesPool = computed<ModuleItem[]>(() => props.allModulesPool ?? []);
+const coursesList = computed<CourseItem[]>(() => props.coursesList ?? []);
 
 // 6. Matrículas
 const enrollments = ref<EnrollmentRecord[]>([

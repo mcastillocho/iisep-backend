@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, router, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import OfertaAcademicaView, {
     Branch,
     Career,
@@ -9,177 +9,20 @@ import OfertaAcademicaView, {
 } from '../../components/Admin/Pages/OfertaAcademicaView.vue';
 import Sidebar from '../../components/Admin/Sidebar/Sidebar.vue';
 
-// --- DATOS MOCK INSTITUCIONALES ---
-const branches = ref<Branch[]>([
-    {
-        id: 1,
-        name: 'Sede Comas',
-        code: 'COM',
-        address: 'Av. Túpac Amaru 3845 (Frente a la Reniec de Comas)',
-        phone: '944206945',
-    },
-    {
-        id: 2,
-        name: 'Sede Puente Piedra',
-        code: 'PUP',
-        address: 'Jr. Ricardo Palma 241 (2° piso de la RENIEC)',
-        phone: '987710344',
-    },
-]);
+interface Props {
+    branches?: Branch[];
+    careers?: Career[];
+    allModulesPool?: ModuleItem[];
+    coursesList?: CourseItem[];
+}
 
-const careers = ref<Career[]>([
-    {
-        id: 1,
-        name: 'Computación e Informática',
-        description:
-            'Carrera técnica profesional de desarrollo de software, administración de redes y soporte técnico.',
-        estimated_capacity: 40,
-        available_branch_ids: [1, 2],
-        modules: [
-            {
-                id: 1,
-                name: 'Ofimática Empresarial',
-                duration_in_weeks: 8,
-                order: 1,
-            },
-            {
-                id: 2,
-                name: 'Ensamblaje y Mantenimiento de PC',
-                duration_in_weeks: 8,
-                order: 2,
-            },
-        ],
-    },
-    {
-        id: 2,
-        name: 'Logística y Almacenes',
-        description:
-            'Especialista en administración de inventarios, cadena de suministro y comercio exterior.',
-        estimated_capacity: 30,
-        available_branch_ids: [1],
-        modules: [
-            {
-                id: 3,
-                name: 'Cajero Bancario y Comercial',
-                duration_in_weeks: 8,
-                order: 1,
-            },
-        ],
-    },
-    {
-        id: 3,
-        name: 'Gastronomía y Arte Culinario',
-        description:
-            'Formación integral en técnicas culinarias nacionales e internacionales y gestión de restaurantes.',
-        estimated_capacity: 25,
-        available_branch_ids: [1, 2],
-        modules: [
-            {
-                id: 4,
-                name: 'Pastelería y Repostería Fina',
-                duration_in_weeks: 12,
-                order: 1,
-            },
-        ],
-    },
-]);
+const props = defineProps<Props>();
 
-const allModulesPool = ref<ModuleItem[]>([
-    {
-        id: 1,
-        name: 'Ofimática Empresarial',
-        description:
-            'Word, Excel avanzado, PowerPoint y gestión de documentos en la nube.',
-        duration_in_weeks: 8,
-        careers_associated: ['Computación e Informática'],
-        courses_count: 1,
-    },
-    {
-        id: 2,
-        name: 'Ensamblaje y Mantenimiento de PC',
-        description:
-            'Diagnóstico de hardware, armado de computadoras, instalación de SO y redes LAN.',
-        duration_in_weeks: 8,
-        careers_associated: ['Computación e Informática'],
-        courses_count: 1,
-    },
-    {
-        id: 3,
-        name: 'Cajero Bancario y Comercial',
-        description:
-            'Detección de billetes, sistemas financieros, arqueo de caja y servicio al cliente.',
-        duration_in_weeks: 8,
-        careers_associated: ['Logística y Almacenes'],
-        courses_count: 0,
-    },
-    {
-        id: 4,
-        name: 'Pastelería y Repostería Fina',
-        description:
-            'Técnicas de masas, horneado, decoración y postres internacionales.',
-        duration_in_weeks: 12,
-        careers_associated: ['Gastronomía y Arte Culinario'],
-        courses_count: 0,
-    },
-    {
-        id: 5,
-        name: 'Desarrollo Web y Programación Front-End',
-        description:
-            'HTML5, CSS3, JavaScript y desarrollo de aplicaciones web interactivas.',
-        duration_in_weeks: 16,
-        careers_associated: [],
-        courses_count: 2,
-    },
-]);
-
-const coursesList = ref<CourseItem[]>([
-    {
-        id: 1,
-        module_id: 1,
-        module_name: 'Ofimática Empresarial',
-        name: 'Excel Avanzado y Macros',
-        description:
-            'Fórmulas lógicas, tablas dinámicas, dashboards y automatización VBA.',
-        duration_in_weeks: 4,
-        is_workshop: false,
-    },
-    {
-        id: 2,
-        module_id: 2,
-        module_name: 'Ensamblaje y Mantenimiento de PC',
-        name: 'Arquitectura de Hardware y Diagnóstico',
-        description:
-            'Detección de fallas en placas, memorias, fuentes y almacenamiento.',
-        duration_in_weeks: 4,
-        is_workshop: false,
-    },
-    {
-        id: 3,
-        module_id: null,
-        name: 'Taller de Barber Shop y Cortes Urbanos',
-        description:
-            'Técnicas de degradado, fade, afeitado tradicional y perfilado de barba.',
-        duration_in_weeks: 6,
-        is_workshop: true,
-    },
-    {
-        id: 4,
-        module_id: null,
-        name: 'Taller de Uñas Acrílicas y Polygel',
-        description: 'Esculpido en acrílico, encapsulados, mano alzada y 3D.',
-        duration_in_weeks: 4,
-        is_workshop: true,
-    },
-    {
-        id: 5,
-        module_id: null,
-        name: 'Taller de Reparación de Celulares y Tablets',
-        description:
-            'Cambio de pantallas, micro-soldadura, diagnóstico de placas y flasheo.',
-        duration_in_weeks: 8,
-        is_workshop: true,
-    },
-]);
+// Datos obtenidos exclusivamente de la base de datos
+const branches = computed<Branch[]>(() => props.branches ?? []);
+const careers = computed<Career[]>(() => props.careers ?? []);
+const allModulesPool = computed<ModuleItem[]>(() => props.allModulesPool ?? []);
+const coursesList = computed<CourseItem[]>(() => props.coursesList ?? []);
 
 type CurricularTab = 'carreras' | 'modulos' | 'talleres';
 const activeCurricularTab = ref<CurricularTab>('carreras');
@@ -187,7 +30,16 @@ const isMobileSidebarOpen = ref(false);
 const activeMainTab = ref<
     'infraestructura' | 'curricular' | 'matriculas' | 'asistencia' | 'resumen'
 >('curricular');
-const selectedBranchId = ref<number | 'all'>('all');
+
+// Control de acceso territorial
+const page = usePage();
+const userStaffBranchId = computed<number | null>(() => {
+    return (page.props.auth as any)?.user?.staff?.branch_id ?? null;
+});
+const canViewAllBranches = computed(() => userStaffBranchId.value === null);
+const selectedBranchId = ref<number | 'all'>(
+    userStaffBranchId.value !== null ? userStaffBranchId.value : 'all',
+);
 
 function handleMainTabChange(tab: string) {
     if (tab === 'infraestructura') {

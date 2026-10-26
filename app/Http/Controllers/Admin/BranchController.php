@@ -93,7 +93,12 @@ class BranchController extends Controller
      */
     public function dashboard(Request $request): Response
     {
-        return Inertia::render('Admin/Index', $this->getBranchData($request));
+        $data = array_merge(
+            $this->getBranchData($request),
+            AcademicOfferController::getOfferData($request),
+        );
+
+        return Inertia::render('Admin/Index', $data);
     }
 
     /**

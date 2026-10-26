@@ -1,5 +1,19 @@
 <script setup lang="ts">
+import { router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+
+interface AuthStaff {
+    id?: number;
+    branch_id?: number | null;
+    position?: string | null;
+}
+
+interface AuthUser {
+    id: number;
+    username: string;
+    full_name?: string;
+    staff?: AuthStaff | null;
+}
 
 export interface Branch {
     id: number;
@@ -42,6 +56,8 @@ export interface CourseItem {
     description: string;
     duration_in_weeks: number;
     is_workshop: boolean;
+    has_scheduled_courses?: boolean;
+    scheduled_courses_count?: number;
 }
 
 type CurricularTab = 'carreras' | 'modulos' | 'talleres';
@@ -62,6 +78,110 @@ const emit = defineEmits<{
     (e: 'update:activeTab', tab: CurricularTab): void;
     (e: 'notify', message: string): void;
 }>();
+
+// Control de Perfiles y Autorizaciones para Talleres
+const page = usePage<{ auth?: { user?: AuthUser } }>();
+
+const isAdmin = computed(() => {
+    const user = page.props.auth?.user;
+    if (!user?.staff) return false;
+    return user.staff.branch_id === null;
+});
+
+const isCoordinador = computed(() => {
+    const user = page.props.auth?.user;
+    if (!user?.staff) return false;
+    if (isAdmin.value) return true;
+    return user.staff.branch_id !== null && user.staff.position === 'coord';
+});
+
+// Los talleres los puede modificar el personal de Coordinación de Sede para arriba (Coordinador y Director General)
+const canManageWorkshops = computed(() => isCoordinador.value || isAdmin.value);
+
+// --- MODAL DE TALLER (CREAR / EDITAR) ---
+const showWorkshopModal = ref(false);
+const editingWorkshopId = ref<number | null>(null);
+const workshopForm = useForm({
+    name: '',
+    description: '',
+    duration_in_weeks: 4,
+});
+
+function openNewWorkshopModal() {
+    editingWorkshopId.value = null;
+    workshopForm.reset();
+    workshopForm.clearErrors();
+    workshopForm.duration_in_weeks = 4;
+    showWorkshopModal.value = true;
+}
+
+function openEditWorkshopModal(curso: CourseItem) {
+    editingWorkshopId.value = curso.id;
+    workshopForm.clearErrors();
+    workshopForm.name = curso.name;
+    workshopForm.description = curso.description || '';
+    workshopForm.duration_in_weeks = curso.duration_in_weeks || 4;
+    showWorkshopModal.value = true;
+}
+
+function saveWorkshop() {
+    if (!workshopForm.name.trim()) return;
+
+    if (editingWorkshopId.value) {
+        workshopForm.put(`/admin/talleres/${editingWorkshopId.value}`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit(
+                    'notify',
+                    `Taller "${workshopForm.name}" actualizado con éxito.`,
+                );
+                showWorkshopModal.value = false;
+            },
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                if (firstError) emit('notify', String(firstError));
+            },
+        });
+    } else {
+        workshopForm.post('/admin/talleres', {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit(
+                    'notify',
+                    `Nuevo taller "${workshopForm.name}" registrado con éxito.`,
+                );
+                showWorkshopModal.value = false;
+                workshopForm.reset();
+            },
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                if (firstError) emit('notify', String(firstError));
+            },
+        });
+    }
+}
+
+function deleteWorkshop(workshopId: number) {
+    const workshop = props.coursesList.find((c) => c.id === workshopId);
+    if (!workshop) return;
+    if (workshop.has_scheduled_courses || (workshop.scheduled_courses_count && workshop.scheduled_courses_count > 0)) {
+        alert('No se puede eliminar este taller porque tiene clases programadas actualmente.');
+        return;
+    }
+    if (!confirm(`¿Estás seguro de eliminar el taller "${workshop.name}"?`))
+        return;
+
+    router.delete(`/admin/talleres/${workshopId}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            emit('notify', `Taller "${workshop.name}" eliminado.`);
+        },
+        onError: (errors) => {
+            const firstError = Object.values(errors)[0];
+            if (firstError) emit('notify', String(firstError));
+        },
+    });
+}
 
 // Pestaña activa interna (sincronizada con v-model si se pasa)
 const currentTab = computed({
@@ -619,8 +739,8 @@ const filteredCourses = computed(() => {
                         <span>Nuevo Módulo</span>
                     </button>
                     <button
-                        v-else
-                        @click="emit('notify', 'Crear nuevo taller práctico')"
+                        v-else-if="currentTab === 'talleres' && canManageWorkshops"
+                        @click="openNewWorkshopModal"
                         class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
                     >
                         <svg
@@ -636,7 +756,7 @@ const filteredCourses = computed(() => {
                                 d="M12 4v16m8-8H4"
                             />
                         </svg>
-                        <span>Nuevo Taller</span>
+                        <span>+ Nuevo Taller</span>
                     </button>
                 </div>
             </div>
@@ -924,36 +1044,174 @@ const filteredCourses = computed(() => {
                                 >
                                     {{ curso.duration_in_weeks }} semanas
                                 </td>
-                                <td class="px-6 py-4 text-right">
-                                    <button
-                                        @click="
-                                            emit(
-                                                'notify',
-                                                `Editar taller: ${curso.name}`,
-                                            )
-                                        "
-                                        class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-[#2e8b57]"
+                                <td class="px-6 py-4 text-right whitespace-nowrap">
+                                    <div
+                                        v-if="canManageWorkshops"
+                                        class="inline-flex items-center gap-2"
                                     >
-                                        <svg
-                                            class="h-4 w-4 text-slate-500"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
+                                        <button
+                                            @click="openEditWorkshopModal(curso)"
+                                            class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-[#2e8b57]"
                                         >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
-                                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                                            />
-                                        </svg>
-                                        <span>Editar</span>
-                                    </button>
+                                            <svg
+                                                class="h-4 w-4 text-slate-500"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                                />
+                                            </svg>
+                                            <span>Editar</span>
+                                        </button>
+                                        <button
+                                            @click="deleteWorkshop(curso.id)"
+                                            :disabled="Boolean(curso.has_scheduled_courses || (curso.scheduled_courses_count && curso.scheduled_courses_count > 0))"
+                                            :title="curso.has_scheduled_courses || (curso.scheduled_courses_count && curso.scheduled_courses_count > 0) ? 'No se puede eliminar: tiene clases programadas' : (curso.is_workshop ? 'Eliminar taller' : 'Eliminar curso')"
+                                            class="text-xs font-bold transition"
+                                            :class="Boolean(curso.has_scheduled_courses || (curso.scheduled_courses_count && curso.scheduled_courses_count > 0)) ? 'cursor-not-allowed text-slate-500 hover:text-slate-500' : 'cursor-pointer text-red-500 hover:text-red-700'"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                    <span
+                                        v-else
+                                        class="text-xs text-slate-400 italic"
+                                        >Solo lectura</span
+                                    >
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+
+        <!-- MODAL DE TALLER (CREAR / EDITAR) -->
+        <div
+            v-if="showWorkshopModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
+            @click.self="showWorkshopModal = false"
+        >
+            <div
+                class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+            >
+                <div
+                    class="flex items-center justify-between border-b border-slate-100 pb-4"
+                >
+                    <h3 class="text-lg font-bold text-slate-900">
+                        {{
+                            editingWorkshopId
+                                ? 'Editar Taller Práctico'
+                                : 'Registrar Nuevo Taller Práctico'
+                        }}
+                    </h3>
+                    <button
+                        @click="showWorkshopModal = false"
+                        class="cursor-pointer rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    >
+                        &times;
+                    </button>
+                </div>
+
+                <form @submit.prevent="saveWorkshop" class="mt-5 space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Nombre del Taller</label
+                        >
+                        <input
+                            v-model="workshopForm.name"
+                            type="text"
+                            required
+                            placeholder="Ej. Taller de Barber Shop y Cortes Urbanos"
+                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                            :class="{
+                                'border-rose-500 bg-rose-50':
+                                    workshopForm.errors.name,
+                            }"
+                        />
+                        <p
+                            v-if="workshopForm.errors.name"
+                            class="mt-1 text-xs font-semibold text-rose-600"
+                        >
+                            {{ workshopForm.errors.name }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Duración (en semanas)</label
+                        >
+                        <input
+                            v-model.number="workshopForm.duration_in_weeks"
+                            type="number"
+                            required
+                            min="1"
+                            max="52"
+                            placeholder="Ej. 6 semanas"
+                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                            :class="{
+                                'border-rose-500 bg-rose-50':
+                                    workshopForm.errors.duration_in_weeks,
+                            }"
+                        />
+                        <p
+                            v-if="workshopForm.errors.duration_in_weeks"
+                            class="mt-1 text-xs font-semibold text-rose-600"
+                        >
+                            {{ workshopForm.errors.duration_in_weeks }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-800"
+                            >Descripción / Habilidades Aprendidas</label
+                        >
+                        <textarea
+                            v-model="workshopForm.description"
+                            rows="3"
+                            placeholder="Describe brevemente las técnicas y contenidos del taller..."
+                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                            :class="{
+                                'border-rose-500 bg-rose-50':
+                                    workshopForm.errors.description,
+                            }"
+                        ></textarea>
+                        <p
+                            v-if="workshopForm.errors.description"
+                            class="mt-1 text-xs font-semibold text-rose-600"
+                        >
+                            {{ workshopForm.errors.description }}
+                        </p>
+                    </div>
+
+                    <div
+                        class="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-5"
+                    >
+                        <button
+                            type="button"
+                            @click="showWorkshopModal = false"
+                            class="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="workshopForm.processing"
+                            class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347] disabled:opacity-50"
+                        >
+                            {{
+                                workshopForm.processing
+                                    ? 'Guardando...'
+                                    : 'Guardar Taller'
+                            }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
