@@ -194,13 +194,12 @@ const filteredEnrollments = computed(() => {
     });
 });
 
-// ========================================================
-// MODAL: NUEVA MATRÍCULA / CONVALIDACIÓN (COMPLETA)
-// ========================================================
 const showEnrollmentModal = ref(false);
 const enrollmentForm = useForm({
     scheduled_course_id: 1,
-    student_full_name: '',
+    first_name: '',
+    paternal_surname: '',
+    maternal_surname: '',
     student_document: '',
     enrollment_date: getPeruToday(),
     status: 'activo' as EnrollmentStatus,
@@ -228,7 +227,8 @@ function saveNewEnrollment() {
         preserveScroll: true,
         onSuccess: () => {
             showEnrollmentModal.value = false;
-            emit('notify', `Matrícula registrada con éxito para ${enrollmentForm.student_full_name}.`);
+            const fullName = `${enrollmentForm.first_name} ${enrollmentForm.paternal_surname}`.trim();
+            emit('notify', `Matrícula registrada con éxito para ${fullName}.`);
         },
     });
 }
@@ -608,15 +608,42 @@ function withdrawEnrollment(record: EnrollmentRecord) {
                 <form @submit.prevent="saveNewEnrollment" class="mt-5 space-y-4">
                     <div>
                         <label class="block text-sm font-bold text-slate-800">
-                            Apellidos y Nombres del Estudiante
+                            Nombres del Estudiante <span class="text-rose-500">*</span>
                         </label>
                         <input
-                            v-model="enrollmentForm.student_full_name"
+                            v-model="enrollmentForm.first_name"
                             type="text"
                             required
-                            placeholder="Ej. Mendoza Salazar, Diego"
+                            placeholder="Ej. Diego Alexander"
                             class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                         />
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-800">
+                                Apellido Paterno <span class="text-rose-500">*</span>
+                            </label>
+                            <input
+                                v-model="enrollmentForm.paternal_surname"
+                                type="text"
+                                required
+                                placeholder="Ej. Mendoza"
+                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-bold text-slate-800">
+                                Apellido Materno
+                            </label>
+                            <input
+                                v-model="enrollmentForm.maternal_surname"
+                                type="text"
+                                placeholder="Ej. Salazar"
+                                class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                            />
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">

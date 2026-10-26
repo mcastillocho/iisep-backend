@@ -248,12 +248,12 @@ class ScheduledCourseController extends Controller
             'teacher_id' => ['nullable', 'integer', 'exists:teachers,id'],
             'start_date' => ['required', 'date'],
             'end_date' => ['nullable', 'date'],
-            'days' => ['required', 'array', 'min:1'],
+            'days' => ['required', 'array', 'size:1'],
             'days.*' => ['required', Rule::enum(DayOfWeek::class)],
             'start_time' => ['required', 'string'],
             'end_time' => ['required', 'string'],
         ], [
-            'days.min' => 'Debe seleccionar al menos un día de la semana para el horario de clases.',
+            'days.size' => 'Cada curso programado debe tener asignado exactamente 1 día de clase por semana.',
         ]);
 
         $startTime = str_pad(trim($validated['start_time']), 5, '0');
@@ -322,10 +322,12 @@ class ScheduledCourseController extends Controller
             'teacher_id' => ['nullable', 'integer', 'exists:teachers,id'],
             'start_date' => ['required', 'date'],
             'end_date' => ['nullable', 'date'],
-            'days' => ['required', 'array', 'min:1'],
+            'days' => ['required', 'array', 'size:1'],
             'days.*' => ['required', Rule::enum(DayOfWeek::class)],
             'start_time' => ['required', 'string'],
             'end_time' => ['required', 'string'],
+        ], [
+            'days.size' => 'Cada curso programado debe tener asignado exactamente 1 día de clase por semana.',
         ]);
 
         $startTime = str_pad(trim($validated['start_time']), 5, '0');
@@ -420,6 +422,9 @@ class ScheduledCourseController extends Controller
 
         $validated = $request->validate([
             'scheduled_course_id' => ['required', 'integer', 'exists:scheduled_courses,id'],
+            'first_name' => ['nullable', 'string', 'max:255'],
+            'paternal_surname' => ['nullable', 'string', 'max:255'],
+            'maternal_surname' => ['nullable', 'string', 'max:255'],
             'student_full_name' => ['nullable', 'string', 'max:255'],
             'student_document' => ['required', 'string', 'max:20'],
             'enrollment_date' => ['nullable', 'date'],
@@ -432,22 +437,41 @@ class ScheduledCourseController extends Controller
         $userStudent = User::where('document', $cleanDocument)->first();
 
         if (! $userStudent) {
-            $fullName = trim((string) ($validated['student_full_name'] ?? ''));
-            if ($fullName === '') {
-                return back()->withErrors([
-                    'student_document' => 'El estudiante no está registrado. Ingrese los nombres y apellidos para darlo de alta.',
-                ]);
-            }
+            $firstName = trim((string) ($validated['first_name'] ?? ''));
+            $paternal = trim((string) ($validated['paternal_surname'] ?? ''));
+            $maternal = trim((string) ($validated['maternal_surname'] ?? ''));
 
-            $nameParts = explode(' ', $fullName);
-            $firstName = $nameParts[0] ?? 'Estudiante';
-            $paternal = $nameParts[1] ?? 'IISEP';
-            $maternal = $nameParts[2] ?? null;
+            if ($firstName !== '' || $paternal !== '') {
+                if ($firstName === '' || $paternal === '') {
+                    return back()->withErrors(array_filter([
+                        'first_name' => $firstName === '' ? 'El nombre del estudiante es obligatorio.' : null,
+                        'paternal_surname' => $paternal === '' ? 'El apellido paterno es obligatorio.' : null,
+                    ]));
+                }
+            } else {
+                $fullName = trim((string) ($validated['student_full_name'] ?? ''));
+                if ($fullName === '') {
+                    return back()->withErrors([
+                        'student_document' => 'El estudiante no está registrado. Ingrese los nombres y apellidos para darlo de alta.',
+                    ]);
+                }
+
+                $parsed = self::parseStudentName($fullName);
+                if (! $parsed || empty($parsed['paternal_surname']) || empty($parsed['first_name'])) {
+                    return back()->withErrors([
+                        'student_full_name' => 'Debe ingresar obligatoriamente al menos un apellido y un nombre del estudiante (ej: "Gómez Morales, Carlos Raúl" o "Carlos Gómez").',
+                    ]);
+                }
+
+                $firstName = $parsed['first_name'];
+                $paternal = $parsed['paternal_surname'];
+                $maternal = $parsed['maternal_surname'] ?? '';
+            }
 
             $userStudent = User::create([
                 'first_name' => $firstName,
                 'paternal_surname' => $paternal,
-                'maternal_surname' => $maternal,
+                'maternal_surname' => $maternal !== '' ? $maternal : null,
                 'document' => $cleanDocument,
                 'document_type' => DocumentType::DNI,
                 'username' => 'est_'.strtolower($cleanDocument),
@@ -593,5 +617,78 @@ class ScheduledCourseController extends Controller
         $lastDay = array_pop($days);
 
         return implode(', ', $days)." y {$lastDay}";
+    }
+
+    /**
+     * Parsea un nombre completo (formato peruano con o sin coma) en nombres y apellidos.
+     * Exige obligatoriamente al menos un apellido y un nombre.
+     * Soporta:
+     * - "Apellidos, Nombres" (ej: "Gómez Morales, Carlos Raúl" o "Quispe, Juan")
+     * - "Nombres Apellidos" (ej: "Carlos Raúl Gómez Morales", "Rosa Maria Benitez", "Carlos Gómez")
+     *
+     * @return array{first_name: string, paternal_surname: string, maternal_surname: ?string}|null
+     */
+    public static function parseStudentName(string $fullName): ?array
+    {
+        $fullName = trim($fullName);
+        if ($fullName === '') {
+            return null;
+        }
+
+        if (str_contains($fullName, ',')) {
+            [$surnamesPart, $namesPart] = array_map('trim', explode(',', $fullName, 2));
+
+            if ($surnamesPart === '' || $namesPart === '') {
+                return null;
+            }
+
+            $surnameWords = array_values(array_filter(explode(' ', $surnamesPart), fn ($w) => $w !== ''));
+            if (empty($surnameWords)) {
+                return null;
+            }
+
+            $paternal = $surnameWords[0];
+            $maternal = count($surnameWords) > 1 ? implode(' ', array_slice($surnameWords, 1)) : null;
+
+            return [
+                'first_name' => $namesPart,
+                'paternal_surname' => $paternal,
+                'maternal_surname' => $maternal,
+            ];
+        }
+
+        $words = array_values(array_filter(explode(' ', $fullName), fn ($w) => $w !== ''));
+
+        // Se exige al menos 2 palabras (un nombre y al menos un apellido) para evitar datos incompletos o apellidos al azar
+        if (count($words) < 2) {
+            return null;
+        }
+
+        if (count($words) === 2) {
+            return [
+                'first_name' => $words[0],
+                'paternal_surname' => $words[1],
+                'maternal_surname' => null,
+            ];
+        }
+
+        if (count($words) === 3) {
+            return [
+                'first_name' => $words[0],
+                'paternal_surname' => $words[1],
+                'maternal_surname' => $words[2],
+            ];
+        }
+
+        // 4 o más palabras: los dos últimos son apellidos paterno y materno
+        $maternal = array_pop($words);
+        $paternal = array_pop($words);
+        $firstName = implode(' ', $words);
+
+        return [
+            'first_name' => $firstName,
+            'paternal_surname' => $paternal,
+            'maternal_surname' => $maternal,
+        ];
     }
 }

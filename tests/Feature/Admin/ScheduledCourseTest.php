@@ -76,7 +76,7 @@ test('director general can create a new scheduled course opening', function () {
         'classroom_id' => $classroom->id,
         'start_date' => $startDate,
         'end_date' => $endDate,
-        'days' => ['lunes', 'miercoles'],
+        'days' => ['lunes'],
         'start_time' => '18:00',
         'end_time' => '20:00',
     ]);
@@ -92,13 +92,6 @@ test('director general can create a new scheduled course opening', function () {
     $this->assertDatabaseHas('course_schedules', [
         'classroom_id' => $classroom->id,
         'day_of_week' => DayOfWeek::LUNES->value,
-        'start_time' => '18:00:00',
-        'end_time' => '20:00:00',
-    ]);
-
-    $this->assertDatabaseHas('course_schedules', [
-        'classroom_id' => $classroom->id,
-        'day_of_week' => DayOfWeek::MIERCOLES->value,
         'start_time' => '18:00:00',
         'end_time' => '20:00:00',
     ]);
@@ -141,7 +134,7 @@ test('coordinador cannot create scheduled course in another branch', function ()
         'classroom_id' => $classroom2->id,
         'start_date' => '2026-11-01',
         'end_date' => '2026-11-30',
-        'days' => ['martes', 'jueves'],
+        'days' => ['martes'],
         'start_time' => '08:00',
         'end_time' => '10:00',
     ]);
@@ -371,4 +364,104 @@ test('staff can withdraw student enrollment from scheduled course', function () 
 
     $response->assertSessionHasNoErrors();
     $this->assertSoftDeleted('enrollments', ['id' => $enrollment->id]);
+});
+
+test('scheduled course opening is restricted to exactly 1 day per week', function () {
+    $admin = createStaffUser('admin_day_test', 'admin', null);
+    $branch = Branch::create(['name' => 'Sede Los Olivos', 'code' => 'LOS']);
+    $course = Course::create(['name' => 'Marketing Digital', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+    $classroom = Classroom::create(['name' => 'Aula 301', 'branch_id' => $branch->id, 'capacity' => 25]);
+
+    $response = $this->actingAs($admin)->post(route('admin.scheduled-courses.store'), [
+        'branch_id' => $branch->id,
+        'course_id' => $course->id,
+        'classroom_id' => $classroom->id,
+        'start_date' => '2026-11-01',
+        'days' => ['lunes', 'miercoles'],
+        'start_time' => '18:00',
+        'end_time' => '20:00',
+    ]);
+
+    $response->assertSessionHasErrors(['days']);
+});
+
+test('student registration parses Peruvian names and never assigns IISEP', function () {
+    $branch = Branch::create(['name' => 'Sede Central', 'code' => 'CEN']);
+    $admin = createStaffUser('admin_name_test', 'admin', null);
+    $course = Course::create(['name' => 'Diseño Gráfico', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+
+    $sc = ScheduledCourse::create([
+        'branch_id' => $branch->id,
+        'course_id' => $course->id,
+        'start_date' => '2026-11-01',
+        'end_date' => '2026-11-30',
+    ]);
+
+    // Registro con formato con coma: "Apellidos, Nombres"
+    $response1 = $this->actingAs($admin)->post(route('admin.enrollments.store'), [
+        'scheduled_course_id' => $sc->id,
+        'student_full_name' => 'Mendoza Salazar, Diego Alexander',
+        'student_document' => '78912345',
+        'enrollment_date' => '2026-11-01',
+    ]);
+    $response1->assertSessionHasNoErrors();
+
+    $user1 = User::where('document', '78912345')->first();
+    expect($user1)->not->toBeNull();
+    expect($user1->first_name)->toBe('Diego Alexander');
+    expect($user1->paternal_surname)->toBe('Mendoza');
+    expect($user1->maternal_surname)->toBe('Salazar');
+    expect($user1->full_name)->toBe('Diego Alexander Mendoza Salazar');
+    expect($user1->full_name)->not->toContain('IISEP');
+
+    // Intento de registro con un solo nombre sin apellido debe fallar validación (exige apellido)
+    $response2 = $this->actingAs($admin)->post(route('admin.enrollments.store'), [
+        'scheduled_course_id' => $sc->id,
+        'student_full_name' => 'Carlos',
+        'student_document' => '78912346',
+        'enrollment_date' => '2026-11-01',
+    ]);
+    $response2->assertSessionHasErrors(['student_full_name']);
+    $this->assertDatabaseMissing('users', ['document' => '78912346']);
+
+    // Registro válido con "Nombres Apellidos" sin coma
+    $response3 = $this->actingAs($admin)->post(route('admin.enrollments.store'), [
+        'scheduled_course_id' => $sc->id,
+        'student_full_name' => 'Carlos Ramos',
+        'student_document' => '78912347',
+        'enrollment_date' => '2026-11-01',
+    ]);
+    $response3->assertSessionHasNoErrors();
+
+    $user3 = User::where('document', '78912347')->first();
+    expect($user3)->not->toBeNull();
+    expect($user3->first_name)->toBe('Carlos');
+    expect($user3->paternal_surname)->toBe('Ramos');
+    // Registro con campos separados: first_name, paternal_surname, maternal_surname
+    $response4 = $this->actingAs($admin)->post(route('admin.enrollments.store'), [
+        'scheduled_course_id' => $sc->id,
+        'first_name' => 'Ana Lucía',
+        'paternal_surname' => 'Castillo',
+        'maternal_surname' => 'Vargas',
+        'student_document' => '78912348',
+        'enrollment_date' => '2026-11-01',
+    ]);
+    $response4->assertSessionHasNoErrors();
+
+    $user4 = User::where('document', '78912348')->first();
+    expect($user4)->not->toBeNull();
+    expect($user4->first_name)->toBe('Ana Lucía');
+    expect($user4->paternal_surname)->toBe('Castillo');
+    expect($user4->maternal_surname)->toBe('Vargas');
+    expect($user4->full_name)->toBe('Ana Lucía Castillo Vargas');
+
+    // Falla si falta el apellido paterno en campos separados
+    $response5 = $this->actingAs($admin)->post(route('admin.enrollments.store'), [
+        'scheduled_course_id' => $sc->id,
+        'first_name' => 'Luis',
+        'paternal_surname' => '',
+        'student_document' => '78912349',
+        'enrollment_date' => '2026-11-01',
+    ]);
+    $response5->assertSessionHasErrors(['paternal_surname']);
 });

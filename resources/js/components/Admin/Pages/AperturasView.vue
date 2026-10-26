@@ -231,7 +231,7 @@ const scheduleForm = useForm({
     classroom_id: 1,
     teacher_id: null as number | null,
     start_date: getPeruToday(),
-    days: ['lunes', 'miercoles'] as string[],
+    days: ['sabado'] as string[],
     start_time: '18:00',
     end_time: '20:00',
 });
@@ -266,14 +266,7 @@ const weekDays = [
 ];
 
 function toggleDay(dayVal: string) {
-    const idx = scheduleForm.days.indexOf(dayVal);
-    if (idx >= 0) {
-        if (scheduleForm.days.length > 1) {
-            scheduleForm.days.splice(idx, 1);
-        }
-    } else {
-        scheduleForm.days.push(dayVal);
-    }
+    scheduleForm.days = [dayVal];
 }
 
 const availableClassroomsForBranch = computed(() => {
@@ -315,7 +308,7 @@ function openNewScheduleCourseView() {
 
     scheduleForm.teacher_id = props.teachers[0]?.id || null;
     scheduleForm.start_date = getPeruToday();
-    scheduleForm.days = ['lunes', 'miercoles'];
+    scheduleForm.days = ['sabado'];
     scheduleForm.start_time = '18:00';
     scheduleForm.end_time = '20:00';
 
@@ -336,7 +329,7 @@ function openEditScheduleCourseView(sched: ScheduledCourseItem) {
     scheduleForm.classroom_id = sched.classroom_id;
     scheduleForm.teacher_id = sched.teacher_id ?? null;
     scheduleForm.start_date = sched.start_date;
-    scheduleForm.days = sched.days && sched.days.length > 0 ? [...sched.days] : ['lunes', 'miercoles'];
+    scheduleForm.days = sched.days && sched.days.length > 0 ? [sched.days[0]] : ['sabado'];
     scheduleForm.start_time = sched.start_time || '18:00';
     scheduleForm.end_time = sched.end_time || '20:00';
 
@@ -419,7 +412,9 @@ const quickSearching = ref(false);
 // Estado del modal de estudiante no registrado
 const showUnregisteredStudentModal = ref(false);
 const unregisteredDni = ref('');
-const unregisteredFullName = ref('');
+const unregisteredFirstName = ref('');
+const unregisteredPaternalSurname = ref('');
+const unregisteredMaternalSurname = ref('');
 const isSubmittingUnregistered = ref(false);
 const unregisteredErrorMsg = ref('');
 
@@ -428,6 +423,9 @@ const showQuickDniModal = ref(false);
 const quickSelectedSched = ref<ScheduledCourseItem | null>(null);
 const quickModalDni = ref('');
 const quickModalFullName = ref('');
+const quickModalFirstName = ref('');
+const quickModalPaternalSurname = ref('');
+const quickModalMaternalSurname = ref('');
 const quickModalSearching = ref(false);
 const quickModalStudentFound = ref<boolean | null>(null);
 const quickModalAlreadyEnrolled = ref(false);
@@ -484,7 +482,9 @@ async function handleDniSearchAndEnroll() {
         } else {
             // Estudiante NO registrado: abrir pop-up con advertencia
             unregisteredDni.value = cleanDoc;
-            unregisteredFullName.value = '';
+            unregisteredFirstName.value = '';
+            unregisteredPaternalSurname.value = '';
+            unregisteredMaternalSurname.value = '';
             unregisteredErrorMsg.value = '';
             showUnregisteredStudentModal.value = true;
         }
@@ -498,21 +498,32 @@ function submitUnregisteredStudentEnrollment() {
     const sched = currentEditingSched.value || quickSelectedSched.value;
     if (!sched) return;
 
-    const name = unregisteredFullName.value.trim();
-    if (!name) {
-        unregisteredErrorMsg.value = 'Debe ingresar los apellidos y nombres del estudiante.';
+    const firstName = unregisteredFirstName.value.trim();
+    const paternal = unregisteredPaternalSurname.value.trim();
+    const maternal = unregisteredMaternalSurname.value.trim();
+
+    if (!firstName) {
+        unregisteredErrorMsg.value = 'Debe ingresar el nombre del estudiante.';
+        return;
+    }
+    if (!paternal) {
+        unregisteredErrorMsg.value = 'Debe ingresar el apellido paterno del estudiante.';
         return;
     }
 
     isSubmittingUnregistered.value = true;
     unregisteredErrorMsg.value = '';
 
+    const fullNamePreview = `${firstName} ${paternal} ${maternal}`.trim();
+
     router.post(
         '/admin/matriculas',
         {
             scheduled_course_id: sched.id,
             student_document: unregisteredDni.value,
-            student_full_name: name,
+            first_name: firstName,
+            paternal_surname: paternal,
+            maternal_surname: maternal || undefined,
             enrollment_date: getPeruToday(),
             status: 'activo',
         },
@@ -522,7 +533,7 @@ function submitUnregisteredStudentEnrollment() {
                 showUnregisteredStudentModal.value = false;
                 isSubmittingUnregistered.value = false;
                 quickDni.value = '';
-                emit('notify', `Estudiante ${name} registrado y matriculado con éxito.`);
+                emit('notify', `Estudiante ${fullNamePreview} registrado y matriculado con éxito.`);
             },
             onError: (errs) => {
                 isSubmittingUnregistered.value = false;
@@ -538,6 +549,9 @@ function openQuickDniEnrollModal(sched: ScheduledCourseItem) {
     quickSelectedSched.value = sched;
     quickModalDni.value = '';
     quickModalFullName.value = '';
+    quickModalFirstName.value = '';
+    quickModalPaternalSurname.value = '';
+    quickModalMaternalSurname.value = '';
     quickModalStudentFound.value = null;
     quickModalAlreadyEnrolled.value = false;
     quickModalError.value = '';
@@ -570,6 +584,9 @@ async function checkQuickModalDni() {
         } else {
             quickModalStudentFound.value = false;
             quickModalFullName.value = '';
+            quickModalFirstName.value = '';
+            quickModalPaternalSurname.value = '';
+            quickModalMaternalSurname.value = '';
             quickModalAlreadyEnrolled.value = false;
         }
     } catch {
@@ -596,36 +613,73 @@ function submitQuickModalEnrollment() {
     const doc = quickModalDni.value.trim();
     if (!doc || doc.length < 8) return;
 
-    const name = quickModalFullName.value.trim();
-    if (!name && quickModalStudentFound.value === false) {
-        quickModalError.value = 'Ingrese los nombres y apellidos del nuevo estudiante.';
-        return;
-    }
+    if (quickModalStudentFound.value === false) {
+        const firstName = quickModalFirstName.value.trim();
+        const paternal = quickModalPaternalSurname.value.trim();
+        const maternal = quickModalMaternalSurname.value.trim();
 
-    quickModalSubmitting.value = true;
-    router.post(
-        '/admin/matriculas',
-        {
-            scheduled_course_id: sched.id,
-            student_document: doc,
-            student_full_name: name || undefined,
-            enrollment_date: getPeruToday(),
-            status: 'activo',
-        },
-        {
-            preserveScroll: true,
-            onSuccess: () => {
-                showQuickDniModal.value = false;
-                quickModalSubmitting.value = false;
-                emit('notify', `Matrícula registrada exitosamente en ${sched.course_name}.`);
+        if (!firstName) {
+            quickModalError.value = 'Debe ingresar el nombre del estudiante.';
+            return;
+        }
+        if (!paternal) {
+            quickModalError.value = 'Debe ingresar el apellido paterno del estudiante.';
+            return;
+        }
+
+        quickModalSubmitting.value = true;
+        const fullNamePreview = `${firstName} ${paternal} ${maternal}`.trim();
+
+        router.post(
+            '/admin/matriculas',
+            {
+                scheduled_course_id: sched.id,
+                student_document: doc,
+                first_name: firstName,
+                paternal_surname: paternal,
+                maternal_surname: maternal || undefined,
+                enrollment_date: getPeruToday(),
+                status: 'activo',
             },
-            onError: (errs) => {
-                quickModalSubmitting.value = false;
-                const first = Object.values(errs)[0];
-                if (first) quickModalError.value = String(first);
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    showQuickDniModal.value = false;
+                    quickModalSubmitting.value = false;
+                    emit('notify', `Matrícula registrada exitosamente para ${fullNamePreview}.`);
+                },
+                onError: (errs) => {
+                    quickModalSubmitting.value = false;
+                    const first = Object.values(errs)[0];
+                    if (first) quickModalError.value = String(first);
+                },
             },
-        },
-    );
+        );
+    } else {
+        quickModalSubmitting.value = true;
+        router.post(
+            '/admin/matriculas',
+            {
+                scheduled_course_id: sched.id,
+                student_document: doc,
+                enrollment_date: getPeruToday(),
+                status: 'activo',
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    showQuickDniModal.value = false;
+                    quickModalSubmitting.value = false;
+                    emit('notify', `Matrícula registrada exitosamente en ${sched.course_name}.`);
+                },
+                onError: (errs) => {
+                    quickModalSubmitting.value = false;
+                    const first = Object.values(errs)[0];
+                    if (first) quickModalError.value = String(first);
+                },
+            },
+        );
+    }
 }
 </script>
 
@@ -785,14 +839,9 @@ function submitQuickModalEnrollment() {
 
                     <!-- FECHA DE FIN CALCULADA AUTOMÁTICAMENTE SEGÚN CURSO (NO EDITABLE, NO ENVIADA) -->
                     <div>
-                        <div class="flex items-center justify-between">
-                            <label class="block text-xs font-bold text-slate-800 uppercase">
-                                Fecha de Fin (Calculada)
-                            </label>
-                            <span class="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">
-                                Automática
-                            </span>
-                        </div>
+                        <label class="block text-xs font-bold text-slate-800 uppercase">
+                            Fecha de Fin (Calculada)
+                        </label>
                         <input
                             :value="calculatedEndDate"
                             type="date"
@@ -801,7 +850,7 @@ function submitQuickModalEnrollment() {
                             class="mt-1.5 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-2 font-mono text-sm font-bold text-slate-600 select-none"
                         />
                         <p class="mt-1 text-[11px] text-slate-500">
-                            Duración: {{ selectedCourse?.duration_in_weeks ?? 4 }} semanas (calculada automáticamente).
+                            Duración curricular: {{ selectedCourse?.duration_in_weeks ?? 4 }} semanas.
                         </p>
                     </div>
 
@@ -830,13 +879,13 @@ function submitQuickModalEnrollment() {
                     </div>
                 </div>
 
-                <!-- Días de Dictado -->
+                <!-- Días de Dictado (Restringido a 1 día de clase por semana) -->
                 <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
                     <label class="block text-xs font-bold text-slate-800 uppercase">
-                        Días de Clase Semanales
+                        Día de Clase Semanal (1 sesión por semana)
                     </label>
                     <p class="mt-0.5 text-xs text-slate-500">
-                        Selecciona los días en que se imparten las sesiones presenciales:
+                        Selecciona el día de la semana en que se dictan las clases de esta apertura:
                     </p>
                     <div class="mt-3 flex flex-wrap gap-2">
                         <button
@@ -1528,16 +1577,43 @@ function submitQuickModalEnrollment() {
 
                     <div>
                         <label class="block text-xs font-bold text-slate-700 uppercase">
-                            Apellidos y Nombres del Estudiante
+                            Nombres del Estudiante <span class="text-rose-500">*</span>
                         </label>
                         <input
-                            v-model="unregisteredFullName"
+                            v-model="unregisteredFirstName"
                             type="text"
                             required
                             autofocus
-                            placeholder="Ej. Gómez Morales, Carlos Raúl"
+                            placeholder="Ej. Carlos Raúl"
                             class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
                         />
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase">
+                                Apellido Paterno <span class="text-rose-500">*</span>
+                            </label>
+                            <input
+                                v-model="unregisteredPaternalSurname"
+                                type="text"
+                                required
+                                placeholder="Ej. Gómez"
+                                class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase">
+                                Apellido Materno
+                            </label>
+                            <input
+                                v-model="unregisteredMaternalSurname"
+                                type="text"
+                                placeholder="Ej. Morales"
+                                class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
+                            />
+                        </div>
                     </div>
 
                     <div
@@ -1557,7 +1633,7 @@ function submitQuickModalEnrollment() {
                         </button>
                         <button
                             type="submit"
-                            :disabled="!unregisteredFullName.trim() || isSubmittingUnregistered"
+                            :disabled="!unregisteredFirstName.trim() || !unregisteredPaternalSurname.trim() || isSubmittingUnregistered"
                             class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#2e8b57] px-5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#257347] disabled:opacity-50"
                         >
                             <svg
@@ -1653,10 +1729,10 @@ function submitQuickModalEnrollment() {
                         </p>
                     </div>
 
-                    <!-- Estudiante Nuevo: Advertencia y Nombre -->
+                    <!-- Estudiante Nuevo: Advertencia y Campos Separados de Nombre -->
                     <div
                         v-else-if="quickModalStudentFound === false && quickModalDni.length === 8"
-                        class="space-y-2 rounded-lg border border-amber-200 bg-amber-50/80 p-3.5 text-xs"
+                        class="space-y-3 rounded-lg border border-amber-200 bg-amber-50/80 p-3.5 text-xs"
                     >
                         <div class="flex items-start gap-2">
                             <svg class="h-4 w-4 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1666,16 +1742,46 @@ function submitQuickModalEnrollment() {
                                 DNI no registrado previamente en el sistema. Requiere registrarse la matrícula primero:
                             </p>
                         </div>
-                        <label class="block text-xs font-bold text-slate-700">
-                            Nombres y Apellidos del Estudiante
-                        </label>
-                        <input
-                            v-model="quickModalFullName"
-                            type="text"
-                            required
-                            placeholder="Ej. Gómez Morales, Carlos Raúl"
-                            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
-                        />
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700">
+                                Nombres del Estudiante <span class="text-rose-500">*</span>
+                            </label>
+                            <input
+                                v-model="quickModalFirstName"
+                                type="text"
+                                required
+                                placeholder="Ej. Carlos Raúl"
+                                class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
+                            />
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700">
+                                    Apellido Paterno <span class="text-rose-500">*</span>
+                                </label>
+                                <input
+                                    v-model="quickModalPaternalSurname"
+                                    type="text"
+                                    required
+                                    placeholder="Ej. Gómez"
+                                    class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700">
+                                    Apellido Materno
+                                </label>
+                                <input
+                                    v-model="quickModalMaternalSurname"
+                                    type="text"
+                                    placeholder="Ej. Morales"
+                                    class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Alerta de Errores -->
