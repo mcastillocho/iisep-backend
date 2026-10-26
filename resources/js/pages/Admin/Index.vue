@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import Sidebar from '../../components/Admin/Sidebar/Sidebar.vue';
 import OfertaAcademicaView from '../../components/Admin/Pages/OfertaAcademicaView.vue';
@@ -8,6 +8,7 @@ import AperturasView from '../../components/Admin/Pages/AperturasView.vue';
 import MatriculasView, {
     type EnrollmentRecord,
     type ScheduledCourseItem,
+    type StudentRecord,
     type TeacherItem,
 } from '../../components/Admin/Pages/MatriculasView.vue';
 import AsistenciasView from '../../components/Admin/Pages/AsistenciasView.vue';
@@ -100,6 +101,7 @@ interface Props {
     teachers?: TeacherItem[];
     scheduledCourses?: ScheduledCourseItem[];
     enrollments?: EnrollmentRecord[];
+    students?: StudentRecord[];
 }
 
 const props = defineProps<Props>();
@@ -113,6 +115,21 @@ const coursesList = computed<CourseItem[]>(() => props.coursesList ?? []);
 const teachers = computed<TeacherItem[]>(() => props.teachers ?? []);
 const scheduledCourses = computed<ScheduledCourseItem[]>(() => props.scheduledCourses ?? []);
 const enrollments = computed<EnrollmentRecord[]>(() => props.enrollments ?? []);
+const students = computed<StudentRecord[]>(() => props.students ?? []);
+
+function handleMainTabChange(tab: string) {
+    if (tab === 'curricular') {
+        router.visit('/admin/oferta-academica');
+    } else if (tab === 'infraestructura') {
+        router.visit('/admin/sedes-aulas');
+    } else if (tab === 'matriculas' || tab === 'alumnos') {
+        router.visit('/admin/matriculas');
+    } else if (tab === 'aperturas') {
+        router.visit('/admin/matriculas?tab=aperturas');
+    } else if (tab === 'asistencia') {
+        router.visit('/admin/asistencias');
+    }
+}
 
 // --- TOAST NOTIFICATIONS ---
 const toastMessage = ref('');
@@ -214,106 +231,108 @@ function triggerToast(msg: string) {
             :modules-count="allModulesPool.length"
             :courses-count="coursesList.length"
             :enrollments-count="enrollments.length"
+            :students-count="students.length"
             :scheduled-courses-count="scheduledCourses.length"
+            @update:active-main-tab="handleMainTabChange"
             @clear-editing-career="() => {}"
         />
 
         <!-- CONTENIDO PRINCIPAL A LA DERECHA -->
         <div class="flex min-w-0 flex-1 flex-col">
             <!-- Top bar -->
-            <header
-                class="flex flex-col gap-4 border-b border-slate-200 bg-white px-8 py-5 shadow-2xs sm:flex-row sm:items-center sm:justify-between"
-            >
-                <div>
-                    <h1 class="text-2xl font-black text-slate-900">
-                        <span v-if="activeMainTab === 'infraestructura'"
-                            >Sedes & Aulas</span
-                        >
-                        <span v-else-if="activeMainTab === 'curricular'">
-                            <span v-if="activeCurricularTab === 'carreras'"
-                                >Carreras</span
+            <header class="border-b border-slate-200 bg-white shadow-2xs">
+                <div class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-8 py-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 class="text-2xl font-black text-slate-900">
+                            <span v-if="activeMainTab === 'infraestructura'"
+                                >Sedes & Aulas</span
                             >
-                            <span v-else-if="activeCurricularTab === 'modulos'"
-                                >Módulos</span
+                            <span v-else-if="activeMainTab === 'curricular'">
+                                <span v-if="activeCurricularTab === 'carreras'"
+                                    >Carreras</span
+                                >
+                                <span v-else-if="activeCurricularTab === 'modulos'"
+                                    >Módulos</span
+                                >
+                                <span v-else>Talleres</span>
+                            </span>
+                            <span v-else-if="activeMainTab === 'matriculas'"
+                                >Matrículas & Convalidaciones</span
                             >
-                            <span v-else>Talleres</span>
-                        </span>
-                        <span v-else-if="activeMainTab === 'matriculas'"
-                            >Matrículas & Convalidaciones</span
-                        >
-                        <span v-else-if="activeMainTab === 'aperturas'"
-                            >Apertura de Cursos y Aulas</span
-                        >
-                        <span v-else-if="activeMainTab === 'asistencia'"
-                            >Sesiones & Asistencias</span
-                        >
-                        <span v-else>Panel Resumen</span>
-                    </h1>
-                    <p class="mt-0.5 text-sm font-medium text-slate-500">
-                        <span v-if="activeMainTab === 'infraestructura'"
-                            >Control de ambientes físicos y disponibilidad por
-                            sede</span
-                        >
-                        <span v-else-if="activeMainTab === 'curricular'">
-                            <span v-if="activeCurricularTab === 'carreras'"
-                                >Catálogo de carreras técnicas</span
+                            <span v-else-if="activeMainTab === 'aperturas'"
+                                >Apertura de Cursos y Aulas</span
                             >
-                            <span v-else-if="activeCurricularTab === 'modulos'"
-                                >Módulos certificados del CETPRO</span
+                            <span v-else-if="activeMainTab === 'asistencia'"
+                                >Sesiones & Asistencias</span
                             >
-                            <span v-else>Cursos y talleres libres</span>
-                        </span>
-                        <span v-else-if="activeMainTab === 'matriculas'"
-                            >Inscripciones de estudiantes y
-                            convalidaciones</span
-                        >
-                        <span v-else-if="activeMainTab === 'aperturas'"
-                            >Programación de periodos formativos y asignación
-                            física</span
-                        >
-                        <span v-else-if="activeMainTab === 'asistencia'"
-                            >Control de asistencia presencial</span
-                        >
-                        <span v-else>Métricas de retención institucional</span>
-                    </p>
-                </div>
+                            <span v-else>Panel Resumen</span>
+                        </h1>
+                        <p class="mt-0.5 text-sm font-medium text-slate-500">
+                            <span v-if="activeMainTab === 'infraestructura'"
+                                >Control de ambientes físicos y disponibilidad por
+                                sede</span
+                            >
+                            <span v-else-if="activeMainTab === 'curricular'">
+                                <span v-if="activeCurricularTab === 'carreras'"
+                                    >Catálogo de carreras técnicas</span
+                                >
+                                <span v-else-if="activeCurricularTab === 'modulos'"
+                                    >Módulos certificados del CETPRO</span
+                                >
+                                <span v-else>Cursos y talleres libres</span>
+                            </span>
+                            <span v-else-if="activeMainTab === 'matriculas'"
+                                >Inscripciones de estudiantes y
+                                convalidaciones</span
+                            >
+                            <span v-else-if="activeMainTab === 'aperturas'"
+                                >Programación de periodos formativos y asignación
+                                física</span
+                            >
+                            <span v-else-if="activeMainTab === 'asistencia'"
+                                >Control de asistencia presencial</span
+                            >
+                            <span v-else>Métricas de retención institucional</span>
+                        </p>
+                    </div>
 
-                <!-- Sede Filter Selector -->
-                <div class="flex items-center gap-2.5">
-                    <span
-                        class="hidden text-sm font-semibold text-slate-600 sm:inline"
-                        >Sede:</span
-                    >
-                    <div
-                        class="flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-sm font-bold text-slate-800 shadow-2xs"
-                    >
-                        <svg
-                            class="h-4 w-4 text-[#2e8b57]"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                    <!-- Sede Filter Selector -->
+                    <div class="flex items-center gap-2.5">
+                        <span
+                            class="hidden text-sm font-semibold text-slate-600 sm:inline"
+                            >Sede:</span
                         >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                            />
-                        </svg>
-                        <select
-                            id="branch-selector"
-                            v-model="selectedBranchId"
-                            class="cursor-pointer bg-transparent text-sm font-bold text-slate-800 focus:outline-none"
+                        <div
+                            class="flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 text-sm font-bold text-slate-800 shadow-2xs"
                         >
-                            <option v-if="canViewAllBranches" :value="'all'">Todas las Sedes</option>
-                            <option
-                                v-for="branch in (userStaffBranchId ? branches.filter(b => b.id === userStaffBranchId) : branches)"
-                                :key="branch.id"
-                                :value="branch.id"
+                            <svg
+                                class="h-4 w-4 text-[#2e8b57]"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
                             >
-                                {{ branch.name }}
-                            </option>
-                        </select>
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                                />
+                            </svg>
+                            <select
+                                id="branch-selector"
+                                v-model="selectedBranchId"
+                                class="cursor-pointer bg-transparent text-sm font-bold text-slate-800 focus:outline-none"
+                            >
+                                <option v-if="canViewAllBranches" :value="'all'">Todas las Sedes</option>
+                                <option
+                                    v-for="branch in (userStaffBranchId ? branches.filter(b => b.id === userStaffBranchId) : branches)"
+                                    :key="branch.id"
+                                    :value="branch.id"
+                                >
+                                    {{ branch.name }}
+                                </option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -347,9 +366,11 @@ function triggerToast(msg: string) {
                     <MatriculasView
                         :branches="branches"
                         :classrooms="classrooms"
+                        :careers="careers"
                         :courses="coursesList"
                         :scheduled-courses="scheduledCourses"
                         :enrollments="enrollments"
+                        :students="students"
                         :selected-branch-id="selectedBranchId"
                         @notify="triggerToast"
                     />

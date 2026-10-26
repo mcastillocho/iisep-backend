@@ -151,25 +151,25 @@ function triggerToast(message: string) {
         <!-- CONTENIDO PRINCIPAL A LA DERECHA -->
         <div class="flex min-w-0 flex-1 flex-col">
             <!-- Top bar -->
-            <header
-                class="flex flex-col gap-4 border-b border-slate-200 bg-white px-8 py-5 shadow-2xs sm:flex-row sm:items-center sm:justify-between"
-            >
-                <div>
-                    <h1 class="text-2xl font-black text-slate-900">
-                        Oferta Académica:
-                        <span class="text-[#2e8b57] capitalize">{{
-                            activeCurricularTab
-                        }}</span>
-                    </h1>
-                    <p class="mt-0.5 text-sm font-medium text-slate-500">
-                        Catálogo de formación técnica, módulos certificables y
-                        talleres prácticos del CETPRO IISEP
-                    </p>
+            <header class="border-b border-slate-200 bg-white shadow-2xs">
+                <div class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-8 py-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 class="text-2xl font-black text-slate-900">
+                            Oferta Académica:
+                            <span class="text-[#2e8b57] capitalize">{{
+                                activeCurricularTab
+                            }}</span>
+                        </h1>
+                        <p class="mt-0.5 text-sm font-medium text-slate-500">
+                            Catálogo de formación técnica, módulos certificables y
+                            talleres prácticos del CETPRO IISEP
+                        </p>
+                    </div>
                 </div>
             </header>
 
             <!-- MAIN BODY: PÁGINA INDEPENDIENTE DE OFERTA ACADÉMICA -->
-            <main class="max-w-7xl flex-1 space-y-6 p-8">
+            <main class="mx-auto w-full max-w-7xl flex-1 space-y-6 p-8">
                 <OfertaAcademicaView
                     v-model:active-tab="activeCurricularTab"
                     :branches="branches"

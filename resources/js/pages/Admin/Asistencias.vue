@@ -141,22 +141,22 @@ function triggerToast(message: string) {
         <!-- CONTENIDO PRINCIPAL A LA DERECHA -->
         <div class="flex min-w-0 flex-1 flex-col">
             <!-- Top bar -->
-            <header
-                class="flex flex-col gap-4 border-b border-slate-200 bg-white px-8 py-5 shadow-2xs sm:flex-row sm:items-center sm:justify-between"
-            >
-                <div>
-                    <h1 class="text-2xl font-black text-slate-900">
-                        Sesiones & Asistencias
-                    </h1>
-                    <p class="mt-0.5 text-sm font-medium text-slate-500">
-                        Marcación por DNI en administración, control de aforo
-                        por ambientes físicos y validación de asistencia cruzada
-                    </p>
+            <header class="border-b border-slate-200 bg-white shadow-2xs">
+                <div class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-8 py-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 class="text-2xl font-black text-slate-900">
+                            Sesiones &amp; Asistencias
+                        </h1>
+                        <p class="mt-0.5 text-sm font-medium text-slate-500">
+                            Marcación por DNI en administración, control de aforo
+                            por ambientes físicos y validación de asistencia cruzada
+                        </p>
+                    </div>
                 </div>
             </header>
 
             <!-- MAIN BODY: PÁGINA INDEPENDIENTE DE ASISTENCIAS -->
-            <main class="max-w-7xl flex-1 space-y-6 p-8">
+            <main class="mx-auto w-full max-w-7xl flex-1 space-y-6 p-8">
                 <AsistenciasView
                     :branches="branches"
                     :selected-branch-id="selectedBranchId"

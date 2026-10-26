@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\DocumentType;
 use App\Models\Concerns\DelegatesToUser;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -15,10 +16,12 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $user_id
+ * @property int|null $guardian_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  * @property-read User|null $user
+ * @property-read User|null $guardian
  * @property-read string|null $first_name
  * @property-read string|null $paternal_surname
  * @property-read string|null $maternal_surname
@@ -40,6 +43,7 @@ class Student extends Model
      */
     protected $fillable = [
         'user_id',
+        'guardian_id',
     ];
 
     /**
@@ -49,7 +53,16 @@ class Student extends Model
     {
         return [
             'user_id' => 'integer',
+            'guardian_id' => 'integer',
         ];
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function guardian(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'guardian_id');
     }
 
     /**

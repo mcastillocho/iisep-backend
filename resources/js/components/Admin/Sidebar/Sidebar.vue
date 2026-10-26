@@ -15,6 +15,7 @@ type MainTab =
     | 'infraestructura'
     | 'curricular'
     | 'matriculas'
+    | 'alumnos'
     | 'aperturas'
     | 'asistencia'
     | 'resumen';
@@ -30,6 +31,7 @@ interface Props {
     modulesCount: number;
     coursesCount: number;
     enrollmentsCount: number;
+    studentsCount?: number;
     scheduledCoursesCount?: number;
     isMobileOpen: boolean;
 }
@@ -188,20 +190,20 @@ function handleLogout() {
                     </div>
                 </div>
 
-                <!-- GRUPO 2: MATRÍCULAS -->
+                <!-- GRUPO 2: ALUMNOS & APODERADOS -->
                 <div>
                     <div
                         class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase"
                     >
-                        Matrículas
+                        Estudiantes
                     </div>
 
                     <div class="space-y-1">
-                        <!-- Matrículas (e Inscripciones / Convalidaciones) -->
+                        <!-- Alumnos y Apoderados -->
                         <button
                             @click="selectMainTab('matriculas')"
                             :class="[
-                                activeMainTab === 'matriculas'
+                                activeMainTab === 'matriculas' || activeMainTab === 'alumnos'
                                     ? 'border-l-4 border-[#2e8b57] bg-emerald-50 font-bold text-[#2e8b57]'
                                     : 'font-semibold text-slate-700 hover:bg-slate-50',
                                 'flex w-full cursor-pointer items-center justify-between rounded-lg px-3.5 py-2.5 text-sm transition',
@@ -218,15 +220,15 @@ function handleLogout() {
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
                                         stroke-width="2"
-                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
                                     />
                                 </svg>
-                                <span>Matrículas</span>
+                                <span>Alumnos &amp; Apoderados</span>
                             </div>
                             <span
                                 class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-[#2e8b57]"
                             >
-                                {{ enrollmentsCount }}
+                                {{ studentsCount ?? enrollmentsCount }}
                             </span>
                         </button>
                     </div>

@@ -22,8 +22,9 @@ export interface CourseOption {
     id: number;
     name: string;
     duration_in_weeks: number;
-    career_name?: string;
-    module_name?: string;
+    career_name?: string | null;
+    module_name?: string | null;
+    career_id?: number | null;
     is_workshop: boolean;
 }
 
@@ -454,6 +455,16 @@ const unregisteredDni = ref('');
 const unregisteredFirstName = ref('');
 const unregisteredPaternalSurname = ref('');
 const unregisteredMaternalSurname = ref('');
+const unregisteredBirthDate = ref('');
+const unregisteredPhone = ref('');
+const unregisteredEmail = ref('');
+const unregisteredHasGuardian = ref(false);
+const unregisteredGuardianFirstName = ref('');
+const unregisteredGuardianPaternalSurname = ref('');
+const unregisteredGuardianMaternalSurname = ref('');
+const unregisteredGuardianDocument = ref('');
+const unregisteredGuardianPhone = ref('');
+const unregisteredGuardianEmail = ref('');
 const isSubmittingUnregistered = ref(false);
 const unregisteredErrorMsg = ref('');
 
@@ -524,6 +535,16 @@ async function handleDniSearchAndEnroll() {
             unregisteredFirstName.value = '';
             unregisteredPaternalSurname.value = '';
             unregisteredMaternalSurname.value = '';
+            unregisteredBirthDate.value = '';
+            unregisteredPhone.value = '';
+            unregisteredEmail.value = '';
+            unregisteredHasGuardian.value = false;
+            unregisteredGuardianFirstName.value = '';
+            unregisteredGuardianPaternalSurname.value = '';
+            unregisteredGuardianMaternalSurname.value = '';
+            unregisteredGuardianDocument.value = '';
+            unregisteredGuardianPhone.value = '';
+            unregisteredGuardianEmail.value = '';
             unregisteredErrorMsg.value = '';
             showUnregisteredStudentModal.value = true;
         }
@@ -550,6 +571,17 @@ function submitUnregisteredStudentEnrollment() {
         return;
     }
 
+    if (unregisteredHasGuardian.value) {
+        if (!unregisteredGuardianDocument.value.trim()) {
+            unregisteredErrorMsg.value = 'Debe ingresar el DNI del apoderado.';
+            return;
+        }
+        if (!unregisteredGuardianFirstName.value.trim() || !unregisteredGuardianPaternalSurname.value.trim()) {
+            unregisteredErrorMsg.value = 'Debe ingresar el nombre y apellido paterno del apoderado.';
+            return;
+        }
+    }
+
     isSubmittingUnregistered.value = true;
     unregisteredErrorMsg.value = '';
 
@@ -563,6 +595,16 @@ function submitUnregisteredStudentEnrollment() {
             first_name: firstName,
             paternal_surname: paternal,
             maternal_surname: maternal || undefined,
+            birth_date: unregisteredBirthDate.value || undefined,
+            phone: unregisteredPhone.value || undefined,
+            email: unregisteredEmail.value || undefined,
+            has_guardian: unregisteredHasGuardian.value,
+            guardian_document: unregisteredGuardianDocument.value || undefined,
+            guardian_first_name: unregisteredGuardianFirstName.value || undefined,
+            guardian_paternal_surname: unregisteredGuardianPaternalSurname.value || undefined,
+            guardian_maternal_surname: unregisteredGuardianMaternalSurname.value || undefined,
+            guardian_phone: unregisteredGuardianPhone.value || undefined,
+            guardian_email: unregisteredGuardianEmail.value || undefined,
             enrollment_date: getPeruToday(),
             status: 'activo',
         },
@@ -719,6 +761,26 @@ function submitQuickModalEnrollment() {
             },
         );
     }
+}
+
+function openFullRegistrationFromQuickModal() {
+    unregisteredDni.value = quickModalDni.value.trim();
+    unregisteredFirstName.value = quickModalFirstName.value.trim();
+    unregisteredPaternalSurname.value = quickModalPaternalSurname.value.trim();
+    unregisteredMaternalSurname.value = quickModalMaternalSurname.value.trim();
+    unregisteredBirthDate.value = '';
+    unregisteredPhone.value = '';
+    unregisteredEmail.value = '';
+    unregisteredHasGuardian.value = false;
+    unregisteredGuardianFirstName.value = '';
+    unregisteredGuardianPaternalSurname.value = '';
+    unregisteredGuardianMaternalSurname.value = '';
+    unregisteredGuardianDocument.value = '';
+    unregisteredGuardianPhone.value = '';
+    unregisteredGuardianEmail.value = '';
+    unregisteredErrorMsg.value = '';
+    showQuickDniModal.value = false;
+    showUnregisteredStudentModal.value = true;
 }
 </script>
 
@@ -1601,87 +1663,193 @@ function submitQuickModalEnrollment() {
         <!-- ======================================================== -->
         <div
             v-if="showUnregisteredStudentModal"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs overflow-y-auto"
             @click.self="showUnregisteredStudentModal = false"
         >
-            <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div class="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5 my-8">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <h3 class="text-base font-bold text-slate-900">
-                        Registrar Estudiante & Matrícula
-                    </h3>
+                    <div>
+                        <h3 class="text-base font-black text-slate-900">
+                            Registrar Estudiante & Matrícula
+                        </h3>
+                        <p v-if="currentEditingSched || quickSelectedSched" class="text-xs text-slate-500 font-medium mt-0.5">
+                            {{ (currentEditingSched || quickSelectedSched)?.course_name }} &bull;
+                            {{ (currentEditingSched || quickSelectedSched)?.branch_name }} ({{ (currentEditingSched || quickSelectedSched)?.classroom_name }})
+                        </p>
+                    </div>
                     <button
+                        type="button"
                         @click="showUnregisteredStudentModal = false"
-                        class="cursor-pointer rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                        class="cursor-pointer rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                     >
                         &times;
                     </button>
                 </div>
 
                 <!-- Advertencia solicitada por el usuario -->
-                <div class="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs text-amber-900">
+                <div class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs text-amber-900">
                     <svg class="mt-0.5 h-5 w-5 shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     <div>
                         <p class="font-bold">Estudiante no registrado previamente</p>
                         <p class="mt-0.5 text-amber-800">
-                            El DNI <span class="font-mono font-bold">{{ unregisteredDni }}</span> no existe en el sistema. Requiere registrarse la matrícula primero indicando sus apellidos y nombres.
+                            El DNI <span class="font-mono font-bold">{{ unregisteredDni }}</span> no existe en el sistema. Requiere registrarse la matrícula completando los datos del estudiante y su apoderado.
                         </p>
                     </div>
                 </div>
 
-                <form @submit.prevent="submitUnregisteredStudentEnrollment" class="mt-4 space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase">
-                            Documento DNI
-                        </label>
-                        <input
-                            :value="unregisteredDni"
-                            type="text"
-                            readonly
-                            disabled
-                            class="mt-1 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-2 font-mono text-sm font-bold text-slate-700 select-none"
-                        />
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase">
-                            Nombres del Estudiante <span class="text-rose-500">*</span>
-                        </label>
-                        <input
-                            v-model="unregisteredFirstName"
-                            type="text"
-                            required
-                            autofocus
-                            placeholder="Ej. Carlos Raúl"
-                            class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
-                        />
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase">
-                                Apellido Paterno <span class="text-rose-500">*</span>
-                            </label>
-                            <input
-                                v-model="unregisteredPaternalSurname"
-                                type="text"
-                                required
-                                placeholder="Ej. Gómez"
-                                class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
-                            />
+                <form @submit.prevent="submitUnregisteredStudentEnrollment" class="space-y-4">
+                    <div class="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                        <!-- SECCIÓN 1: DATOS DEL ESTUDIANTE -->
+                        <div class="space-y-3">
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                1. Datos del Estudiante
+                            </h4>
+                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700">DNI (8 dígitos) *</label>
+                                    <input
+                                        v-model="unregisteredDni"
+                                        type="text"
+                                        maxlength="8"
+                                        placeholder="Ej. 74819203"
+                                        class="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-mono font-bold text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700">Fecha de Nacimiento</label>
+                                    <input
+                                        v-model="unregisteredBirthDate"
+                                        type="date"
+                                        class="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                    />
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label class="block text-xs font-bold text-slate-700">Nombres *</label>
+                                    <input
+                                        v-model="unregisteredFirstName"
+                                        type="text"
+                                        required
+                                        placeholder="Nombres completos"
+                                        class="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700">Apellido Paterno *</label>
+                                    <input
+                                        v-model="unregisteredPaternalSurname"
+                                        type="text"
+                                        required
+                                        placeholder="Primer apellido"
+                                        class="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700">Apellido Materno</label>
+                                    <input
+                                        v-model="unregisteredMaternalSurname"
+                                        type="text"
+                                        placeholder="Segundo apellido"
+                                        class="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700">Teléfono / Celular</label>
+                                    <input
+                                        v-model="unregisteredPhone"
+                                        type="text"
+                                        placeholder="Ej. 987654321"
+                                        class="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700">Correo Electrónico</label>
+                                    <input
+                                        v-model="unregisteredEmail"
+                                        type="email"
+                                        placeholder="alumno@ejemplo.com"
+                                        class="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase">
-                                Apellido Materno
-                            </label>
-                            <input
-                                v-model="unregisteredMaternalSurname"
-                                type="text"
-                                placeholder="Ej. Morales"
-                                class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
-                            />
+                        <!-- SECCIÓN 2: DATOS DEL APODERADO -->
+                        <div class="border-t border-slate-100 pt-3 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                    2. Datos del Apoderado
+                                </h4>
+                                <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#2e8b57]">
+                                    <input
+                                        v-model="unregisteredHasGuardian"
+                                        type="checkbox"
+                                        class="rounded text-[#2e8b57] focus:ring-[#2e8b57]"
+                                    />
+                                    <span>{{ unregisteredHasGuardian ? 'Apoderado Habilitado' : 'Sin apoderado' }}</span>
+                                </label>
+                            </div>
+
+                            <div v-if="unregisteredHasGuardian" class="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
+                                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700">DNI Apoderado (8 dígitos) *</label>
+                                        <input
+                                            v-model="unregisteredGuardianDocument"
+                                            type="text"
+                                            maxlength="8"
+                                            placeholder="Ej. 09876543"
+                                            class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-mono font-bold text-slate-900 focus:border-[#2e8b57] focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700">Teléfono Apoderado</label>
+                                        <input
+                                            v-model="unregisteredGuardianPhone"
+                                            type="text"
+                                            placeholder="Ej. 912345678"
+                                            class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
+                                        />
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-xs font-bold text-slate-700">Nombres del Apoderado *</label>
+                                        <input
+                                            v-model="unregisteredGuardianFirstName"
+                                            type="text"
+                                            placeholder="Nombres"
+                                            class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700">Apellido Paterno Apoderado *</label>
+                                        <input
+                                            v-model="unregisteredGuardianPaternalSurname"
+                                            type="text"
+                                            placeholder="Paterno"
+                                            class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700">Apellido Materno Apoderado</label>
+                                        <input
+                                            v-model="unregisteredGuardianMaternalSurname"
+                                            type="text"
+                                            placeholder="Materno"
+                                            class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
+                                        />
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-xs font-bold text-slate-700">Correo Electrónico Apoderado</label>
+                                        <input
+                                            v-model="unregisteredGuardianEmail"
+                                            type="email"
+                                            placeholder="apoderado@ejemplo.com"
+                                            class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1850,6 +2018,19 @@ function submitQuickModalEnrollment() {
                                     class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#2e8b57] focus:outline-none"
                                 />
                             </div>
+                        </div>
+
+                        <div class="pt-1">
+                            <button
+                                type="button"
+                                @click="openFullRegistrationFromQuickModal"
+                                class="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+                            >
+                                <svg class="h-3.5 w-3.5 text-[#2e8b57]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                <span>Completar Ficha Detallada (Apoderado / Contacto)</span>
+                            </button>
                         </div>
                     </div>
 

@@ -9,6 +9,7 @@ use App\Enums\DocumentType;
 use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
+use App\Models\Career;
 use App\Models\Classroom;
 use App\Models\Course;
 use App\Models\CourseSchedule;
@@ -66,6 +67,16 @@ class ScheduledCourseController extends Controller
                 'capacity' => $c->capacity,
             ])->values()->all();
 
+        // Catálogo de carreras técnicas
+        $careers = Career::query()
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Career $car) => [
+                'id' => $car->id,
+                'name' => $car->name,
+                'description' => $car->description,
+            ])->values()->all();
+
         // Catálogo de cursos disponibles para aperturar
         $coursesList = Course::query()
             ->with('module.careers')
@@ -75,7 +86,9 @@ class ScheduledCourseController extends Controller
                 'id' => $c->id,
                 'name' => $c->name,
                 'duration_in_weeks' => $c->duration_in_weeks ?? 4,
+                'career_id' => $c->module?->careers?->first()?->id,
                 'career_name' => $c->module?->careers?->first()?->name,
+                'module_id' => $c->module_id,
                 'module_name' => $c->module?->name,
                 'is_workshop' => (bool) $c->is_workshop,
             ])->values()->all();
@@ -146,6 +159,9 @@ class ScheduledCourseController extends Controller
                 'id' => $sc->id,
                 'course_id' => $sc->course_id,
                 'course_name' => $sc->course->name ?? 'Curso No Especificado',
+                'career_id' => $sc->course?->module?->careers?->first()?->id,
+                'career_name' => $sc->course?->module?->careers?->first()?->name,
+                'is_workshop' => (bool) ($sc->course?->is_workshop ?? false),
                 'branch_id' => $sc->branch_id,
                 'branch_name' => $sc->branch->name ?? 'Sede No Especificada',
                 'classroom_id' => $classroom?->id ?? 0,
@@ -202,13 +218,97 @@ class ScheduledCourseController extends Controller
             ];
         })->values()->all();
 
+        // Lista completa de Alumnos con sus apoderados e historial de matrículas
+        $studentsQuery = Student::query()
+            ->with([
+                'user',
+                'guardian',
+                'enrollments' => function ($q) {
+                    $q->orderByDesc('enrollment_date')->orderByDesc('id');
+                },
+                'enrollments.scheduledCourse.course.module.careers',
+                'enrollments.scheduledCourse.branch',
+                'enrollments.scheduledCourse.schedules.classroom',
+            ])
+            ->orderByDesc('id');
+
+        $students = $studentsQuery->get()->map(function (Student $student) {
+            $u = $student->user;
+            $g = $student->guardian;
+
+            $studentEnrollments = $student->enrollments->map(function (Enrollment $enr) {
+                $sched = $enr->scheduledCourse;
+                $course = $sched?->course;
+                $career = $course?->module?->careers?->first();
+                $classroom = $sched?->schedules?->first()?->classroom;
+
+                $startDateStr = $sched?->start_date ? $sched->start_date->format('Y-m-d') : '';
+                $endDateStr = $sched?->end_date ? $sched->end_date->format('Y-m-d') : '';
+
+                $schedules = $sched?->schedules ?? collect();
+                $firstSchedule = $schedules->first();
+                $daysLabels = $schedules->map(fn (CourseSchedule $s) => $s->day_of_week->label())->unique()->values()->all();
+                $dayOfWeekFormatted = self::formatDaysList($daysLabels);
+                $startTime = $firstSchedule ? substr((string) $firstSchedule->start_time, 0, 5) : '18:00';
+                $endTime = $firstSchedule ? substr((string) $firstSchedule->end_time, 0, 5) : '20:00';
+                $timeRange = $firstSchedule ? "{$startTime} - {$endTime}" : 'Por definir';
+
+                return [
+                    'id' => $enr->id,
+                    'scheduled_course_id' => $enr->scheduled_course_id,
+                    'course_id' => $course?->id,
+                    'course_name' => $course?->name ?? 'Curso General',
+                    'career_id' => $career?->id,
+                    'career_name' => $career?->name,
+                    'is_workshop' => (bool) ($course?->is_workshop ?? false),
+                    'branch_id' => $sched?->branch_id,
+                    'branch_name' => $sched?->branch?->name ?? 'Sede Principal',
+                    'classroom_name' => $classroom?->name ?? 'Aula General',
+                    'start_date' => $startDateStr,
+                    'end_date' => $endDateStr,
+                    'day_of_week' => $dayOfWeekFormatted ?: 'Por definir',
+                    'time_range' => $timeRange,
+                    'enrollment_date' => $enr->enrollment_date ? $enr->enrollment_date->format('Y-m-d') : '',
+                    'status' => $enr->status->value,
+                    'notes' => $enr->notes ?? null,
+                ];
+            })->values()->all();
+
+            return [
+                'id' => $student->id,
+                'user_id' => $student->user_id,
+                'document' => $u?->document ?? '',
+                'document_type' => $u?->document_type?->value ?? 'DNI',
+                'first_name' => $u?->first_name ?? '',
+                'paternal_surname' => $u?->paternal_surname ?? '',
+                'maternal_surname' => $u?->maternal_surname ?? '',
+                'full_name' => $u?->full_name ?? '',
+                'birth_date' => $u?->birth_date ? $u->birth_date->format('Y-m-d') : null,
+                'phone' => $u?->phone ?? '',
+                'email' => $u?->email ?? '',
+                'guardian' => $g ? [
+                    'id' => $g->id,
+                    'document' => $g->document,
+                    'first_name' => $g->first_name,
+                    'paternal_surname' => $g->paternal_surname,
+                    'maternal_surname' => $g->maternal_surname,
+                    'full_name' => $g->full_name,
+                    'phone' => $g->phone ?? '',
+                    'email' => $g->email ?? '',
+                ] : null,
+                'enrollments' => $studentEnrollments,
+            ];
+        })->values()->all();
+
         return [
             'branches' => $branches,
             'classrooms' => $classrooms,
+            'careers' => $careers,
             'coursesList' => $coursesList,
             'teachers' => $teachers,
             'scheduledCourses' => $scheduledCourses,
             'enrollments' => $enrollments,
+            'students' => $students,
         ];
     }
 
@@ -428,6 +528,17 @@ class ScheduledCourseController extends Controller
             'maternal_surname' => ['nullable', 'string', 'max:255'],
             'student_full_name' => ['nullable', 'string', 'max:255'],
             'student_document' => ['required', 'string', 'max:20'],
+            'birth_date' => ['nullable', 'date'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'email' => ['nullable', 'email', 'max:255'],
+            // Datos del apoderado
+            'has_guardian' => ['nullable', 'boolean'],
+            'guardian_first_name' => ['nullable', 'string', 'max:100'],
+            'guardian_paternal_surname' => ['nullable', 'string', 'max:100'],
+            'guardian_maternal_surname' => ['nullable', 'string', 'max:100'],
+            'guardian_document' => ['nullable', 'string', 'max:20'],
+            'guardian_phone' => ['nullable', 'string', 'max:30'],
+            'guardian_email' => ['nullable', 'email', 'max:255'],
             'enrollment_date' => ['nullable', 'date'],
             'status' => ['nullable', Rule::enum(EnrollmentStatus::class)],
             'notes' => ['nullable', 'string', 'max:1000'],
@@ -475,14 +586,66 @@ class ScheduledCourseController extends Controller
                 'maternal_surname' => $maternal !== '' ? $maternal : null,
                 'document' => $cleanDocument,
                 'document_type' => DocumentType::DNI,
+                'birth_date' => ! empty($validated['birth_date']) ? $validated['birth_date'] : null,
+                'phone' => ! empty($validated['phone']) ? trim($validated['phone']) : null,
+                'email' => ! empty($validated['email']) ? trim($validated['email']) : null,
                 'username' => 'est_'.strtolower($cleanDocument),
                 'password' => bcrypt($cleanDocument),
             ]);
+        } else {
+            $updateData = [];
+            if (! empty($validated['birth_date'])) {
+                $updateData['birth_date'] = $validated['birth_date'];
+            }
+            if (! empty($validated['phone'])) {
+                $updateData['phone'] = trim($validated['phone']);
+            }
+            if (! empty($validated['email'])) {
+                $updateData['email'] = trim($validated['email']);
+            }
+            if (! empty($updateData)) {
+                $userStudent->update($updateData);
+            }
         }
 
         $student = Student::firstOrCreate([
             'user_id' => $userStudent->id,
         ]);
+
+        // Registrar o actualizar apoderado si se indicó
+        $hasGuardian = (bool) ($validated['has_guardian'] ?? false);
+        if ($hasGuardian && ! empty($validated['guardian_document'])) {
+            $guardianDoc = trim($validated['guardian_document']);
+            $guardianFirst = trim((string) ($validated['guardian_first_name'] ?? ''));
+            $guardianPat = trim((string) ($validated['guardian_paternal_surname'] ?? ''));
+            $guardianMat = trim((string) ($validated['guardian_maternal_surname'] ?? ''));
+
+            if ($guardianFirst !== '' && $guardianPat !== '') {
+                $guardianUser = User::where('document', $guardianDoc)->first();
+                if ($guardianUser) {
+                    $guardianUser->update([
+                        'first_name' => $guardianFirst ?: $guardianUser->first_name,
+                        'paternal_surname' => $guardianPat ?: $guardianUser->paternal_surname,
+                        'maternal_surname' => $guardianMat ?: $guardianUser->maternal_surname,
+                        'phone' => ! empty($validated['guardian_phone']) ? trim($validated['guardian_phone']) : $guardianUser->phone,
+                        'email' => ! empty($validated['guardian_email']) ? trim($validated['guardian_email']) : $guardianUser->email,
+                    ]);
+                } else {
+                    $guardianUser = User::create([
+                        'first_name' => $guardianFirst,
+                        'paternal_surname' => $guardianPat,
+                        'maternal_surname' => $guardianMat ?: null,
+                        'document' => $guardianDoc,
+                        'document_type' => DocumentType::DNI,
+                        'phone' => ! empty($validated['guardian_phone']) ? trim($validated['guardian_phone']) : null,
+                        'email' => ! empty($validated['guardian_email']) ? trim($validated['guardian_email']) : null,
+                        'username' => 'apod_'.$guardianDoc,
+                        'password' => bcrypt($guardianDoc),
+                    ]);
+                }
+                $student->update(['guardian_id' => $guardianUser->id]);
+            }
+        }
 
         // Evitar matrícula duplicada activa en la misma apertura
         $alreadyEnrolled = Enrollment::where('student_id', $student->id)
@@ -507,6 +670,7 @@ class ScheduledCourseController extends Controller
         Enrollment::create([
             'scheduled_course_id' => $scheduledCourse->id,
             'student_id' => $student->id,
+            'guardian_id' => $student->guardian_id,
             'module_id' => $scheduledCourse->course?->module_id,
             'enrollment_date' => $enrollmentDate,
             'status' => $status,
@@ -533,18 +697,48 @@ class ScheduledCourseController extends Controller
 
         $courseId = $request->input('scheduled_course_id');
         $isEnrolled = false;
-        if ($courseId && $user->student) {
-            $isEnrolled = Enrollment::where('student_id', $user->student->id)
-                ->where('scheduled_course_id', (int) $courseId)
+        $enrolledCourseIds = [];
+        if ($user->student) {
+            $enrollments = Enrollment::where('student_id', $user->student->id)
                 ->whereNotIn('status', [EnrollmentStatus::RETIRADO->value, EnrollmentStatus::ANULADO->value])
-                ->exists();
+                ->with('scheduledCourse')
+                ->get();
+
+            if ($courseId) {
+                $isEnrolled = $enrollments->contains(fn ($e) => (int) $e->scheduled_course_id === (int) $courseId);
+            }
+
+            $enrolledCourseIds = $enrollments->pluck('scheduledCourse.course_id')
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
         }
+
+        $guardian = $user->student?->guardian;
 
         return response()->json([
             'found' => true,
             'document' => $user->document,
             'full_name' => $user->full_name,
+            'first_name' => $user->first_name,
+            'paternal_surname' => $user->paternal_surname,
+            'maternal_surname' => $user->maternal_surname,
+            'birth_date' => $user->birth_date ? $user->birth_date->format('Y-m-d') : null,
+            'phone' => $user->phone ?? '',
+            'email' => $user->email ?? '',
+            'guardian' => $guardian ? [
+                'id' => $guardian->id,
+                'document' => $guardian->document,
+                'full_name' => $guardian->full_name,
+                'first_name' => $guardian->first_name,
+                'paternal_surname' => $guardian->paternal_surname,
+                'maternal_surname' => $guardian->maternal_surname,
+                'phone' => $guardian->phone ?? '',
+                'email' => $guardian->email ?? '',
+            ] : null,
             'already_enrolled' => $isEnrolled,
+            'enrolled_course_ids' => $enrolledCourseIds,
         ]);
     }
 
@@ -594,6 +788,209 @@ class ScheduledCourseController extends Controller
         ]);
 
         return back()->with('success', 'Estado de matrícula actualizado.');
+    }
+
+    /**
+     * Registra un nuevo alumno junto a su apoderado opcional.
+     * Accesible desde Secretaría hacia arriba (secre, coord, admin).
+     */
+    public function storeStudent(Request $request): RedirectResponse
+    {
+        $staff = $request->user()?->staff;
+        if (! $staff) {
+            abort(403, 'Acceso denegado: no cuenta con perfil administrativo.');
+        }
+
+        $validated = $request->validate([
+            'first_name' => ['required', 'string', 'max:100'],
+            'paternal_surname' => ['required', 'string', 'max:100'],
+            'maternal_surname' => ['nullable', 'string', 'max:100'],
+            'document' => ['required', 'string', 'regex:/^[0-9]{8}$/'],
+            'birth_date' => ['nullable', 'date'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'email' => ['nullable', 'email', 'max:255'],
+            // Apoderado
+            'has_guardian' => ['nullable', 'boolean'],
+            'guardian_first_name' => ['nullable', 'string', 'max:100'],
+            'guardian_paternal_surname' => ['nullable', 'string', 'max:100'],
+            'guardian_maternal_surname' => ['nullable', 'string', 'max:100'],
+            'guardian_document' => ['nullable', 'string', 'regex:/^[0-9]{8}$/'],
+            'guardian_phone' => ['nullable', 'string', 'max:30'],
+            'guardian_email' => ['nullable', 'email', 'max:255'],
+        ]);
+
+        $cleanDoc = trim($validated['document']);
+        $user = User::where('document', $cleanDoc)->first();
+
+        if ($user && $user->student) {
+            return back()->withErrors(['document' => "Ya existe un alumno registrado con el DNI {$cleanDoc}."]);
+        }
+
+        if (! $user) {
+            $user = User::create([
+                'first_name' => trim($validated['first_name']),
+                'paternal_surname' => trim($validated['paternal_surname']),
+                'maternal_surname' => ! empty($validated['maternal_surname']) ? trim($validated['maternal_surname']) : null,
+                'document' => $cleanDoc,
+                'document_type' => DocumentType::DNI,
+                'birth_date' => ! empty($validated['birth_date']) ? $validated['birth_date'] : null,
+                'phone' => ! empty($validated['phone']) ? trim($validated['phone']) : null,
+                'email' => ! empty($validated['email']) ? trim($validated['email']) : null,
+                'username' => 'est_'.$cleanDoc,
+                'password' => bcrypt($cleanDoc),
+            ]);
+        } else {
+            $user->update([
+                'first_name' => trim($validated['first_name']),
+                'paternal_surname' => trim($validated['paternal_surname']),
+                'maternal_surname' => ! empty($validated['maternal_surname']) ? trim($validated['maternal_surname']) : null,
+                'birth_date' => ! empty($validated['birth_date']) ? $validated['birth_date'] : $user->birth_date,
+                'phone' => ! empty($validated['phone']) ? trim($validated['phone']) : $user->phone,
+                'email' => ! empty($validated['email']) ? trim($validated['email']) : $user->email,
+            ]);
+        }
+
+        $guardianId = null;
+        $hasGuardian = (bool) ($validated['has_guardian'] ?? false);
+        if ($hasGuardian && ! empty($validated['guardian_document'])) {
+            $guardianDoc = trim($validated['guardian_document']);
+            $guardianFirst = trim((string) ($validated['guardian_first_name'] ?? ''));
+            $guardianPat = trim((string) ($validated['guardian_paternal_surname'] ?? ''));
+            $guardianMat = trim((string) ($validated['guardian_maternal_surname'] ?? ''));
+
+            if ($guardianFirst === '' || $guardianPat === '') {
+                return back()->withErrors([
+                    'guardian_first_name' => 'El nombre y apellido paterno del apoderado son requeridos cuando se indica que tiene apoderado.',
+                ]);
+            }
+
+            $guardianUser = User::where('document', $guardianDoc)->first();
+            if ($guardianUser) {
+                $guardianUser->update([
+                    'first_name' => $guardianFirst ?: $guardianUser->first_name,
+                    'paternal_surname' => $guardianPat ?: $guardianUser->paternal_surname,
+                    'maternal_surname' => $guardianMat ?: $guardianUser->maternal_surname,
+                    'phone' => ! empty($validated['guardian_phone']) ? trim($validated['guardian_phone']) : $guardianUser->phone,
+                    'email' => ! empty($validated['guardian_email']) ? trim($validated['guardian_email']) : $guardianUser->email,
+                ]);
+            } else {
+                $guardianUser = User::create([
+                    'first_name' => $guardianFirst ?: 'Apoderado',
+                    'paternal_surname' => $guardianPat ?: 'Registrado',
+                    'maternal_surname' => $guardianMat ?: null,
+                    'document' => $guardianDoc,
+                    'document_type' => DocumentType::DNI,
+                    'phone' => ! empty($validated['guardian_phone']) ? trim($validated['guardian_phone']) : null,
+                    'email' => ! empty($validated['guardian_email']) ? trim($validated['guardian_email']) : null,
+                    'username' => 'apod_'.$guardianDoc,
+                    'password' => bcrypt($guardianDoc),
+                ]);
+            }
+            $guardianId = $guardianUser->id;
+        }
+
+        Student::create([
+            'user_id' => $user->id,
+            'guardian_id' => $guardianId,
+        ]);
+
+        return back()->with('success', "Alumno {$user->full_name} registrado exitosamente.");
+    }
+
+    /**
+     * Actualiza la información personal de un alumno y su apoderado.
+     * Accesible desde Secretaría hacia arriba (secre, coord, admin).
+     */
+    public function updateStudent(Request $request, Student $student): RedirectResponse
+    {
+        $staff = $request->user()?->staff;
+        if (! $staff) {
+            abort(403, 'Acceso denegado: no cuenta con perfil administrativo.');
+        }
+
+        $validated = $request->validate([
+            'first_name' => ['required', 'string', 'max:100'],
+            'paternal_surname' => ['required', 'string', 'max:100'],
+            'maternal_surname' => ['nullable', 'string', 'max:100'],
+            'document' => ['required', 'string', 'regex:/^[0-9]{8}$/'],
+            'birth_date' => ['nullable', 'date'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'email' => ['nullable', 'email', 'max:255'],
+            // Apoderado
+            'has_guardian' => ['nullable', 'boolean'],
+            'guardian_first_name' => ['nullable', 'string', 'max:100'],
+            'guardian_paternal_surname' => ['nullable', 'string', 'max:100'],
+            'guardian_maternal_surname' => ['nullable', 'string', 'max:100'],
+            'guardian_document' => ['nullable', 'string', 'regex:/^[0-9]{8}$/'],
+            'guardian_phone' => ['nullable', 'string', 'max:30'],
+            'guardian_email' => ['nullable', 'email', 'max:255'],
+        ]);
+
+        $user = $student->user;
+        if (! $user) {
+            abort(404, 'Usuario de estudiante no encontrado.');
+        }
+
+        // Validar DNI único respecto a otros usuarios
+        $existing = User::where('document', $validated['document'])
+            ->where('id', '!=', $user->id)
+            ->first();
+        if ($existing) {
+            return back()->withErrors(['document' => 'El DNI ingresado ya está asignado a otro usuario en el sistema.']);
+        }
+
+        $user->update([
+            'first_name' => trim($validated['first_name']),
+            'paternal_surname' => trim($validated['paternal_surname']),
+            'maternal_surname' => ! empty($validated['maternal_surname']) ? trim($validated['maternal_surname']) : null,
+            'document' => trim($validated['document']),
+            'birth_date' => ! empty($validated['birth_date']) ? $validated['birth_date'] : null,
+            'phone' => ! empty($validated['phone']) ? trim($validated['phone']) : null,
+            'email' => ! empty($validated['email']) ? trim($validated['email']) : null,
+        ]);
+
+        $hasGuardian = (bool) ($validated['has_guardian'] ?? false);
+        if ($hasGuardian && ! empty($validated['guardian_document'])) {
+            $guardianDoc = trim($validated['guardian_document']);
+            $guardianFirst = trim((string) ($validated['guardian_first_name'] ?? ''));
+            $guardianPat = trim((string) ($validated['guardian_paternal_surname'] ?? ''));
+            $guardianMat = trim((string) ($validated['guardian_maternal_surname'] ?? ''));
+
+            if ($guardianFirst === '' || $guardianPat === '') {
+                return back()->withErrors([
+                    'guardian_first_name' => 'El nombre y apellido paterno del apoderado son requeridos.',
+                ]);
+            }
+
+            $guardianUser = User::where('document', $guardianDoc)->first();
+            if ($guardianUser) {
+                $guardianUser->update([
+                    'first_name' => $guardianFirst ?: $guardianUser->first_name,
+                    'paternal_surname' => $guardianPat ?: $guardianUser->paternal_surname,
+                    'maternal_surname' => $guardianMat ?: $guardianUser->maternal_surname,
+                    'phone' => ! empty($validated['guardian_phone']) ? trim($validated['guardian_phone']) : $guardianUser->phone,
+                    'email' => ! empty($validated['guardian_email']) ? trim($validated['guardian_email']) : $guardianUser->email,
+                ]);
+            } else {
+                $guardianUser = User::create([
+                    'first_name' => $guardianFirst,
+                    'paternal_surname' => $guardianPat,
+                    'maternal_surname' => $guardianMat ?: null,
+                    'document' => $guardianDoc,
+                    'document_type' => DocumentType::DNI,
+                    'phone' => ! empty($validated['guardian_phone']) ? trim($validated['guardian_phone']) : null,
+                    'email' => ! empty($validated['guardian_email']) ? trim($validated['guardian_email']) : null,
+                    'username' => 'apod_'.$guardianDoc,
+                    'password' => bcrypt($guardianDoc),
+                ]);
+            }
+
+            $student->update(['guardian_id' => $guardianUser->id]);
+        } else {
+            $student->update(['guardian_id' => null]);
+        }
+
+        return back()->with('success', "Datos del alumno {$user->full_name} actualizados exitosamente.");
     }
 
     /**

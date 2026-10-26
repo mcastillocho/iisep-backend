@@ -8,6 +8,7 @@ use App\Enums\DayOfWeek;
 use App\Enums\DocumentType;
 use App\Enums\EnrollmentStatus;
 use App\Models\Branch;
+use App\Models\Career;
 use App\Models\Classroom;
 use App\Models\Course;
 use App\Models\Enrollment;
@@ -314,6 +315,7 @@ test('staff can search student by dni', function () {
     $userStudent = User::create([
         'first_name' => 'Marcos',
         'paternal_surname' => 'Soto',
+        'maternal_surname' => 'Perez',
         'document' => '74819203',
         'document_type' => DocumentType::DNI,
         'username' => 'msoto',
@@ -326,9 +328,27 @@ test('staff can search student by dni', function () {
     $response->assertJson([
         'found' => true,
         'document' => '74819203',
-        'full_name' => 'Marcos Soto',
+        'full_name' => 'Marcos Soto Perez',
+        'first_name' => 'Marcos',
+        'paternal_surname' => 'Soto',
+        'maternal_surname' => 'Perez',
         'already_enrolled' => false,
+        'enrolled_course_ids' => [],
     ]);
+});
+
+test('matriculas page includes careers list for enrollment flow', function () {
+    $admin = createStaffUser('admin_matr', 'admin', null);
+    Career::create(['name' => 'Gastronomia', 'description' => 'Alta cocina']);
+
+    $response = $this->actingAs($admin)->get(route('admin.matriculas'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('Admin/Matriculas')
+        ->has('careers')
+        ->where('careers.0.name', 'Gastronomia')
+    );
 });
 
 test('staff can withdraw student enrollment from scheduled course', function () {
@@ -464,4 +484,99 @@ test('student registration parses Peruvian names and never assigns IISEP', funct
         'enrollment_date' => '2026-11-01',
     ]);
     $response5->assertSessionHasErrors(['paternal_surname']);
+});
+
+test('staff from secretaria upwards can store student and guardian', function () {
+    $branch = Branch::create(['name' => 'Sede Central', 'code' => 'CEN']);
+    $secre = createStaffUser('secre_alumnos', 'secre', $branch->id);
+
+    $response = $this->actingAs($secre)->post(route('admin.students.store'), [
+        'first_name' => 'Renzo',
+        'paternal_surname' => 'Palacios',
+        'maternal_surname' => 'Rios',
+        'document' => '71829304',
+        'birth_date' => '2005-06-15',
+        'phone' => '987123456',
+        'email' => 'renzo@gmail.com',
+        'has_guardian' => true,
+        'guardian_first_name' => 'Elena',
+        'guardian_paternal_surname' => 'Rios',
+        'guardian_maternal_surname' => 'Mendoza',
+        'guardian_document' => '08765432',
+        'guardian_phone' => '912345678',
+        'guardian_email' => 'elena@gmail.com',
+    ]);
+
+    $response->assertSessionHasNoErrors();
+
+    $studentUser = User::where('document', '71829304')->first();
+    expect($studentUser)->not->toBeNull();
+    expect($studentUser->student)->not->toBeNull();
+
+    $guardianUser = User::where('document', '08765432')->first();
+    expect($guardianUser)->not->toBeNull();
+    expect($studentUser->student->guardian_id)->toBe($guardianUser->id);
+    expect($studentUser->student->guardian->full_name)->toBe('Elena Rios Mendoza');
+});
+
+test('staff can update student and guardian data', function () {
+    $branch = Branch::create(['name' => 'Sede Central', 'code' => 'CEN']);
+    $coord = createStaffUser('coord_alumnos', 'coord', $branch->id);
+
+    $studentUser = User::create([
+        'first_name' => 'Gabriel',
+        'paternal_surname' => 'Cruz',
+        'document' => '76543210',
+        'document_type' => DocumentType::DNI,
+        'username' => 'est_76543210',
+        'password' => bcrypt('76543210'),
+    ]);
+    $student = Student::create(['user_id' => $studentUser->id]);
+
+    $response = $this->actingAs($coord)->put(route('admin.students.update', $student), [
+        'first_name' => 'Gabriel Alejandro',
+        'paternal_surname' => 'Cruz',
+        'maternal_surname' => 'Paredes',
+        'document' => '76543210',
+        'phone' => '999888777',
+        'has_guardian' => true,
+        'guardian_first_name' => 'Manuel',
+        'guardian_paternal_surname' => 'Cruz',
+        'guardian_document' => '10293847',
+        'guardian_phone' => '944555666',
+    ]);
+
+    $response->assertSessionHasNoErrors();
+
+    $studentUser->refresh();
+    $student->refresh();
+
+    expect($studentUser->first_name)->toBe('Gabriel Alejandro');
+    expect($studentUser->maternal_surname)->toBe('Paredes');
+    expect($studentUser->phone)->toBe('999888777');
+    expect($student->guardian)->not->toBeNull();
+    expect($student->guardian->first_name)->toBe('Manuel');
+    expect($student->guardian->document)->toBe('10293847');
+});
+
+test('alumnos page returns students list with guardian and enrollments', function () {
+    $admin = createStaffUser('admin_alumnos_list', 'admin', null);
+    $userStudent = User::create([
+        'first_name' => 'Fiorella',
+        'paternal_surname' => 'Salazar',
+        'document' => '72345678',
+        'document_type' => DocumentType::DNI,
+        'username' => 'est_72345678',
+        'password' => bcrypt('password'),
+    ]);
+    $student = Student::create(['user_id' => $userStudent->id]);
+
+    $response = $this->actingAs($admin)->get(route('admin.alumnos'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('Admin/Matriculas')
+        ->has('students')
+        ->where('students.0.document', '72345678')
+    );
 });

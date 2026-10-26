@@ -29,6 +29,9 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
 Route::middleware(['auth'])->prefix('admin')->group(function (): void {
     Route::get('/', [BranchController::class, 'dashboard'])->name('admin');
     Route::get('/matriculas', [ScheduledCourseController::class, 'index'])->name('admin.matriculas');
+    Route::get('/alumnos', [ScheduledCourseController::class, 'index'])->name('admin.alumnos');
+    Route::post('/alumnos', [ScheduledCourseController::class, 'storeStudent'])->name('admin.students.store');
+    Route::put('/alumnos/{student}', [ScheduledCourseController::class, 'updateStudent'])->name('admin.students.update');
     Route::post('/cursos-aperturados', [ScheduledCourseController::class, 'store'])->name('admin.scheduled-courses.store');
     Route::put('/cursos-aperturados/{scheduledCourse}', [ScheduledCourseController::class, 'update'])->name('admin.scheduled-courses.update');
     Route::delete('/cursos-aperturados/{scheduledCourse}', [ScheduledCourseController::class, 'destroy'])->name('admin.scheduled-courses.destroy');

@@ -117,6 +117,14 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasMany<Student, $this>
+     */
+    public function studentsAsGuardian(): HasMany
+    {
+        return $this->hasMany(Student::class, 'guardian_id');
+    }
+
+    /**
      * @return list<string>
      */
     public function getRolesAttribute(): array
@@ -138,7 +146,10 @@ class User extends Authenticatable
             $roles[] = 'administrativo';
         }
 
-        if ($this->relationLoaded('guardianEnrollments') ? $this->guardianEnrollments->isNotEmpty() : $this->guardianEnrollments()->exists()) {
+        $hasGuardianLinks = ($this->relationLoaded('guardianEnrollments') ? $this->guardianEnrollments->isNotEmpty() : $this->guardianEnrollments()->exists())
+            || ($this->relationLoaded('studentsAsGuardian') ? $this->studentsAsGuardian->isNotEmpty() : $this->studentsAsGuardian()->exists());
+
+        if ($hasGuardianLinks) {
             $roles[] = 'guardian';
             $roles[] = 'apoderado';
         }
@@ -173,8 +184,14 @@ class User extends Authenticatable
 
     public function isGuardian(): bool
     {
-        return $this->relationLoaded('guardianEnrollments')
+        $hasGuardianEnrollments = $this->relationLoaded('guardianEnrollments')
             ? $this->guardianEnrollments->isNotEmpty()
             : $this->guardianEnrollments()->exists();
+
+        $hasStudents = $this->relationLoaded('studentsAsGuardian')
+            ? $this->studentsAsGuardian->isNotEmpty()
+            : $this->studentsAsGuardian()->exists();
+
+        return $hasGuardianEnrollments || $hasStudents;
     }
 }
