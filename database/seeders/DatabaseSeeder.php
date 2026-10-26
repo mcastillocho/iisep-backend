@@ -190,7 +190,7 @@ class DatabaseSeeder extends Seeder
             ['user_id' => $userSuperAdmin->id],
             [
                 'branch_id' => null, // Acceso global y máximos permisos en todas las sedes
-                'position' => 'Director General / Administrador del Sistema',
+                'position' => 'admin',
             ]
         );
 
@@ -210,7 +210,7 @@ class DatabaseSeeder extends Seeder
         Staff::create([
             'user_id' => $userStaffComas->id,
             'branch_id' => $sedeComas->id,
-            'position' => 'Coordinadora Académica - Sede Comas',
+            'position' => 'coord',
         ]);
 
         // 6.2 Docente 1 (Profesor de Computación y Hardware)

@@ -77,4 +77,46 @@ class Staff extends Model
     {
         return $this->branch_id === null;
     }
+
+    /**
+     * Determina si el personal es Coordinador de Sede (cargo 'coord' y sede asignada).
+     * Opcionalmente valida contra un id de sede específico ($branchId).
+     */
+    public function isCoordinador(?int $branchId = null): bool
+    {
+        if ($this->branch_id === null || $this->position !== 'coord') {
+            return false;
+        }
+
+        return $branchId === null || $this->branch_id === $branchId;
+    }
+
+    /**
+     * Alias de isCoordinador.
+     */
+    public function isCoord(?int $branchId = null): bool
+    {
+        return $this->isCoordinador($branchId);
+    }
+
+    /**
+     * Determina si el personal es Secretaría de Sede (cargo 'secre' y sede asignada).
+     * Opcionalmente valida contra un id de sede específico ($branchId).
+     */
+    public function isSecretaria(?int $branchId = null): bool
+    {
+        if ($this->branch_id === null || $this->position !== 'secre') {
+            return false;
+        }
+
+        return $branchId === null || $this->branch_id === $branchId;
+    }
+
+    /**
+     * Alias de isSecretaria.
+     */
+    public function isSecre(?int $branchId = null): bool
+    {
+        return $this->isSecretaria($branchId);
+    }
 }

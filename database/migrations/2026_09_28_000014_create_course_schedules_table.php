@@ -26,7 +26,9 @@ return new class extends Migration
             $table->softDeletes();
         });
 
-        DB::statement('ALTER TABLE course_schedules ADD CONSTRAINT chk_course_schedule_times CHECK (start_time < end_time)');
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE course_schedules ADD CONSTRAINT chk_course_schedule_times CHECK (start_time < end_time)');
+        }
     }
 
     /**

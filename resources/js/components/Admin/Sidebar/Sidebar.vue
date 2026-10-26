@@ -82,6 +82,14 @@ const userInitials = computed(() => {
     return (first + last).toUpperCase();
 });
 
+const userPositionLabel = computed(() => {
+    const pos = currentUser.value?.staff?.position;
+    if (pos === 'admin') return 'Dirección General';
+    if (pos === 'coord') return 'Coordinación de Sede';
+    if (pos === 'secre') return 'Secretaría de Sede';
+    return pos || 'Personal Administrativo';
+});
+
 function handleLogout() {
     router.post('/logout');
 }
@@ -430,7 +438,7 @@ function handleLogout() {
                             {{ currentUser?.full_name || 'Sofia Torres Castro' }}
                         </p>
                         <p class="truncate text-[11px] text-slate-500">
-                            {{ currentUser?.staff?.position || 'Coordinación Sede Comas' }}
+                            {{ userPositionLabel }}
                         </p>
                     </div>
                 </div>

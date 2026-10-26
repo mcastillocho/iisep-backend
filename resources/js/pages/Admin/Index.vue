@@ -94,79 +94,9 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// --- DATOS MOCKEADOS REALES ---
-
-// 1. Sedes (branches)
-const defaultBranches: Branch[] = [
-    {
-        id: 1,
-        name: 'Sede Comas',
-        code: 'COM',
-        address: 'Av. Túpac Amaru 3845 (Frente a la Reniec de Comas)',
-        phone: '944206945',
-    },
-    {
-        id: 2,
-        name: 'Sede Puente Piedra',
-        code: 'PUP',
-        address: 'Jr. Ricardo Palma 241 (2° piso de la RENIEC)',
-        phone: '987710344',
-    },
-];
-
-// 2. Aulas (classrooms)
-const defaultClassrooms: Classroom[] = [
-    {
-        id: 1,
-        branch_id: 1,
-        branch_name: 'Sede Comas',
-        name: 'Aula 101 - Teoría',
-        capacity: 35,
-        current_scheduled_courses: [
-            'Excel Avanzado y Macros (Martes y Jueves 18:00 - 20:00)',
-            'Taller de Gestión de Archivos (Sábados 08:00 - 12:00)',
-        ],
-    },
-    {
-        id: 2,
-        branch_id: 1,
-        branch_name: 'Sede Comas',
-        name: 'Laboratorio de Cómputo 1',
-        capacity: 24,
-        current_scheduled_courses: [
-            'Arquitectura de Hardware y Diagnóstico (Lunes y Miércoles 08:00 - 10:00)',
-            'Ensamblaje de Redes LAN (Viernes 14:00 - 18:00)',
-        ],
-    },
-    {
-        id: 3,
-        branch_id: 2,
-        branch_name: 'Sede Puente Piedra',
-        name: 'Aula 201 - Multiusos',
-        capacity: 30,
-        current_scheduled_courses: [
-            'Taller de Barber Shop y Cortes Urbanos (Sábados 14:00 - 18:00)',
-        ],
-    },
-    {
-        id: 4,
-        branch_id: 2,
-        branch_name: 'Sede Puente Piedra',
-        name: 'Taller de Estética y Cosmetología',
-        capacity: 20,
-        current_scheduled_courses: [
-            'Taller de Uñas Acrílicas y Polygel (Lunes y Miércoles 16:00 - 19:00)',
-        ],
-    },
-];
-
-const branches = computed<Branch[]>(() => {
-    return props.branches && props.branches.length > 0 ? props.branches : defaultBranches;
-});
-
-const classrooms = computed<Classroom[]>(() => {
-    return props.classrooms && props.classrooms.length > 0 ? props.classrooms : defaultClassrooms;
-});
+// Datos de Sedes y Aulas obtenidos exclusivamente de la base de datos
+const branches = computed<Branch[]>(() => props.branches ?? []);
+const classrooms = computed<Classroom[]>(() => props.classrooms ?? []);
 
 // 3. Catálogo Global de Módulos (para asignación a carreras)
 const allModulesPool = ref<ModuleItem[]>([

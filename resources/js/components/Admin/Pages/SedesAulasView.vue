@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useForm, usePage } from '@inertiajs/vue3';
+import { router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 export interface Branch {
@@ -47,13 +47,55 @@ interface AuthUser {
     staff?: AuthStaff | null;
 }
 
-// Verificación de Administrador General (sin sede asignada / branch_id === null)
+// Verificación de Perfiles y Permisos Escalonados
 const page = usePage<{ auth?: { user?: AuthUser } }>();
+
+// 1. Director General (sin sede asignada / branch_id === null)
 const isAdmin = computed(() => {
     const user = page.props.auth?.user;
     if (!user?.staff) return false;
     return user.staff.branch_id === null;
 });
+
+// 2. Coordinación de Sede (cargo 'coord' y sede específica branch_id !== null) o Director General
+const isCoordinador = computed(() => {
+    const user = page.props.auth?.user;
+    if (!user?.staff) return false;
+    if (isAdmin.value) return true;
+    return user.staff.branch_id !== null && user.staff.position === 'coord';
+});
+
+// 3. Secretaría de Sede (cargo 'secre' y sede específica branch_id !== null)
+const isSecretaria = computed(() => {
+    const user = page.props.auth?.user;
+    if (!user?.staff) return false;
+    return user.staff.branch_id !== null && user.staff.position === 'secre';
+});
+
+// Permiso para CREAR AULAS: Solo Director General y Coordinador de Sede
+const canCreateClassroom = computed(() => isCoordinador.value);
+
+// Permiso para EDITAR AULAS: Director (todas), Coordinador (su sede) y Secretaría (su sede)
+function canEditClassroom(room: Classroom): boolean {
+    const user = page.props.auth?.user;
+    if (!user?.staff) return false;
+    if (isAdmin.value) return true;
+    if (user.staff.branch_id !== room.branch_id) return false;
+    return user.staff.position === 'coord' || user.staff.position === 'secre';
+}
+
+// Secretaría de Sede solo puede editar cantidad de espacios / aforo (no el nombre ni la sede)
+const isOnlyCapacityEditable = computed(() => {
+    return isSecretaria.value;
+});
+
+// Permiso para ELIMINAR AULAS: Solo Director General y Coordinador (su sede)
+function canDeleteClassroom(room: Classroom): boolean {
+    const user = page.props.auth?.user;
+    if (!user?.staff) return false;
+    if (isAdmin.value) return true;
+    return user.staff.position === 'coord' && user.staff.branch_id === room.branch_id;
+}
 
 // Filtro de búsqueda
 const searchClassroomQuery = ref('');
@@ -136,10 +178,10 @@ function saveNewBranch() {
 }
 
 
-// --- MODAL DE AULA (CREAR / EDITAR) ---
+// --- MODAL DE AULA (CREAR / EDITAR) CONECTADO AL BACKEND ---
 const showClassroomModal = ref(false);
 const editingClassroomId = ref<number | null>(null);
-const classroomForm = ref({
+const classroomForm = useForm({
     name: '',
     branch_id: 1,
     capacity: 30 as number | null,
@@ -147,78 +189,89 @@ const classroomForm = ref({
 
 function openNewClassroomModal(defaultBranchId?: number) {
     editingClassroomId.value = null;
+    classroomForm.clearErrors();
+    const userBranch = page.props.auth?.user?.staff?.branch_id;
     const initialBranchId =
         defaultBranchId ||
+        userBranch ||
         (props.selectedBranchId !== 'all'
             ? props.selectedBranchId
             : props.branches[0]?.id || 1);
-    classroomForm.value = {
-        name: '',
-        branch_id: initialBranchId,
-        capacity: 30,
-    };
+
+    classroomForm.name = '';
+    classroomForm.branch_id = initialBranchId;
+    classroomForm.capacity = 30;
     showClassroomModal.value = true;
 }
 
 function openEditClassroomModal(room: Classroom) {
     editingClassroomId.value = room.id;
-    classroomForm.value = {
-        name: room.name,
-        branch_id: room.branch_id,
-        capacity: room.capacity,
-    };
+    classroomForm.clearErrors();
+    classroomForm.name = room.name;
+    classroomForm.branch_id = room.branch_id;
+    classroomForm.capacity = room.capacity;
     showClassroomModal.value = true;
 }
 
 function saveClassroom() {
-    if (!classroomForm.value.name.trim()) return;
-    const branchObj = props.branches.find(
-        (b) => b.id === classroomForm.value.branch_id,
-    );
-    const branchName = branchObj ? branchObj.name : 'Sede Principal';
-
     if (editingClassroomId.value) {
-        const index = props.classrooms.findIndex(
-            (c) => c.id === editingClassroomId.value,
-        );
-        if (index !== -1) {
-            props.classrooms[index].name = classroomForm.value.name.trim();
-            props.classrooms[index].branch_id = classroomForm.value.branch_id;
-            props.classrooms[index].branch_name = branchName;
-            props.classrooms[index].capacity = classroomForm.value.capacity;
-        }
-        emit(
-            'notify',
-            `Aula "${classroomForm.value.name}" actualizada con éxito.`,
-        );
-    } else {
-        const newId =
-            props.classrooms.length > 0
-                ? Math.max(...props.classrooms.map((c) => c.id)) + 1
-                : 1;
-        props.classrooms.push({
-            id: newId,
-            branch_id: classroomForm.value.branch_id,
-            branch_name: branchName,
-            name: classroomForm.value.name.trim(),
-            capacity: classroomForm.value.capacity,
-            current_scheduled_courses: [],
+        classroomForm.put(`/admin/aulas/${editingClassroomId.value}`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit(
+                    'notify',
+                    `Aula "${classroomForm.name}" actualizada con éxito.`,
+                );
+                showClassroomModal.value = false;
+            },
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                if (firstError) emit('notify', String(firstError));
+            },
         });
-        emit(
-            'notify',
-            `Nueva aula "${classroomForm.value.name}" registrada con éxito.`,
-        );
+    } else {
+        if (!classroomForm.name.trim()) return;
+        classroomForm.post('/admin/aulas', {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit(
+                    'notify',
+                    `Nueva aula "${classroomForm.name}" registrada con éxito.`,
+                );
+                showClassroomModal.value = false;
+            },
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                if (firstError) emit('notify', String(firstError));
+            },
+        });
     }
-    showClassroomModal.value = false;
 }
 
 function deleteClassroom(roomId: number) {
-    const index = props.classrooms.findIndex((c) => c.id === roomId);
-    if (index !== -1) {
-        const name = props.classrooms[index].name;
-        props.classrooms.splice(index, 1);
-        emit('notify', `Aula "${name}" eliminada.`);
+    const room = props.classrooms.find((c) => c.id === roomId);
+    if (!room) return;
+
+    if (room.current_scheduled_courses && room.current_scheduled_courses.length > 0) {
+        emit(
+            'notify',
+            `No es posible eliminar el aula "${room.name}" porque tiene clases programadas.`,
+        );
+        return;
     }
+
+    if (!confirm(`¿Estás seguro de eliminar el aula "${room.name}"?`)) return;
+
+    router.delete(`/admin/aulas/${roomId}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            emit('notify', `Aula "${room.name}" eliminada.`);
+        },
+        onError: (errors) => {
+            const firstError = Object.values(errors)[0];
+            if (firstError) emit('notify', String(firstError));
+        },
+    });
 }
 
 // --- MODAL DE DISPONIBILIDAD DE AULA ---
@@ -386,6 +439,7 @@ const filteredClassrooms = computed(() => {
                     </div>
 
                     <button
+                        v-if="canCreateClassroom"
                         @click="openNewClassroomModal(editingBranch.id)"
                         class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#257347]"
                     >
@@ -467,6 +521,7 @@ const filteredClassrooms = computed(() => {
                                 >
                                     <div class="inline-flex items-center gap-2">
                                         <button
+                                            v-if="canEditClassroom(room)"
                                             @click="
                                                 openEditClassroomModal(room)
                                             "
@@ -475,8 +530,11 @@ const filteredClassrooms = computed(() => {
                                             Editar
                                         </button>
                                         <button
+                                            v-if="canDeleteClassroom(room)"
                                             @click="deleteClassroom(room.id)"
-                                            class="cursor-pointer text-xs font-bold text-red-500 hover:text-red-700"
+                                            :disabled="Boolean(room.current_scheduled_courses && room.current_scheduled_courses.length > 0)"
+                                            :title="room.current_scheduled_courses && room.current_scheduled_courses.length > 0 ? 'No se puede eliminar: tiene clases programadas' : 'Eliminar aula'"
+                                            class="cursor-pointer text-xs font-bold text-red-500 hover:text-red-700 disabled:cursor-not-allowed disabled:text-slate-300"
                                         >
                                             ✕
                                         </button>
@@ -563,6 +621,7 @@ const filteredClassrooms = computed(() => {
                     </button>
 
                     <button
+                        v-if="canCreateClassroom"
                         @click="openNewClassroomModal()"
                         class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#2e8b57] bg-emerald-50 px-4 py-2.5 text-sm font-bold text-[#2e8b57] transition hover:bg-emerald-100"
                     >
@@ -883,6 +942,7 @@ const filteredClassrooms = computed(() => {
                                 >
                                     <div class="inline-flex items-center gap-2">
                                         <button
+                                            v-if="canEditClassroom(room)"
                                             @click="
                                                 openEditClassroomModal(room)
                                             "
@@ -891,8 +951,11 @@ const filteredClassrooms = computed(() => {
                                             Editar Aula
                                         </button>
                                         <button
+                                            v-if="canDeleteClassroom(room)"
                                             @click="deleteClassroom(room.id)"
-                                            class="cursor-pointer text-xs font-bold text-red-500 hover:text-red-700"
+                                            :disabled="Boolean(room.current_scheduled_courses && room.current_scheduled_courses.length > 0)"
+                                            :title="room.current_scheduled_courses && room.current_scheduled_courses.length > 0 ? 'No se puede eliminar: tiene clases programadas' : 'Eliminar aula'"
+                                            class="cursor-pointer text-xs font-bold text-red-500 hover:text-red-700 disabled:cursor-not-allowed disabled:text-slate-300"
                                         >
                                             ✕
                                         </button>
@@ -1049,6 +1112,14 @@ const filteredClassrooms = computed(() => {
                     </button>
                 </div>
 
+                <!-- Banner Informativo para Secretaría -->
+                <div
+                    v-if="isOnlyCapacityEditable && editingClassroomId"
+                    class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
+                >
+                    <strong>Perfil Secretaría:</strong> Cuentas con autorización para actualizar la cantidad de espacios (aforo) de esta aula.
+                </div>
+
                 <form @submit.prevent="saveClassroom" class="mt-5 space-y-4">
                     <div>
                         <label class="block text-sm font-bold text-slate-800"
@@ -1058,9 +1129,14 @@ const filteredClassrooms = computed(() => {
                             v-model="classroomForm.name"
                             type="text"
                             required
+                            :disabled="isOnlyCapacityEditable && !!editingClassroomId"
                             placeholder="Ej. Aula 102 - Teoría"
-                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                            class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-60"
+                            :class="{ 'border-rose-500 bg-rose-50': classroomForm.errors.name }"
                         />
+                        <p v-if="classroomForm.errors.name" class="mt-1 text-xs font-semibold text-rose-600">
+                            {{ classroomForm.errors.name }}
+                        </p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -1071,7 +1147,8 @@ const filteredClassrooms = computed(() => {
                             >
                             <select
                                 v-model="classroomForm.branch_id"
-                                class="mt-1.5 w-full cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                :disabled="(isOnlyCapacityEditable || !isAdmin) && !!editingClassroomId"
+                                class="mt-1.5 w-full cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-60"
                             >
                                 <option
                                     v-for="branch in branches"
@@ -1086,14 +1163,21 @@ const filteredClassrooms = computed(() => {
                         <div>
                             <label
                                 class="block text-sm font-bold text-slate-800"
-                                >Aforo / Vacantes</label
+                                >Aforo / Cantidad de Espacios</label
                             >
                             <input
                                 v-model.number="classroomForm.capacity"
                                 type="number"
+                                required
+                                min="1"
+                                max="500"
                                 placeholder="Ej. 30 vacantes"
                                 class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                                :class="{ 'border-rose-500 bg-rose-50': classroomForm.errors.capacity }"
                             />
+                            <p v-if="classroomForm.errors.capacity" class="mt-1 text-xs font-semibold text-rose-600">
+                                {{ classroomForm.errors.capacity }}
+                            </p>
                         </div>
                     </div>
 
@@ -1109,9 +1193,10 @@ const filteredClassrooms = computed(() => {
                         </button>
                         <button
                             type="submit"
-                            class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
+                            :disabled="classroomForm.processing"
+                            class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347] disabled:opacity-50"
                         >
-                            Guardar Aula
+                            {{ classroomForm.processing ? 'Guardando...' : 'Guardar Aula' }}
                         </button>
                     </div>
                 </form>

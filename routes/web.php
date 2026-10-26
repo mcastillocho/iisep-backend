@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\BranchController;
+use App\Http\Controllers\Admin\ClassroomController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +29,9 @@ Route::middleware(['auth'])->prefix('admin')->group(function (): void {
     // Sedes y Aulas
     Route::get('/sedes-aulas', [BranchController::class, 'index'])->name('admin.sedes-aulas');
     Route::post('/sedes', [BranchController::class, 'store'])->name('admin.sedes.store');
+    Route::post('/aulas', [ClassroomController::class, 'store'])->name('admin.classrooms.store');
+    Route::put('/aulas/{classroom}', [ClassroomController::class, 'update'])->name('admin.classrooms.update');
+    Route::delete('/aulas/{classroom}', [ClassroomController::class, 'destroy'])->name('admin.classrooms.destroy');
 
     Route::inertia('/asistencias', 'Admin/Asistencias')->name('admin.asistencias');
 });
