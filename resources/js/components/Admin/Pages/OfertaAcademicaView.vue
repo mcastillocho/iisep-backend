@@ -34,9 +34,12 @@ export interface Career {
     id: number;
     name: string;
     description: string;
+    duration_in_weeks?: number;
     estimated_capacity: number;
     available_branch_ids: number[];
     modules: CareerModuleItem[];
+    has_dependencies?: boolean;
+    students_count?: number;
 }
 
 export interface ModuleItem {
@@ -96,9 +99,10 @@ const isCoordinador = computed(() => {
     return user.staff.branch_id !== null && user.staff.position === 'coord';
 });
 
-// Los talleres y módulos los puede modificar el personal de Coordinación de Sede para arriba (Coordinador y Director General)
+// Las carreras, módulos y talleres los puede modificar el personal de Coordinación de Sede para arriba (Coordinador y Director General)
 const canManageWorkshops = computed(() => isCoordinador.value || isAdmin.value);
 const canManageModules = computed(() => isCoordinador.value || isAdmin.value);
+const canManageCareers = computed(() => isCoordinador.value || isAdmin.value);
 
 // --- MODAL DE TALLER (CREAR / EDITAR) ---
 const showWorkshopModal = ref(false);
@@ -306,6 +310,18 @@ const availableModulesToAdd = computed(() => {
     return props.allModulesPool.filter((m) => !assignedIds.has(m.id));
 });
 
+function startCreatingCareer() {
+    editingCareer.value = {
+        id: 0,
+        name: '',
+        description: '',
+        duration_in_weeks: 48,
+        estimated_capacity: 30,
+        available_branch_ids: props.branches.map((b) => b.id),
+        modules: [],
+    };
+}
+
 function startEditingCareer(carrera: Career) {
     editingCareer.value = JSON.parse(JSON.stringify(carrera));
 }
@@ -315,18 +331,77 @@ function cancelCareerEditing() {
 }
 
 function saveCareerChanges() {
-    if (!editingCareer.value) return;
-    const index = props.careers.findIndex(
-        (c) => c.id === editingCareer.value!.id,
-    );
-    if (index !== -1) {
-        props.careers[index] = JSON.parse(JSON.stringify(editingCareer.value));
+    if (!editingCareer.value || !editingCareer.value.name.trim()) return;
+
+    const payload = {
+        name: editingCareer.value.name.trim(),
+        description: editingCareer.value.description
+            ? editingCareer.value.description.trim()
+            : null,
+        duration_in_weeks: editingCareer.value.duration_in_weeks || null,
+        modules: editingCareer.value.modules.map((m, idx) => ({
+            id: m.id,
+            order: idx + 1,
+        })),
+    };
+
+    if (editingCareer.value.id && editingCareer.value.id > 0) {
+        router.put(`/admin/carreras/${editingCareer.value.id}`, payload, {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit(
+                    'notify',
+                    `Carrera "${editingCareer.value?.name}" actualizada con éxito.`,
+                );
+                editingCareer.value = null;
+            },
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                if (firstError) emit('notify', String(firstError));
+            },
+        });
+    } else {
+        router.post('/admin/carreras', payload, {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit(
+                    'notify',
+                    `Nueva carrera "${editingCareer.value?.name}" registrada con éxito.`,
+                );
+                editingCareer.value = null;
+            },
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                if (firstError) emit('notify', String(firstError));
+            },
+        });
     }
-    emit(
-        'notify',
-        `Carrera "${editingCareer.value.name}" actualizada con éxito.`,
-    );
-    editingCareer.value = null;
+}
+
+function deleteCareer(careerId: number) {
+    const car = props.careers.find((c) => c.id === careerId);
+    if (!car) return;
+    if (
+        car.has_dependencies ||
+        (car.students_count && car.students_count > 0)
+    ) {
+        alert(
+            'No se puede eliminar esta carrera porque tiene estudiantes matriculados o dependencias activas.',
+        );
+        return;
+    }
+    if (!confirm(`¿Estás seguro de eliminar la carrera "${car.name}"?`)) return;
+
+    router.delete(`/admin/carreras/${careerId}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            emit('notify', `Carrera "${car.name}" eliminada.`);
+        },
+        onError: (errors) => {
+            const firstError = Object.values(errors)[0];
+            if (firstError) emit('notify', String(firstError));
+        },
+    });
 }
 
 function moveModuleUp(index: number) {
@@ -420,9 +495,9 @@ const filteredCourses = computed(() => {
                         &larr; Volver a Carreras
                     </button>
                     <h2 class="text-xl font-black text-slate-900">
-                        Editando Carrera:
+                        {{ editingCareer.id ? 'Editando Carrera:' : 'Nueva Carrera Técnica:' }}
                         <span class="text-[#2e8b57]">{{
-                            editingCareer.name
+                            editingCareer.name || 'Sin título'
                         }}</span>
                     </h2>
                 </div>
@@ -791,8 +866,8 @@ const filteredCourses = computed(() => {
 
                 <div class="flex items-center gap-3">
                     <button
-                        v-if="currentTab === 'carreras'"
-                        @click="emit('notify', 'Crear nueva carrera técnica')"
+                        v-if="currentTab === 'carreras' && canManageCareers"
+                        @click="startCreatingCareer"
                         class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
                     >
                         <svg
@@ -957,25 +1032,45 @@ const filteredCourses = computed(() => {
                                     {{ carrera.estimated_capacity }} vacantes
                                 </p>
                             </div>
-                            <button
-                                @click="startEditingCareer(carrera)"
-                                class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-emerald-600 bg-white px-4 py-2 text-xs font-bold text-[#2e8b57] shadow-2xs transition hover:bg-emerald-50"
+                            <div
+                                v-if="canManageCareers"
+                                class="inline-flex items-center gap-2"
                             >
-                                <svg
-                                    class="h-4 w-4 text-[#2e8b57]"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
+                                <button
+                                    @click="startEditingCareer(carrera)"
+                                    class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-emerald-600 bg-white px-3 py-1.5 text-xs font-bold text-[#2e8b57] shadow-2xs transition hover:bg-emerald-50"
                                 >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                    />
-                                </svg>
-                                <span>Editar Carrera</span>
-                            </button>
+                                    <svg
+                                        class="h-4 w-4 text-[#2e8b57]"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                        />
+                                    </svg>
+                                    <span>Editar Carrera</span>
+                                </button>
+                                <button
+                                    @click="deleteCareer(carrera.id)"
+                                    :disabled="Boolean(carrera.has_dependencies || (carrera.students_count && carrera.students_count > 0))"
+                                    :title="Boolean(carrera.has_dependencies || (carrera.students_count && carrera.students_count > 0)) ? 'No se puede eliminar: tiene estudiantes matriculados o dependencias activas' : 'Eliminar carrera'"
+                                    class="text-xs font-bold transition px-2 py-1.5 rounded"
+                                    :class="Boolean(carrera.has_dependencies || (carrera.students_count && carrera.students_count > 0)) ? 'cursor-not-allowed text-slate-500 hover:text-slate-500' : 'cursor-pointer text-red-500 hover:text-red-700'"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            <span
+                                v-else
+                                class="text-xs text-slate-400 italic"
+                            >
+                                Solo lectura
+                            </span>
                         </div>
                     </div>
                 </div>

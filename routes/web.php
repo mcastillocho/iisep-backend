@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Admin\AcademicOfferController;
 use App\Http\Controllers\Admin\BranchController;
+use App\Http\Controllers\Admin\CareerController;
 use App\Http\Controllers\Admin\ClassroomController;
 use App\Http\Controllers\Admin\ModuleController;
 use App\Http\Controllers\Admin\WorkshopController;
@@ -28,8 +29,11 @@ Route::middleware(['auth'])->prefix('admin')->group(function (): void {
     Route::get('/', [BranchController::class, 'dashboard'])->name('admin');
     Route::inertia('/matriculas', 'Admin/Matriculas')->name('admin.matriculas');
 
-    // Oferta Académica, Módulos y Talleres
+    // Oferta Académica, Carreras, Módulos y Talleres
     Route::get('/oferta-academica', [AcademicOfferController::class, 'index'])->name('admin.oferta-academica');
+    Route::post('/carreras', [CareerController::class, 'store'])->name('admin.careers.store');
+    Route::put('/carreras/{career}', [CareerController::class, 'update'])->name('admin.careers.update');
+    Route::delete('/carreras/{career}', [CareerController::class, 'destroy'])->name('admin.careers.destroy');
     Route::post('/modulos', [ModuleController::class, 'store'])->name('admin.modules.store');
     Route::put('/modulos/{module}', [ModuleController::class, 'update'])->name('admin.modules.update');
     Route::delete('/modulos/{module}', [ModuleController::class, 'destroy'])->name('admin.modules.destroy');

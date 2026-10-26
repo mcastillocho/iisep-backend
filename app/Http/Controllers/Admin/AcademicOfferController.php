@@ -42,14 +42,18 @@ class AcademicOfferController extends Controller
 
         $careers = Career::query()
             ->with(['modules' => fn ($q) => $q->orderBy('career_module.order')])
+            ->withCount(['studentCareers', 'students'])
             ->orderBy('id')
             ->get()
             ->map(fn (Career $c) => [
                 'id' => $c->id,
                 'name' => $c->name,
                 'description' => $c->description ?? '',
+                'duration_in_weeks' => $c->duration_in_weeks ?? 48,
                 'estimated_capacity' => 30,
                 'available_branch_ids' => $allBranchIds,
+                'has_dependencies' => ($c->student_careers_count > 0 || $c->students_count > 0),
+                'students_count' => (int) ($c->student_careers_count ?: $c->students_count),
                 'modules' => $c->modules->map(fn (Module $m) => [
                     'id' => $m->id,
                     'name' => $m->name,
