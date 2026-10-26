@@ -39,6 +39,10 @@ class CareerController extends Controller
             'modules' => ['nullable', 'array'],
             'modules.*.id' => ['required', 'integer', 'exists:modules,id'],
             'modules.*.order' => ['nullable', 'integer'],
+            'branch_ids' => ['nullable', 'array'],
+            'branch_ids.*' => ['integer', 'exists:branches,id'],
+            'available_branch_ids' => ['nullable', 'array'],
+            'available_branch_ids.*' => ['integer', 'exists:branches,id'],
         ], [
             'name.required' => 'El nombre de la carrera técnica es obligatorio.',
         ]);
@@ -55,6 +59,11 @@ class CareerController extends Controller
                 $syncData[$mod['id']] = ['order' => $mod['order'] ?? ($index + 1)];
             }
             $career->modules()->sync($syncData);
+        }
+
+        $branchIds = $validated['branch_ids'] ?? $validated['available_branch_ids'] ?? null;
+        if ($branchIds !== null) {
+            $career->branches()->sync($branchIds);
         }
 
         return redirect()->back()->with('success', "Carrera \"{$career->name}\" registrada exitosamente.");
@@ -78,6 +87,10 @@ class CareerController extends Controller
             'modules' => ['nullable', 'array'],
             'modules.*.id' => ['required', 'integer', 'exists:modules,id'],
             'modules.*.order' => ['nullable', 'integer'],
+            'branch_ids' => ['nullable', 'array'],
+            'branch_ids.*' => ['integer', 'exists:branches,id'],
+            'available_branch_ids' => ['nullable', 'array'],
+            'available_branch_ids.*' => ['integer', 'exists:branches,id'],
         ], [
             'name.required' => 'El nombre de la carrera técnica es obligatorio.',
         ]);
@@ -96,6 +109,11 @@ class CareerController extends Controller
                 }
             }
             $career->modules()->sync($syncData);
+        }
+
+        if (array_key_exists('branch_ids', $validated) || array_key_exists('available_branch_ids', $validated)) {
+            $branchIds = $validated['branch_ids'] ?? $validated['available_branch_ids'] ?? [];
+            $career->branches()->sync($branchIds);
         }
 
         return redirect()->back()->with('success', "Carrera \"{$career->name}\" actualizada exitosamente.");

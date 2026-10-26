@@ -190,3 +190,52 @@ test('can delete a career without dependencies', function () {
         'id' => $career->id,
     ]);
 });
+
+test('can create a career with branches assigned', function () {
+    $admin = createCareerStaffUser('admin_user4', 'admin', null);
+    $b1 = Branch::create(['name' => 'Sede Norte', 'code' => 'NOR']);
+    $b2 = Branch::create(['name' => 'Sede Sur', 'code' => 'SUR']);
+
+    $response = $this->actingAs($admin)->post(route('admin.careers.store'), [
+        'name' => 'Diseño y Animación Digital',
+        'duration_in_weeks' => 50,
+        'available_branch_ids' => [$b1->id, $b2->id],
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $career = Career::where('name', 'Diseño y Animación Digital')->first();
+    expect($career)->not->toBeNull();
+    expect($career->branches)->toHaveCount(2);
+    $this->assertDatabaseHas('branch_career', [
+        'career_id' => $career->id,
+        'branch_id' => $b1->id,
+    ]);
+    $this->assertDatabaseHas('branch_career', [
+        'career_id' => $career->id,
+        'branch_id' => $b2->id,
+    ]);
+});
+
+test('can update career branch assignments', function () {
+    $admin = createCareerStaffUser('admin_user5', 'admin', null);
+    $b1 = Branch::create(['name' => 'Sede Este', 'code' => 'EST']);
+    $b2 = Branch::create(['name' => 'Sede Oeste', 'code' => 'OES']);
+
+    $career = Career::create([
+        'name' => 'Marketing Empresarial',
+        'duration_in_weeks' => 60,
+    ]);
+    $career->branches()->attach($b1->id);
+
+    // Update to have b2 only
+    $response = $this->actingAs($admin)->put(route('admin.careers.update', $career), [
+        'name' => 'Marketing Empresarial y Digital',
+        'duration_in_weeks' => 60,
+        'available_branch_ids' => [$b2->id],
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $career->refresh();
+    expect($career->branches)->toHaveCount(1);
+    expect($career->branches->first()->id)->toBe($b2->id);
+});

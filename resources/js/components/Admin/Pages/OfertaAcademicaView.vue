@@ -35,7 +35,6 @@ export interface Career {
     name: string;
     description: string;
     duration_in_weeks?: number;
-    estimated_capacity: number;
     available_branch_ids: number[];
     modules: CareerModuleItem[];
     has_dependencies?: boolean;
@@ -352,17 +351,20 @@ function saveQuickModule() {
             emit('notify', `Módulo "${quickModuleForm.name}" creado con éxito.`);
             showQuickModuleModal.value = false;
             if (editingCareer.value) {
-                const found = props.allModulesPool.find(
-                    (m) =>
-                        m.name.toLowerCase() ===
-                        quickModuleForm.name.trim().toLowerCase(),
-                );
-                editingCareer.value.modules.push({
-                    id: found ? found.id : Date.now(),
-                    name: quickModuleForm.name.trim(),
-                    duration_in_weeks: quickModuleForm.duration_in_weeks,
-                    order: editingCareer.value.modules.length + 1,
-                });
+                const found =
+                    props.allModulesPool.find(
+                        (m) =>
+                            m.name.trim().toLowerCase() ===
+                            quickModuleForm.name.trim().toLowerCase(),
+                    ) ?? props.allModulesPool[props.allModulesPool.length - 1];
+                if (found) {
+                    editingCareer.value.modules.push({
+                        id: found.id,
+                        name: found.name,
+                        duration_in_weeks: found.duration_in_weeks,
+                        order: editingCareer.value.modules.length + 1,
+                    });
+                }
             }
             quickModuleForm.reset();
         },
@@ -413,18 +415,21 @@ function saveQuickCourse() {
             emit('notify', `${label} "${quickCourseForm.name}" creado con éxito.`);
             showQuickCourseModal.value = false;
             if (editingModule.value) {
-                const found = props.coursesList.find(
-                    (c) =>
-                        c.name.toLowerCase() ===
-                        quickCourseForm.name.trim().toLowerCase(),
-                );
-                editingModule.value.courses.push({
-                    id: found ? found.id : Date.now(),
-                    name: quickCourseForm.name.trim(),
-                    description: quickCourseForm.description || '',
-                    duration_in_weeks: quickCourseForm.duration_in_weeks,
-                    is_workshop: quickCourseForm.is_workshop,
-                });
+                const found =
+                    props.coursesList.find(
+                        (c) =>
+                            c.name.trim().toLowerCase() ===
+                            quickCourseForm.name.trim().toLowerCase(),
+                    ) ?? props.coursesList[props.coursesList.length - 1];
+                if (found) {
+                    editingModule.value.courses.push({
+                        id: found.id,
+                        name: found.name,
+                        description: found.description || '',
+                        duration_in_weeks: found.duration_in_weeks,
+                        is_workshop: found.is_workshop,
+                    });
+                }
             }
             quickCourseForm.reset();
         },
@@ -499,8 +504,7 @@ function startCreatingCareer() {
         name: '',
         description: '',
         duration_in_weeks: 48,
-        estimated_capacity: 30,
-        available_branch_ids: props.branches.map((b) => b.id),
+        available_branch_ids: [],
         modules: [],
     };
 }
@@ -521,7 +525,11 @@ function saveCareerChanges() {
         description: editingCareer.value.description
             ? editingCareer.value.description.trim()
             : null,
-        duration_in_weeks: editingCareer.value.duration_in_weeks || null,
+        duration_in_weeks:
+            calculatedWeeks.value ||
+            editingCareer.value.duration_in_weeks ||
+            null,
+        available_branch_ids: editingCareer.value.available_branch_ids || [],
         modules: editingCareer.value.modules.map((m, idx) => ({
             id: m.id,
             order: idx + 1,
@@ -704,7 +712,7 @@ const filteredCourses = computed(() => {
             </div>
 
             <!-- Formulario de Datos Básicos -->
-            <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
                     <label class="block text-sm font-bold text-slate-800"
                         >Nombre de la Carrera</label
@@ -712,18 +720,6 @@ const filteredCourses = computed(() => {
                     <input
                         v-model="editingCareer.name"
                         type="text"
-                        class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
-                    />
-                </div>
-
-                <div>
-                    <label class="block text-sm font-bold text-slate-800"
-                        >Aforo / Vacantes Estimadas</label
-                    >
-                    <input
-                        v-model="editingCareer.estimated_capacity"
-                        type="number"
-                        placeholder="Ej. 40"
                         class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                     />
                 </div>
@@ -755,12 +751,10 @@ const filteredCourses = computed(() => {
                 class="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-5"
             >
                 <label class="block text-sm font-bold text-slate-800">
-                    Sedes Disponibles para esta Carrera
+                    Sedes Habilitadas para esta Carrera
                 </label>
                 <p class="mb-3 text-xs text-slate-500">
-                    Selecciona en qué sedes físicas estará aperturada esta
-                    carrera (a futuro se persistirá mediante tabla de asignación
-                    por sede):
+                    Selecciona en qué sedes físicas de la institución estará aperturada esta carrera técnica:
                 </p>
                 <div class="flex flex-wrap items-center gap-6">
                     <label
@@ -1406,6 +1400,15 @@ const filteredCourses = computed(() => {
                                             ?.name || 'Sede'
                                     }}
                                 </span>
+                                <span
+                                    v-if="
+                                        !carrera.available_branch_ids ||
+                                        carrera.available_branch_ids.length === 0
+                                    "
+                                    class="text-xs text-slate-400 italic"
+                                >
+                                    Sin sedes asignadas
+                                </span>
                             </div>
 
                             <!-- Módulos incluidos ordenados -->
@@ -1442,18 +1445,6 @@ const filteredCourses = computed(() => {
                         <div
                             class="flex items-center justify-between gap-3 border-t border-slate-100 pt-4 md:flex-col md:items-end md:border-t-0 md:pt-0"
                         >
-                            <div class="text-right">
-                                <p
-                                    class="text-xs font-bold text-slate-400 uppercase"
-                                >
-                                    Aforo Estimado
-                                </p>
-                                <p
-                                    class="font-mono text-base font-black text-slate-900"
-                                >
-                                    {{ carrera.estimated_capacity }} vacantes
-                                </p>
-                            </div>
                             <div
                                 v-if="canManageCareers"
                                 class="inline-flex items-center gap-2"

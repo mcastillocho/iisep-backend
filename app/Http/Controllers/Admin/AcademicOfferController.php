@@ -38,10 +38,11 @@ class AcademicOfferController extends Controller
             'phone' => $b->phone ?? '',
         ])->values()->all();
 
-        $allBranchIds = Branch::pluck('id')->all();
-
         $careers = Career::query()
-            ->with(['modules' => fn ($q) => $q->orderBy('career_module.order')])
+            ->with([
+                'modules' => fn ($q) => $q->orderBy('career_module.order'),
+                'branches',
+            ])
             ->withCount(['studentCareers', 'students'])
             ->orderBy('id')
             ->get()
@@ -50,8 +51,7 @@ class AcademicOfferController extends Controller
                 'name' => $c->name,
                 'description' => $c->description ?? '',
                 'duration_in_weeks' => $c->duration_in_weeks ?? 48,
-                'estimated_capacity' => 30,
-                'available_branch_ids' => $allBranchIds,
+                'available_branch_ids' => $c->branches->pluck('id')->all(),
                 'has_dependencies' => ($c->student_careers_count > 0 || $c->students_count > 0),
                 'students_count' => (int) ($c->student_careers_count ?: $c->students_count),
                 'modules' => $c->modules->map(fn (Module $m) => [

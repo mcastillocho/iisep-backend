@@ -70,4 +70,13 @@ class Career extends Model
             ->withPivot(['id', 'admission_date', 'status'])
             ->withTimestamps();
     }
+
+    /**
+     * @return BelongsToMany<Branch, $this>
+     */
+    public function branches(): BelongsToMany
+    {
+        return $this->belongsToMany(Branch::class, 'branch_career')
+            ->withTimestamps();
+    }
 }

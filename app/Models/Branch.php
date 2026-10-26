@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
@@ -75,5 +76,14 @@ class Branch extends Model
     public function staff(): HasMany
     {
         return $this->hasMany(Staff::class);
+    }
+
+    /**
+     * @return BelongsToMany<Career, $this>
+     */
+    public function careers(): BelongsToMany
+    {
+        return $this->belongsToMany(Career::class, 'branch_career')
+            ->withTimestamps();
     }
 }

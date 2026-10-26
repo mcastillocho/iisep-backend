@@ -39,7 +39,6 @@ interface Career {
     id: number;
     name: string;
     description: string;
-    estimated_capacity: number;
     available_branch_ids: number[]; // Sedes marcables
     modules: CareerModuleItem[];
 }
