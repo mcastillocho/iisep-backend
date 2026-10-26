@@ -143,4 +143,48 @@ class BranchController extends Controller
 
         return redirect()->route('admin.sedes-aulas')->with('success', "Sede \"{$branch->name}\" registrada exitosamente.");
     }
+
+    /**
+     * Actualiza la información de una sede.
+     * Solo la Dirección General o el Coordinador de la sede pueden editarla.
+     */
+    public function update(Request $request, Branch $branch): RedirectResponse
+    {
+        $staff = $request->user()?->staff;
+
+        if (! $staff || (! $staff->isAdmin() && ! $staff->isCoordinador($branch->id))) {
+            abort(403, 'Acceso denegado. No tienes autorización para modificar esta sede.');
+        }
+
+        $rules = [
+            'address' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+        ];
+
+        if ($staff->isAdmin()) {
+            $rules['name'] = ['required', 'string', 'max:255', 'unique:branches,name,'.$branch->id];
+            $rules['code'] = ['required', 'string', 'max:50', 'unique:branches,code,'.$branch->id];
+        }
+
+        $validated = $request->validate($rules, [
+            'name.required' => 'El nombre de la sede es obligatorio.',
+            'name.unique' => 'Ya existe otra sede con ese nombre.',
+            'code.required' => 'El código de sede es obligatorio.',
+            'code.unique' => 'El código de sede ya está en uso.',
+        ]);
+
+        $updateData = [
+            'address' => ! empty($validated['address']) ? trim($validated['address']) : null,
+            'phone' => ! empty($validated['phone']) ? trim($validated['phone']) : null,
+        ];
+
+        if ($staff->isAdmin()) {
+            $updateData['name'] = trim($validated['name']);
+            $updateData['code'] = strtoupper(trim($validated['code']));
+        }
+
+        $branch->update($updateData);
+
+        return redirect()->back()->with('success', "Sede \"{$branch->name}\" actualizada exitosamente.");
+    }
 }

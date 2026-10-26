@@ -112,16 +112,39 @@ function cancelBranchEditing() {
     editingBranch.value = null;
 }
 
+const isSavingBranch = ref(false);
+
 function saveBranchChanges() {
-    if (!editingBranch.value) return;
-    const index = props.branches.findIndex(
-        (b) => b.id === editingBranch.value!.id,
+    if (!editingBranch.value || isSavingBranch.value) return;
+    const branchToSave = editingBranch.value;
+    isSavingBranch.value = true;
+
+    router.put(
+        `/admin/sedes/${branchToSave.id}`,
+        {
+            name: branchToSave.name,
+            code: branchToSave.code,
+            address: branchToSave.address,
+            phone: branchToSave.phone,
+        },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit(
+                    'notify',
+                    `Sede "${branchToSave.name}" actualizada con éxito en la base de datos.`,
+                );
+                editingBranch.value = null;
+            },
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                if (firstError) emit('notify', String(firstError));
+            },
+            onFinish: () => {
+                isSavingBranch.value = false;
+            },
+        },
     );
-    if (index !== -1) {
-        props.branches[index] = JSON.parse(JSON.stringify(editingBranch.value));
-    }
-    emit('notify', `Sede "${editingBranch.value.name}" actualizada con éxito.`);
-    editingBranch.value = null;
 }
 
 // Aulas pertenecientes a la sede en edición
@@ -351,9 +374,10 @@ const filteredClassrooms = computed(() => {
                     <button
                         type="button"
                         @click="saveBranchChanges"
-                        class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#257347]"
+                        :disabled="isSavingBranch"
+                        class="cursor-pointer rounded-lg bg-[#2e8b57] px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#257347] disabled:opacity-50"
                     >
-                        Guardar Cambios
+                        {{ isSavingBranch ? 'Guardando...' : 'Guardar Cambios' }}
                     </button>
                 </div>
             </div>

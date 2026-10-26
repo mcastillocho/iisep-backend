@@ -29,6 +29,7 @@ Route::middleware(['auth'])->prefix('admin')->group(function (): void {
     // Sedes y Aulas
     Route::get('/sedes-aulas', [BranchController::class, 'index'])->name('admin.sedes-aulas');
     Route::post('/sedes', [BranchController::class, 'store'])->name('admin.sedes.store');
+    Route::put('/sedes/{branch}', [BranchController::class, 'update'])->name('admin.sedes.update');
     Route::post('/aulas', [ClassroomController::class, 'store'])->name('admin.classrooms.store');
     Route::put('/aulas/{classroom}', [ClassroomController::class, 'update'])->name('admin.classrooms.update');
     Route::delete('/aulas/{classroom}', [ClassroomController::class, 'destroy'])->name('admin.classrooms.destroy');
