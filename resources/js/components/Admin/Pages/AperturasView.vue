@@ -22,6 +22,7 @@ export interface CourseOption {
     id: number;
     name: string;
     duration_in_weeks: number;
+    career_name?: string;
     module_name?: string;
     is_workshop: boolean;
 }
@@ -172,50 +173,78 @@ function formatPeruDate(dateString: string): string {
     }).format(date);
 }
 
-// Búsqueda y Filtros de Cursos Aperturados
-const searchScheduledQuery = ref('');
-const scheduledStatusFilter = ref<'all' | 'en_curso' | 'programado' | 'finalizado'>('all');
-const scheduledDayFilter = ref<'all' | 'domingo' | 'sabado' | 'semana'>('all');
+// ========================================================
+// NAVEGACIÓN Y DRILL-DOWN JERÁRQUICO DE 3 NIVELES
+// Nivel 1: Catálogo de Cursos & Talleres Registrados (por nombre)
+// Nivel 2: Horarios aperturados del curso seleccionado en su respectiva sede
+// Nivel 3: Edición de programación de horario y gestión de matrículas
+// ========================================================
+const selectedCourseForApertures = ref<CourseOption | null>(null);
+const searchCourseQuery = ref('');
+const courseTypeFilter = ref<'all' | 'workshops' | 'careers'>('all');
 
-const filteredScheduledCourses = computed(() => {
-    return props.scheduledCourses.filter((sched) => {
-        if (
-            props.selectedBranchId !== 'all' &&
-            sched.branch_id !== props.selectedBranchId
-        ) {
-            return false;
+// Filtro de estado para la vista de horarios (Nivel 2)
+const scheduledStatusFilter = ref<'all' | 'en_curso' | 'programado' | 'finalizado'>('all');
+
+const workshopsCount = computed(() => props.courses.filter((c) => c.is_workshop).length);
+const careerCoursesCount = computed(() => props.courses.filter((c) => !c.is_workshop).length);
+
+const courseApertureCounts = computed(() => {
+    const counts: Record<number, number> = {};
+    for (const sc of props.scheduledCourses) {
+        if (props.selectedBranchId !== 'all' && sc.branch_id !== props.selectedBranchId) {
+            continue;
         }
-        if (
-            scheduledStatusFilter.value !== 'all' &&
-            sched.status !== scheduledStatusFilter.value
-        ) {
-            return false;
-        }
-        if (scheduledDayFilter.value !== 'all') {
-            const days = sched.days || [];
-            const dayText = (sched.day_of_week || '').toLowerCase();
-            if (scheduledDayFilter.value === 'domingo') {
-                if (!days.includes('domingo') && !dayText.includes('domingo')) return false;
-            } else if (scheduledDayFilter.value === 'sabado') {
-                if (!days.includes('sabado') && !dayText.includes('sábado') && !dayText.includes('sabado')) return false;
-            } else if (scheduledDayFilter.value === 'semana') {
-                const isOnlyWeekend = days.every((d) => d === 'sabado' || d === 'domingo');
-                if (isOnlyWeekend && days.length > 0) return false;
-            }
-        }
-        if (searchScheduledQuery.value.trim() !== '') {
-            const q = searchScheduledQuery.value.toLowerCase();
+        counts[sc.course_id] = (counts[sc.course_id] || 0) + 1;
+    }
+    return counts;
+});
+
+const filteredCoursesCatalog = computed(() => {
+    return props.courses.filter((c) => {
+        if (courseTypeFilter.value === 'workshops' && !c.is_workshop) return false;
+        if (courseTypeFilter.value === 'careers' && c.is_workshop) return false;
+        if (searchCourseQuery.value.trim() !== '') {
+            const q = searchCourseQuery.value.toLowerCase();
             return (
-                sched.course_name.toLowerCase().includes(q) ||
-                sched.classroom_name.toLowerCase().includes(q) ||
-                sched.teacher_name.toLowerCase().includes(q) ||
-                sched.branch_name.toLowerCase().includes(q) ||
-                sched.day_of_week.toLowerCase().includes(q)
+                c.name.toLowerCase().includes(q) ||
+                (c.career_name && c.career_name.toLowerCase().includes(q)) ||
+                (c.module_name && c.module_name.toLowerCase().includes(q))
             );
         }
         return true;
     });
 });
+
+const schedulesForSelectedCourse = computed(() => {
+    if (!selectedCourseForApertures.value) return [];
+    return props.scheduledCourses.filter((sched) => {
+        if (sched.course_id !== selectedCourseForApertures.value!.id) {
+            return false;
+        }
+        if (props.selectedBranchId !== 'all' && sched.branch_id !== props.selectedBranchId) {
+            return false;
+        }
+        if (scheduledStatusFilter.value !== 'all' && sched.status !== scheduledStatusFilter.value) {
+            return false;
+        }
+        return true;
+    });
+});
+
+function openCourseSchedulesView(course: CourseOption) {
+    selectedCourseForApertures.value = course;
+    isEditingOrCreating.value = false;
+    currentEditingSched.value = null;
+    editingScheduleCourseId.value = null;
+}
+
+function backToCoursesCatalog() {
+    selectedCourseForApertures.value = null;
+    isEditingOrCreating.value = false;
+    currentEditingSched.value = null;
+    editingScheduleCourseId.value = null;
+}
 
 // ========================================================
 // 1. ESTADO DE EDICIÓN EN VENTANA DETALLADA (SIN POP-UP)
@@ -285,11 +314,16 @@ watch(
     },
 );
 
-function openNewScheduleCourseView() {
+function openNewScheduleCourseView(course?: CourseOption) {
     if (!canManageAperturas.value) {
         emit('notify', 'Solo el personal de Coordinación o Dirección General puede aperturar cursos.');
         return;
     }
+    const targetCourse = course || selectedCourseForApertures.value || props.courses[0];
+    if (targetCourse) {
+        selectedCourseForApertures.value = targetCourse;
+    }
+
     editingScheduleCourseId.value = null;
     currentEditingSched.value = null;
     scheduleForm.reset();
@@ -300,7 +334,7 @@ function openNewScheduleCourseView() {
             ? props.selectedBranchId
             : props.branches[0]?.id || 1;
 
-    scheduleForm.course_id = props.courses[0]?.id || 1;
+    scheduleForm.course_id = targetCourse?.id || props.courses[0]?.id || 1;
     scheduleForm.branch_id = initialBranchId;
 
     const initialRooms = props.classrooms.filter((c) => c.branch_id === initialBranchId);
@@ -320,6 +354,11 @@ function openEditScheduleCourseView(sched: ScheduledCourseItem) {
         emit('notify', 'Solo el personal de Coordinación o Dirección General puede modificar aperturas.');
         return;
     }
+    const foundCourse = props.courses.find((c) => c.id === sched.course_id);
+    if (foundCourse) {
+        selectedCourseForApertures.value = foundCourse;
+    }
+
     editingScheduleCourseId.value = sched.id;
     currentEditingSched.value = sched;
     scheduleForm.clearErrors();
@@ -702,24 +741,24 @@ function submitQuickModalEnrollment() {
                         @click="closeScheduleCourseView"
                         class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-200"
                     >
-                        &larr; Volver a Cursos Aperturados
+                        &larr; Volver a Horarios de {{ selectedCourseForApertures?.name || 'Curso' }}
                     </button>
                     <div>
                         <h2 class="text-xl font-black text-slate-900">
                             {{
                                 editingScheduleCourseId
                                     ? 'Editando Programación de Curso:'
-                                    : 'Aperturar Nuevo Curso y Aula'
+                                    : 'Aperturar Nuevo Horario en Sede:'
                             }}
-                            <span v-if="currentEditingSched" class="ml-1 text-[#2e8b57]">
-                                {{ currentEditingSched.course_name }}
+                            <span v-if="selectedCourseForApertures" class="ml-1 text-[#2e8b57]">
+                                {{ selectedCourseForApertures.name }}
                             </span>
                         </h2>
                         <p class="text-xs text-slate-500">
                             {{
                                 editingScheduleCourseId
                                     ? `Ambiente asignado: ${currentEditingSched?.classroom_name} en ${currentEditingSched?.branch_name}`
-                                    : 'Configura la asignación de aula física, horarios semanales y periodo de vigencia formativa.'
+                                    : 'Configura la asignación de aula física, día semanal de clase y periodo de vigencia formativa.'
                             }}
                         </p>
                     </div>
@@ -1081,7 +1120,7 @@ function submitQuickModalEnrollment() {
                     @click="closeScheduleCourseView"
                     class="cursor-pointer rounded-lg border border-slate-300 px-5 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
                 >
-                    Cancelar y Volver
+                    &larr; Volver a Horarios
                 </button>
                 <button
                     type="button"
@@ -1095,16 +1134,312 @@ function submitQuickModalEnrollment() {
         </div>
 
         <!-- ======================================================== -->
-        <!-- 2. VISTA PRINCIPAL: TABLA DE CURSOS APERTURADOS          -->
+        <!-- NIVEL 2: HORARIOS APERTURADOS DEL CURSO SELECCIONADO     -->
+        <!-- ======================================================== -->
+        <div v-else-if="selectedCourseForApertures !== null" class="space-y-6">
+            <!-- Barra Superior de Navegación y Cabecera del Curso -->
+            <div class="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <button
+                            type="button"
+                            @click="backToCoursesCatalog"
+                            class="mb-3 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition hover:border-[#2e8b57] hover:bg-white hover:text-[#2e8b57]"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            <span>Volver a Catálogo de Cursos &amp; Talleres</span>
+                        </button>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                                {{ selectedCourseForApertures.name }}
+                            </h2>
+                            <span
+                                v-if="selectedCourseForApertures.is_workshop"
+                                class="rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-bold text-purple-800"
+                            >
+                                Taller Libre
+                            </span>
+                            <span
+                                v-else
+                                class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800"
+                            >
+                                Curso Carrera: {{ selectedCourseForApertures.career_name || 'Modular' }}
+                            </span>
+                        </div>
+                        <p class="mt-1 text-xs text-slate-500">
+                            Duración: <strong class="text-slate-700">{{ selectedCourseForApertures.duration_in_weeks || 4 }} semanas</strong>
+                            <span v-if="selectedCourseForApertures.module_name"> &bull; Módulo: {{ selectedCourseForApertures.module_name }}</span>
+                            &bull; Mostrando horarios de la sede seleccionada.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button
+                            v-if="canManageAperturas"
+                            type="button"
+                            @click="openNewScheduleCourseView(selectedCourseForApertures)"
+                            class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span>+ Aperturar Nuevo Horario</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filtro de Estado del Horario -->
+                <div class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                    <span class="mr-1 text-xs font-bold tracking-wider text-slate-400 uppercase">Estado:</span>
+                    <button
+                        type="button"
+                        @click="scheduledStatusFilter = 'all'"
+                        :class="[
+                            scheduledStatusFilter === 'all'
+                                ? 'bg-slate-800 font-bold text-white'
+                                : 'bg-slate-100 font-semibold text-slate-600 hover:bg-slate-200',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
+                        ]"
+                    >
+                        Todos ({{ schedulesForSelectedCourse.length }})
+                    </button>
+                    <button
+                        type="button"
+                        @click="scheduledStatusFilter = 'en_curso'"
+                        :class="[
+                            scheduledStatusFilter === 'en_curso'
+                                ? 'bg-[#2e8b57] font-bold text-white'
+                                : 'bg-emerald-50 font-semibold text-[#2e8b57] hover:bg-emerald-100',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
+                        ]"
+                    >
+                        En Dictado
+                    </button>
+                    <button
+                        type="button"
+                        @click="scheduledStatusFilter = 'programado'"
+                        :class="[
+                            scheduledStatusFilter === 'programado'
+                                ? 'bg-amber-600 font-bold text-white'
+                                : 'bg-amber-50 font-semibold text-amber-700 hover:bg-amber-100',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
+                        ]"
+                    >
+                        Programados
+                    </button>
+                    <button
+                        type="button"
+                        @click="scheduledStatusFilter = 'finalizado'"
+                        :class="[
+                            scheduledStatusFilter === 'finalizado'
+                                ? 'bg-slate-700 font-bold text-white'
+                                : 'bg-slate-100 font-semibold text-slate-600 hover:bg-slate-200',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
+                        ]"
+                    >
+                        Finalizados
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabla de Horarios del Curso -->
+            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-500 uppercase">
+                            <tr>
+                                <th class="py-4 pr-3 pl-6">Sede &amp; Aula</th>
+                                <th class="px-4 py-4">Día &amp; Horario</th>
+                                <th class="px-4 py-4">Fechas Formativas</th>
+                                <th class="px-4 py-4">Docente</th>
+                                <th class="px-4 py-4">Aforo / Alumnos</th>
+                                <th class="px-4 py-4">Estado</th>
+                                <th class="py-4 pr-6 pl-4 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr
+                                v-for="sched in schedulesForSelectedCourse"
+                                :key="sched.id"
+                                class="transition hover:bg-slate-50/80"
+                            >
+                                <!-- Sede & Aula -->
+                                <td class="py-4 pr-3 pl-6">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-slate-900">
+                                            {{ sched.branch_name }}
+                                        </span>
+                                        <span class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
+                                            #{{ sched.id }}
+                                        </span>
+                                    </div>
+                                    <div class="mt-0.5 text-xs font-medium text-slate-500">
+                                        Aula: <span class="font-bold text-slate-700">{{ sched.classroom_name }}</span>
+                                    </div>
+                                </td>
+
+                                <!-- Día & Horario -->
+                                <td class="px-4 py-4 text-xs whitespace-nowrap">
+                                    <div class="font-bold text-[#2e8b57] capitalize">
+                                        {{ sched.day_of_week }}
+                                    </div>
+                                    <div class="mt-0.5 font-mono text-slate-600">
+                                        {{ sched.time_range }}
+                                    </div>
+                                </td>
+
+                                <!-- Fechas Formativas -->
+                                <td class="px-4 py-4 text-xs whitespace-nowrap">
+                                    <div class="flex items-center gap-1.5 font-mono font-bold text-slate-800">
+                                        <span>{{ formatPeruDate(sched.start_date) }}</span>
+                                        <span class="font-normal text-slate-400">al</span>
+                                        <span>{{ formatPeruDate(sched.end_date) }}</span>
+                                    </div>
+                                </td>
+
+                                <!-- Docente -->
+                                <td class="px-4 py-4 text-xs whitespace-nowrap">
+                                    <div class="font-medium text-slate-800">
+                                        {{ sched.teacher_name || 'Sin docente asignado' }}
+                                    </div>
+                                </td>
+
+                                <!-- Aforo / Alumnos -->
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <div class="mb-1 flex items-center justify-between gap-2 text-xs">
+                                        <span class="font-mono font-bold text-slate-800">
+                                            {{ sched.enrolled_count }} / {{ sched.capacity }}
+                                        </span>
+                                        <span class="font-mono text-[11px] font-bold text-slate-500">
+                                            {{ Math.round((sched.enrolled_count / sched.capacity) * 100) }}%
+                                        </span>
+                                    </div>
+                                    <div class="h-2 w-28 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                                        <div
+                                            class="h-2 rounded-full bg-[#2e8b57] transition-all duration-300"
+                                            :style="{
+                                                width: `${Math.min(100, Math.round((sched.enrolled_count / sched.capacity) * 100))}%`,
+                                            }"
+                                        ></div>
+                                    </div>
+                                    <div class="mt-1 text-[11px] text-slate-400">
+                                        {{ sched.capacity - sched.enrolled_count }} vacantes disp.
+                                    </div>
+                                </td>
+
+                                <!-- Estado -->
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span
+                                        v-if="sched.status === 'en_curso'"
+                                        class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800"
+                                    >
+                                        En Dictado
+                                    </span>
+                                    <span
+                                        v-else-if="sched.status === 'programado'"
+                                        class="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-800"
+                                    >
+                                        Programado
+                                    </span>
+                                    <span
+                                        v-else
+                                        class="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-600"
+                                    >
+                                        Finalizado
+                                    </span>
+                                </td>
+
+                                <!-- Acciones en Pila Vertical -->
+                                <td class="py-3 pr-6 pl-4 text-right whitespace-nowrap">
+                                    <div class="flex flex-col items-end gap-1.5">
+                                        <!-- Ingresar al Horario / Editar -->
+                                        <button
+                                            type="button"
+                                            @click="openEditScheduleCourseView(sched)"
+                                            class="inline-flex w-32 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-[#2e8b57] px-3 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-[#257347]"
+                                            title="Ingresar a ver matrículas y editar horario"
+                                        >
+                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            <span>Ingresar</span>
+                                        </button>
+
+                                        <!-- Eliminar Horario si no tiene alumnos -->
+                                        <button
+                                            v-if="canManageAperturas"
+                                            type="button"
+                                            @click="deleteScheduleCourse(sched)"
+                                            :disabled="sched.enrolled_count > 0"
+                                            :class="[
+                                                sched.enrolled_count > 0
+                                                    ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
+                                                    : 'cursor-pointer border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100',
+                                                'inline-flex w-32 items-center justify-center gap-1 rounded-md border px-2.5 py-1 text-xs font-semibold shadow-2xs transition',
+                                            ]"
+                                            :title="
+                                                sched.enrolled_count > 0
+                                                    ? 'No se puede eliminar: tiene alumnos matriculados'
+                                                    : 'Eliminar horario aperturado'
+                                            "
+                                        >
+                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                            <span>Eliminar</span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr v-if="schedulesForSelectedCourse.length === 0">
+                                <td colspan="7" class="py-12 text-center">
+                                    <div class="mx-auto max-w-sm text-center">
+                                        <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                        <p class="font-bold text-slate-800">No hay horarios aperturados para este curso</p>
+                                        <p class="mt-1 text-xs text-slate-500">
+                                            Aperture un nuevo horario para asignar aula, docente, fecha y recibir matrículas.
+                                        </p>
+                                        <button
+                                            v-if="canManageAperturas"
+                                            type="button"
+                                            @click="openNewScheduleCourseView(selectedCourseForApertures)"
+                                            class="mt-4 inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#2e8b57] px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#257347]"
+                                        >
+                                            + Aperturar Primer Horario
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================================================== -->
+        <!-- NIVEL 1: CATÁLOGO DE CURSOS Y TALLERES (SOLO POR NOMBRE) -->
         <!-- ======================================================== -->
         <div v-else class="space-y-6">
-            <!-- Barra de Búsqueda, Filtros y Botón de Apertura -->
-            <div
-                class="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs"
-            >
-                <div
-                    class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-                >
+            <!-- Barra Superior: Búsqueda y Filtros de Cursos/Talleres -->
+            <div class="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 class="text-xl font-bold tracking-tight text-slate-900">
+                            Apertura de Cursos &amp; Talleres
+                        </h2>
+                        <p class="text-xs text-slate-500">
+                            Seleccione un curso o taller para ver sus horarios aperturados, gestionar aulas y registrar matrículas.
+                        </p>
+                    </div>
+
+                    <!-- Buscador directo por nombre de curso o taller -->
                     <div class="relative flex-1 sm:max-w-md">
                         <svg
                             class="pointer-events-none absolute top-3 left-3.5 h-5 w-5 text-slate-400"
@@ -1120,410 +1455,144 @@ function submitQuickModalEnrollment() {
                             />
                         </svg>
                         <input
-                            v-model="searchScheduledQuery"
+                            v-model="searchCourseQuery"
                             type="text"
-                            placeholder="Buscar curso aperturado, aula, docente o sede..."
+                            placeholder="Buscar curso o taller por nombre..."
                             class="w-full rounded-lg border border-slate-300 bg-slate-50 py-2.5 pr-4 pl-11 text-sm text-slate-900 placeholder-slate-400 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
                         />
                     </div>
-
-                    <button
-                        v-if="canManageAperturas"
-                        @click="openNewScheduleCourseView"
-                        class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2e8b57] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#257347]"
-                    >
-                        <svg
-                            class="h-4 w-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M12 4v16m8-8H4"
-                            />
-                        </svg>
-                        <span>+ Aperturar Nuevo Curso / Aula</span>
-                    </button>
-
-                    <div
-                        v-else-if="isSecretaria"
-                        class="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3.5 py-2 text-xs font-medium text-emerald-800"
-                    >
-                        <svg
-                            class="h-4 w-4 text-[#2e8b57]"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                        <span>Secretaría: Habilitada para matricular alumnos por DNI en cursos aperturados.</span>
-                    </div>
                 </div>
 
-                <!-- Filtros por estado del curso programado -->
-                <div
-                    class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2"
-                >
-                    <span
-                        class="mr-1 text-xs font-bold tracking-wider text-slate-400 uppercase"
-                        >Estado:</span
-                    >
+                <!-- Filtros por tipo de formación: Todos / Talleres Libres / Cursos Modulares -->
+                <div class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                    <span class="mr-1 text-xs font-bold tracking-wider text-slate-400 uppercase">Catálogo:</span>
                     <button
-                        @click="scheduledStatusFilter = 'all'"
+                        type="button"
+                        @click="courseTypeFilter = 'all'"
                         :class="[
-                            scheduledStatusFilter === 'all'
+                            courseTypeFilter === 'all'
                                 ? 'bg-slate-800 font-bold text-white'
                                 : 'bg-slate-100 font-semibold text-slate-600 hover:bg-slate-200',
                             'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
                         ]"
                     >
-                        Todos ({{ scheduledCourses.length }})
+                        Todos ({{ props.courses.length }})
                     </button>
                     <button
-                        @click="scheduledStatusFilter = 'en_curso'"
+                        type="button"
+                        @click="courseTypeFilter = 'workshops'"
                         :class="[
-                            scheduledStatusFilter === 'en_curso'
+                            courseTypeFilter === 'workshops'
+                                ? 'bg-purple-700 font-bold text-white'
+                                : 'bg-purple-50 font-semibold text-purple-700 hover:bg-purple-100',
+                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
+                        ]"
+                    >
+                        Talleres Libres ({{ workshopsCount }})
+                    </button>
+                    <button
+                        type="button"
+                        @click="courseTypeFilter = 'careers'"
+                        :class="[
+                            courseTypeFilter === 'careers'
                                 ? 'bg-[#2e8b57] font-bold text-white'
                                 : 'bg-emerald-50 font-semibold text-[#2e8b57] hover:bg-emerald-100',
                             'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
                         ]"
                     >
-                        En Dictado Activo
-                    </button>
-                    <button
-                        @click="scheduledStatusFilter = 'programado'"
-                        :class="[
-                            scheduledStatusFilter === 'programado'
-                                ? 'bg-amber-600 font-bold text-white'
-                                : 'bg-amber-50 font-semibold text-amber-700 hover:bg-amber-100',
-                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
-                        ]"
-                    >
-                        Programados
-                    </button>
-                    <button
-                        @click="scheduledStatusFilter = 'finalizado'"
-                        :class="[
-                            scheduledStatusFilter === 'finalizado'
-                                ? 'bg-slate-700 font-bold text-white'
-                                : 'bg-slate-100 font-semibold text-slate-600 hover:bg-slate-200',
-                            'cursor-pointer rounded-lg px-3 py-1.5 text-xs transition',
-                        ]"
-                    >
-                        Finalizados
-                    </button>
-
-                    <!-- Divisor y Filtros por Día de Dictado -->
-                    <span class="mx-2 hidden h-4 w-px bg-slate-200 sm:inline-block"></span>
-                    <span
-                        class="mr-1 text-xs font-bold tracking-wider text-slate-400 uppercase"
-                        >Días:</span
-                    >
-                    <button
-                        @click="scheduledDayFilter = 'all'"
-                        :class="[
-                            scheduledDayFilter === 'all'
-                                ? 'bg-slate-700 font-bold text-white'
-                                : 'bg-slate-100 font-semibold text-slate-600 hover:bg-slate-200',
-                            'cursor-pointer rounded-lg px-2.5 py-1 text-xs transition',
-                        ]"
-                    >
-                        Todos
-                    </button>
-                    <button
-                        @click="scheduledDayFilter = 'domingo'"
-                        :class="[
-                            scheduledDayFilter === 'domingo'
-                                ? 'bg-purple-700 font-bold text-white'
-                                : 'bg-purple-50 font-semibold text-purple-700 hover:bg-purple-100',
-                            'cursor-pointer rounded-lg px-2.5 py-1 text-xs transition',
-                        ]"
-                    >
-                        Solo Domingos
-                    </button>
-                    <button
-                        @click="scheduledDayFilter = 'sabado'"
-                        :class="[
-                            scheduledDayFilter === 'sabado'
-                            ? 'bg-blue-700 font-bold text-white'
-                            : 'bg-blue-50 font-semibold text-blue-700 hover:bg-blue-100',
-                            'cursor-pointer rounded-lg px-2.5 py-1 text-xs transition',
-                        ]"
-                    >
-                        Solo Sábados
-                    </button>
-                    <button
-                        @click="scheduledDayFilter = 'semana'"
-                        :class="[
-                            scheduledDayFilter === 'semana'
-                                ? 'bg-teal-700 font-bold text-white'
-                                : 'bg-teal-50 font-semibold text-teal-700 hover:bg-teal-100',
-                            'cursor-pointer rounded-lg px-2.5 py-1 text-xs transition',
-                        ]"
-                    >
-                        Lunes a Viernes
+                        Cursos de Carreras ({{ careerCoursesCount }})
                     </button>
                 </div>
             </div>
 
-            <!-- Tabla Principal de Cursos Aperturados -->
-            <div
-                class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs"
-            >
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm text-slate-600">
-                        <thead
-                            class="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-500 uppercase"
-                        >
-                            <tr>
-                                <th class="py-4 pr-3 pl-6">Curso & Formación</th>
-                                <th class="px-4 py-4">Sede & Aula Físico</th>
-                                <th class="px-4 py-4">Periodo de Dictado</th>
-                                <th class="px-4 py-4">Horarios & Docente</th>
-                                <th class="px-4 py-4">Aforo / Ocupabilidad</th>
-                                <th class="py-4 pr-6 pl-4 text-right">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            <tr
-                                v-for="sched in filteredScheduledCourses"
-                                :key="sched.id"
-                                class="transition hover:bg-slate-50/80"
+            <!-- Cuadrícula de Cursos & Talleres Registrados (Solo por Nombre y Badges Clave) -->
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div
+                    v-for="course in filteredCoursesCatalog"
+                    :key="course.id"
+                    @click="openCourseSchedulesView(course)"
+                    class="group relative flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:border-[#2e8b57] hover:shadow-md cursor-pointer"
+                >
+                    <div>
+                        <!-- Fila superior: Tipo de curso y Horarios activos -->
+                        <div class="mb-3 flex items-center justify-between gap-2">
+                            <span
+                                v-if="course.is_workshop"
+                                class="rounded-full bg-purple-100 px-2.5 py-0.5 text-[11px] font-bold text-purple-800"
                             >
-                                <!-- Columna 1: Curso & Formación -->
-                                <td class="py-4 pr-3 pl-6">
-                                    <div class="flex items-center gap-2">
-                                        <span
-                                            class="font-bold text-slate-900 hover:text-[#2e8b57]"
-                                        >
-                                            {{ sched.course_name }}
-                                        </span>
-                                        <span
-                                            v-if="sched.status === 'en_curso'"
-                                            class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800"
-                                        >
-                                            En Dictado
-                                        </span>
-                                        <span
-                                            v-else-if="sched.status === 'programado'"
-                                            class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800"
-                                        >
-                                            Programado
-                                        </span>
-                                        <span
-                                            v-else
-                                            class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600"
-                                        >
-                                            Finalizado
-                                        </span>
-                                    </div>
-                                    <div class="mt-1 flex items-center gap-2 text-xs text-slate-500">
-                                        <span
-                                            class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600"
-                                            >ID: #{{ sched.id }}</span
-                                        >
-                                        <span>Aula: {{ sched.classroom_name }}</span>
-                                    </div>
-                                </td>
+                                Taller Libre
+                            </span>
+                            <span
+                                v-else
+                                class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800"
+                            >
+                                Carrera
+                            </span>
 
-                                <!-- Columna 2: Sede & Aula Físico -->
-                                <td class="px-4 py-4 text-xs whitespace-nowrap">
-                                    <div class="flex items-center gap-1.5 font-bold text-slate-800">
-                                        <span
-                                            class="h-2 w-2 rounded-full"
-                                            :class="
-                                                sched.branch_id === 1
-                                                    ? 'bg-[#2e8b57]'
-                                                    : 'bg-teal-600'
-                                            "
-                                        ></span>
-                                        {{ sched.branch_name }}
-                                    </div>
-                                    <div class="mt-0.5 font-medium text-slate-500">
-                                        {{ sched.classroom_name }}
-                                    </div>
-                                </td>
+                            <span
+                                :class="[
+                                    (courseApertureCounts[course.id] || 0) > 0
+                                        ? 'bg-emerald-50 font-bold text-[#2e8b57] border border-emerald-200'
+                                        : 'bg-slate-100 font-medium text-slate-500',
+                                    'rounded-md px-2 py-0.5 text-[11px]',
+                                ]"
+                            >
+                                {{ courseApertureCounts[course.id] || 0 }} {{ (courseApertureCounts[course.id] || 0) === 1 ? 'horario' : 'horarios' }}
+                            </span>
+                        </div>
 
-                                <!-- Columna 3: Periodo de Dictado -->
-                                <td class="px-4 py-4 text-xs whitespace-nowrap">
-                                    <div
-                                        class="flex items-center gap-1.5 font-mono font-bold text-slate-800"
-                                    >
-                                        <svg
-                                            class="h-3.5 w-3.5 text-slate-400"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
-                                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                            />
-                                        </svg>
-                                        <span>{{ formatPeruDate(sched.start_date) }}</span>
-                                        <span class="font-normal text-slate-400">al</span>
-                                        <span>{{ formatPeruDate(sched.end_date) }}</span>
-                                    </div>
-                                    <div class="mt-0.5 text-[11px] text-slate-400">
-                                        Periodo formativo
-                                    </div>
-                                </td>
+                        <!-- Nombre del Curso (Elemento Principal) -->
+                        <h3 class="text-base font-bold text-slate-800 transition-colors group-hover:text-[#2e8b57] line-clamp-2">
+                            {{ course.name }}
+                        </h3>
 
-                                <!-- Columna 4: Horarios & Docente -->
-                                <td class="px-4 py-4 text-xs">
-                                    <div class="font-bold text-[#2e8b57]">
-                                        {{ sched.day_of_week }}
-                                    </div>
-                                    <div class="mt-0.5 font-mono text-slate-600">
-                                        {{ sched.time_range }}
-                                    </div>
-                                    <div class="mt-1 text-[11px] font-medium text-slate-500">
-                                        Prof: {{ sched.teacher_name }}
-                                    </div>
-                                </td>
+                        <!-- Info Secundaria Sutil -->
+                        <div class="mt-2 text-xs text-slate-500">
+                            <p v-if="course.career_name" class="truncate">
+                                <span class="font-medium text-slate-600">{{ course.career_name }}</span>
+                            </p>
+                            <p class="mt-0.5 text-slate-400">
+                                Duración: {{ course.duration_in_weeks || 4 }} semanas
+                            </p>
+                        </div>
+                    </div>
 
-                                <!-- Columna 5: Aforo / Ocupabilidad -->
-                                <td class="px-4 py-4 whitespace-nowrap">
-                                    <div
-                                        class="mb-1 flex items-center justify-between gap-2 text-xs"
-                                    >
-                                        <span class="font-mono font-bold text-slate-800">
-                                            {{ sched.enrolled_count }} / {{ sched.capacity }}
-                                        </span>
-                                        <span class="font-mono text-[11px] font-bold text-slate-500">
-                                            {{
-                                                Math.round(
-                                                    (sched.enrolled_count /
-                                                        sched.capacity) *
-                                                        100,
-                                                )
-                                            }}%
-                                        </span>
-                                    </div>
-                                    <div
-                                        class="h-2 w-32 overflow-hidden rounded-full border border-slate-200 bg-slate-100"
-                                    >
-                                        <div
-                                            class="h-2 rounded-full bg-[#2e8b57] transition-all duration-300"
-                                            :style="{
-                                                width: `${Math.min(100, Math.round((sched.enrolled_count / sched.capacity) * 100))}%`,
-                                            }"
-                                        ></div>
-                                    </div>
-                                    <div class="mt-1 text-[11px] text-slate-400">
-                                        {{
-                                            sched.capacity - sched.enrolled_count
-                                        }} vacantes disp.
-                                    </div>
-                                </td>
-
-                                <!-- Columna 6: Acciones en Pila Vertical -->
-                                <td class="py-3 pr-6 pl-4 text-right whitespace-nowrap">
-                                    <div class="flex flex-col items-end gap-1.5">
-                                        <!-- Botón 1: Matricular por DNI -->
-                                        <button
-                                            v-if="canEnroll"
-                                            @click="openQuickDniEnrollModal(sched)"
-                                            class="inline-flex w-28 cursor-pointer items-center justify-center gap-1 rounded-md bg-[#2e8b57] px-2.5 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-[#257347]"
-                                            title="Matricular alumno buscando por DNI"
-                                        >
-                                            <svg
-                                                class="h-3.5 w-3.5"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="2"
-                                                    d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-                                                />
-                                            </svg>
-                                            <span>+ Matricular</span>
-                                        </button>
-
-                                        <!-- Botón 2: Editar Apertura en Ventana Nueva (Similar a Carreras y Sedes) -->
-                                        <button
-                                            v-if="canManageAperturas"
-                                            @click="openEditScheduleCourseView(sched)"
-                                            class="inline-flex w-28 cursor-pointer items-center justify-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-[#2e8b57]"
-                                            title="Editar programación y ver estudiantes matriculados en pantalla completa"
-                                        >
-                                            <svg
-                                                class="h-3.5 w-3.5 text-slate-500"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="2"
-                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                                />
-                                            </svg>
-                                            <span>Editar</span>
-                                        </button>
-
-                                        <!-- Botón 3: Eliminar Apertura -->
-                                        <button
-                                            v-if="canManageAperturas"
-                                            @click="deleteScheduleCourse(sched)"
-                                            :disabled="sched.enrolled_count > 0"
-                                            :class="[
-                                                sched.enrolled_count > 0
-                                                    ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
-                                                    : 'cursor-pointer border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100',
-                                                'inline-flex w-28 items-center justify-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-semibold shadow-2xs transition',
-                                            ]"
-                                            :title="
-                                                sched.enrolled_count > 0
-                                                    ? 'No se puede eliminar: tiene alumnos matriculados'
-                                                    : 'Eliminar apertura de curso'
-                                            "
-                                        >
-                                            <svg
-                                                class="h-3.5 w-3.5"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="2"
-                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                />
-                                            </svg>
-                                            <span>Eliminar</span>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-
-                            <tr v-if="filteredScheduledCourses.length === 0">
-                                <td
-                                    colspan="6"
-                                    class="py-12 text-center font-medium text-slate-400"
-                                >
-                                    No se encontraron cursos aperturados para el filtro seleccionado.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <!-- Pie de la Tarjeta con Enlace Interactivo -->
+                    <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-semibold text-[#2e8b57]">
+                        <span>Ver horarios aperturados</span>
+                        <svg
+                            class="h-4 w-4 transition-transform group-hover:translate-x-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Estado Vacío cuando no coincide la búsqueda -->
+            <div
+                v-if="filteredCoursesCatalog.length === 0"
+                class="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center"
+            >
+                <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <p class="font-bold text-slate-800">No se encontraron cursos o talleres</p>
+                <p class="mt-1 text-xs text-slate-500">
+                    No hay resultados que coincidan con "{{ searchCourseQuery }}".
+                </p>
+                <button
+                    type="button"
+                    @click="searchCourseQuery = ''; courseTypeFilter = 'all'"
+                    class="mt-4 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50"
+                >
+                    Limpiar Filtros
+                </button>
             </div>
         </div>
 

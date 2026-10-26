@@ -197,7 +197,7 @@ function handleLogout() {
                     </div>
 
                     <div class="space-y-1">
-                        <!-- 1. Matrículas (e Inscripciones / Convalidaciones) -->
+                        <!-- Matrículas (e Inscripciones / Convalidaciones) -->
                         <button
                             @click="selectMainTab('matriculas')"
                             :class="[
@@ -229,8 +229,19 @@ function handleLogout() {
                                 {{ enrollmentsCount }}
                             </span>
                         </button>
+                    </div>
+                </div>
 
-                        <!-- 2. Apertura de Cursos y Aulas -->
+                <!-- GRUPO 3: CURSOS -->
+                <div>
+                    <div
+                        class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase"
+                    >
+                        Cursos
+                    </div>
+
+                    <div class="space-y-1">
+                        <!-- 1. Apertura de Cursos y Aulas -->
                         <button
                             @click="selectMainTab('aperturas')"
                             :class="[
@@ -262,25 +273,17 @@ function handleLogout() {
                                 {{ scheduledCoursesCount ?? 4 }}
                             </span>
                         </button>
-                    </div>
-                </div>
 
-                <!-- GRUPO 3: OFERTA ACADÉMICA / CURSOS -->
-                <div>
-                    <div
-                        class="px-3 pb-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase"
-                    >
-                        Cursos
+                        <!-- 2. Oferta Académica (Carreras / Módulos / Talleres) -->
+                        <OfertaAcademicaMenu
+                            :active-main-tab="activeMainTab"
+                            :active-curricular-tab="activeCurricularTab"
+                            :careers-count="careersCount"
+                            :modules-count="modulesCount"
+                            :courses-count="coursesCount"
+                            @select-curricular="handleCurricularTabSelect"
+                        />
                     </div>
-
-                    <OfertaAcademicaMenu
-                        :active-main-tab="activeMainTab"
-                        :active-curricular-tab="activeCurricularTab"
-                        :careers-count="careersCount"
-                        :modules-count="modulesCount"
-                        :courses-count="coursesCount"
-                        @select-curricular="handleCurricularTabSelect"
-                    />
                 </div>
 
                 <!-- GRUPO 4: AMBIENTES / SEDES & AULAS -->

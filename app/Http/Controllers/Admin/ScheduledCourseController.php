@@ -68,13 +68,14 @@ class ScheduledCourseController extends Controller
 
         // Catálogo de cursos disponibles para aperturar
         $coursesList = Course::query()
-            ->with('module')
+            ->with('module.careers')
             ->orderBy('name')
             ->get()
             ->map(fn (Course $c) => [
                 'id' => $c->id,
                 'name' => $c->name,
                 'duration_in_weeks' => $c->duration_in_weeks ?? 4,
+                'career_name' => $c->module?->careers?->first()?->name,
                 'module_name' => $c->module?->name,
                 'is_workshop' => (bool) $c->is_workshop,
             ])->values()->all();
