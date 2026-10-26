@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import Sidebar from '../../components/Admin/Sidebar/Sidebar.vue';
 import OfertaAcademicaView from '../../components/Admin/Pages/OfertaAcademicaView.vue';
@@ -74,15 +74,30 @@ type MainTab =
 const activeMainTab = ref<MainTab>('infraestructura');
 const isMobileSidebarOpen = ref(false);
 
-const selectedBranchId = ref<number | 'all'>('all');
+const page = usePage();
+const userStaffBranchId = computed<number | null>(() => {
+    return (page.props.auth as any)?.user?.staff?.branch_id ?? null;
+});
+const canViewAllBranches = computed(() => userStaffBranchId.value === null);
+
+const selectedBranchId = ref<number | 'all'>(
+    userStaffBranchId.value !== null ? userStaffBranchId.value : 'all',
+);
 
 type CurricularTab = 'carreras' | 'modulos' | 'talleres';
 const activeCurricularTab = ref<CurricularTab>('carreras');
 
+interface Props {
+    branches?: Branch[];
+    classrooms?: Classroom[];
+}
+
+const props = defineProps<Props>();
+
 // --- DATOS MOCKEADOS REALES ---
 
 // 1. Sedes (branches)
-const branches = ref<Branch[]>([
+const defaultBranches: Branch[] = [
     {
         id: 1,
         name: 'Sede Comas',
@@ -97,10 +112,10 @@ const branches = ref<Branch[]>([
         address: 'Jr. Ricardo Palma 241 (2° piso de la RENIEC)',
         phone: '987710344',
     },
-]);
+];
 
 // 2. Aulas (classrooms)
-const classrooms = ref<Classroom[]>([
+const defaultClassrooms: Classroom[] = [
     {
         id: 1,
         branch_id: 1,
@@ -143,7 +158,15 @@ const classrooms = ref<Classroom[]>([
             'Taller de Uñas Acrílicas y Polygel (Lunes y Miércoles 16:00 - 19:00)',
         ],
     },
-]);
+];
+
+const branches = computed<Branch[]>(() => {
+    return props.branches && props.branches.length > 0 ? props.branches : defaultBranches;
+});
+
+const classrooms = computed<Classroom[]>(() => {
+    return props.classrooms && props.classrooms.length > 0 ? props.classrooms : defaultClassrooms;
+});
 
 // 3. Catálogo Global de Módulos (para asignación a carreras)
 const allModulesPool = ref<ModuleItem[]>([
@@ -549,9 +572,9 @@ function triggerToast(msg: string) {
                             v-model="selectedBranchId"
                             class="cursor-pointer bg-transparent text-sm font-bold text-slate-800 focus:outline-none"
                         >
-                            <option :value="'all'">Todas las Sedes</option>
+                            <option v-if="canViewAllBranches" :value="'all'">Todas las Sedes</option>
                             <option
-                                v-for="branch in branches"
+                                v-for="branch in (userStaffBranchId ? branches.filter(b => b.id === userStaffBranchId) : branches)"
                                 :key="branch.id"
                                 :value="branch.id"
                             >

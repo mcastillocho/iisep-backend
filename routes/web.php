@@ -21,7 +21,7 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
 
 // Rutas Protegidas del Panel Administrativo (Requiere inicio de sesión de Staff)
 Route::middleware(['auth'])->prefix('admin')->group(function (): void {
-    Route::inertia('/', 'Admin/Index')->name('admin');
+    Route::get('/', [BranchController::class, 'dashboard'])->name('admin');
     Route::inertia('/matriculas', 'Admin/Matriculas')->name('admin.matriculas');
     Route::inertia('/oferta-academica', 'Admin/OfertaAcademica')->name('admin.oferta-academica');
 

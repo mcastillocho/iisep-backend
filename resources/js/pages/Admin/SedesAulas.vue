@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import SedesAulasView, {
     Branch,
@@ -87,7 +87,19 @@ const isMobileSidebarOpen = ref(false);
 const activeMainTab = ref<
     'infraestructura' | 'curricular' | 'matriculas' | 'asistencia' | 'resumen'
 >('infraestructura');
-const selectedBranchId = ref<number | 'all'>('all');
+
+// Control de acceso territorial por Sede
+const page = usePage();
+const userStaffBranchId = computed<number | null>(() => {
+    return (page.props.auth as any)?.user?.staff?.branch_id ?? null;
+});
+
+const canViewAllBranches = computed(() => userStaffBranchId.value === null);
+
+// Si tiene sede asignada, preselecciona su sede; si es admin global (null), selecciona 'all'
+const selectedBranchId = ref<number | 'all'>(
+    userStaffBranchId.value !== null ? userStaffBranchId.value : 'all',
+);
 
 function handleMainTabChange(tab: string) {
     if (tab === 'curricular') {
@@ -218,6 +230,38 @@ function triggerToast(message: string) {
                         Administración de infraestructura física, sedes
                         oficiales y disponibilidad de ambientes de clase
                     </p>
+                </div>
+
+                <!-- Selector de Sede en la Barra Superior -->
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2">
+                        <svg
+                            class="h-4 w-4 text-[#2e8b57]"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                            />
+                        </svg>
+                        <select
+                            v-model="selectedBranchId"
+                            class="cursor-pointer bg-transparent text-sm font-bold text-slate-800 focus:outline-none"
+                        >
+                            <option v-if="canViewAllBranches" :value="'all'">Todas las Sedes</option>
+                            <option
+                                v-for="branch in branches"
+                                :key="branch.id"
+                                :value="branch.id"
+                            >
+                                {{ branch.name }}
+                            </option>
+                        </select>
+                    </div>
                 </div>
             </header>
 

@@ -70,6 +70,10 @@ function handleCurricularTabSelect(tab: CurricularTab) {
 // Datos del usuario autenticado desde Inertia
 const page = usePage();
 const currentUser = computed(() => (page.props.auth as any)?.user);
+const canViewAllBranches = computed(() => {
+    // Solo puede ver 'Todas las Sedes' si no tiene sede asignada (branch_id es null)
+    return !currentUser.value?.staff || currentUser.value.staff.branch_id === null;
+});
 
 const userInitials = computed(() => {
     if (!currentUser.value) return 'ST';
@@ -330,6 +334,7 @@ function handleLogout() {
                             class="ml-5 space-y-1.5 border-l-2 border-emerald-200 pt-1.5 pr-1 pl-4"
                         >
                             <button
+                                v-if="canViewAllBranches"
                                 @click="selectBranch('all')"
                                 :class="[
                                     selectedBranchId === 'all' &&

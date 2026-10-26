@@ -808,6 +808,7 @@ const filteredClassrooms = computed(() => {
                             Editar esta Sede
                         </button>
                         <button
+                            v-if="isAdmin"
                             @click="emit('update:selectedBranchId', 'all')"
                             class="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
                         >

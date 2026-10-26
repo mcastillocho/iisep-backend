@@ -15,12 +15,25 @@ use Inertia\Response;
 class BranchController extends Controller
 {
     /**
-     * Muestra la vista de administración de Sedes y Aulas con datos reales de la BD.
+     * Obtiene los datos reales de sedes y aulas filtrados según la autorización del usuario.
+     *
+     * @return array{branches: list<array<string, mixed>>, classrooms: list<array<string, mixed>>}
      */
-    public function index(): Response
+    public function getBranchData(Request $request): array
     {
-        $branches = Branch::query()
-            ->orderBy('id')
+        $user = $request->user();
+        $staff = $user?->staff;
+
+        $branchQuery = Branch::query()->orderBy('id');
+        $classroomQuery = Classroom::query()->with(['branch', 'courseSchedules.scheduledCourse.course'])->orderBy('id');
+
+        // Si el personal tiene sede asignada (branch_id !== null), solo accede a su sede
+        if ($staff && $staff->branch_id !== null) {
+            $branchQuery->where('id', $staff->branch_id);
+            $classroomQuery->where('branch_id', $staff->branch_id);
+        }
+
+        $branches = $branchQuery
             ->get()
             ->map(fn (Branch $b) => [
                 'id' => $b->id,
@@ -29,11 +42,11 @@ class BranchController extends Controller
                 'address' => $b->address ?? 'Dirección por registrar',
                 'phone' => $b->phone ?? 'Sin teléfono',
                 'is_active' => $b->is_active,
-            ]);
+            ])
+            ->values()
+            ->all();
 
-        $classrooms = Classroom::query()
-            ->with(['branch', 'courseSchedules.scheduledCourse.course'])
-            ->orderBy('id')
+        $classrooms = $classroomQuery
             ->get()
             ->map(function (Classroom $c) {
                 $coursesList = $c->courseSchedules
@@ -57,12 +70,30 @@ class BranchController extends Controller
                     'capacity' => $c->capacity,
                     'current_scheduled_courses' => $coursesList,
                 ];
-            });
+            })
+            ->values()
+            ->all();
 
-        return Inertia::render('Admin/SedesAulas', [
+        return [
             'branches' => $branches,
             'classrooms' => $classrooms,
-        ]);
+        ];
+    }
+
+    /**
+     * Muestra la vista de administración de Sedes y Aulas (/admin/sedes-aulas).
+     */
+    public function index(Request $request): Response
+    {
+        return Inertia::render('Admin/SedesAulas', $this->getBranchData($request));
+    }
+
+    /**
+     * Muestra el Dashboard Central (/admin) con datos reales de la BD.
+     */
+    public function dashboard(Request $request): Response
+    {
+        return Inertia::render('Admin/Index', $this->getBranchData($request));
     }
 
     /**
