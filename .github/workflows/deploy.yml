@@ -1,0 +1,81 @@
+name: Deploy to Server
+
+# Solo al hacer push a main
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Contruir y desplegar
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Verificacion
+        uses: actions/checkout@v4
+
+      - name: Iniciar sesion en el GCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }} 
+
+      - name: Construir y actualizar la imagen
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+  
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Desplegar por SSH
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{secrets.SERVER_HOST}}
+          username: ${{secrets.SERVER_USER}}
+          key: ${{secrets.SERVER_SSH_KEY}}
+          scripts: |
+            set -e
+
+            # Ir al directorio
+            cd /madgen/iisep || mkdir -p /madgen/iisep
+            cd /madgen/iisep
+
+            # Obliga a Docker a conectarse al registro de GitHub para descargar           
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+            # Descarga la imagen más reciente
+            docker compose pull iisep_php
+
+            # Recarga solo el servicio de app
+            docker compose up -d --no-deps --force-recreate laravel_app
+
+            # REVISAR SI ESTO FUNCIONA O NO ES NECESARIO.
+            docker compose exec -T iisep_php php artisan config:cache
+            docker compose exec -T iisep_php php artisan route:cache
+            docker compose exec -T iisep_php php artisan view:cache
+            docker compose exec -T iisep_php php artisan optimize
+
+            docker image prune -f
+
+
+
+
+
+        
