@@ -9,6 +9,7 @@ use App\Models\Career;
 use App\Models\Staff;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CareerController extends Controller
 {
@@ -40,9 +41,9 @@ class CareerController extends Controller
             'modules.*.id' => ['required', 'integer', 'exists:modules,id'],
             'modules.*.order' => ['nullable', 'integer'],
             'branch_ids' => ['nullable', 'array'],
-            'branch_ids.*' => ['integer', 'exists:branches,id'],
+            'branch_ids.*' => ['integer', Rule::exists('branches', 'id')->whereNull('deleted_at')->where('is_active', true)],
             'available_branch_ids' => ['nullable', 'array'],
-            'available_branch_ids.*' => ['integer', 'exists:branches,id'],
+            'available_branch_ids.*' => ['integer', Rule::exists('branches', 'id')->whereNull('deleted_at')->where('is_active', true)],
         ], [
             'name.required' => 'El nombre de la carrera técnica es obligatorio.',
         ]);
@@ -88,9 +89,9 @@ class CareerController extends Controller
             'modules.*.id' => ['required', 'integer', 'exists:modules,id'],
             'modules.*.order' => ['nullable', 'integer'],
             'branch_ids' => ['nullable', 'array'],
-            'branch_ids.*' => ['integer', 'exists:branches,id'],
+            'branch_ids.*' => ['integer', Rule::exists('branches', 'id')->whereNull('deleted_at')->where('is_active', true)],
             'available_branch_ids' => ['nullable', 'array'],
-            'available_branch_ids.*' => ['integer', 'exists:branches,id'],
+            'available_branch_ids.*' => ['integer', Rule::exists('branches', 'id')->whereNull('deleted_at')->where('is_active', true)],
         ], [
             'name.required' => 'El nombre de la carrera técnica es obligatorio.',
         ]);

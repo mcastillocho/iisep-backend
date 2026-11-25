@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\EnrollmentStatus;
+use App\Enums\StudentCareerStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Classroom;
+use App\Models\Enrollment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -32,6 +38,7 @@ class BranchController extends Controller
             ->orderBy('id');
 
         $classroomQuery = Classroom::query()
+            ->whereHas('branch')
             ->select(['id', 'branch_id', 'name', 'capacity'])
             ->with(['branch:id,name'])
             ->withCount('courseSchedules')
@@ -42,7 +49,7 @@ class BranchController extends Controller
             $classroomQuery->where('branch_id', $staff->branch_id);
         }
 
-        $branches = $branchQuery->get()->map(fn (Branch $b) => [
+        $branches = array_values($branchQuery->get()->map(fn (Branch $b) => [
             'id' => $b->id,
             'name' => $b->name,
             'code' => $b->code ?? 'SED-'.$b->id,
@@ -50,22 +57,22 @@ class BranchController extends Controller
             'phone' => $b->phone ?? '',
             'classrooms_count' => (int) $b->classrooms_count,
             'total_capacity' => (int) $b->classrooms->sum('capacity'),
-            'classrooms' => $b->classrooms->map(fn (Classroom $c) => [
+            'classrooms' => array_values($b->classrooms->map(fn (Classroom $c) => [
                 'id' => $c->id,
                 'branch_id' => $c->branch_id,
                 'name' => $c->name,
                 'capacity' => $c->capacity,
-            ])->values()->all(),
-        ])->values()->all();
+            ])->all()),
+        ])->all());
 
-        $classrooms = $classroomQuery->get()->map(fn (Classroom $c) => [
+        $classrooms = array_values($classroomQuery->get()->map(fn (Classroom $c) => [
             'id' => $c->id,
             'branch_id' => $c->branch_id,
-            'branch_name' => $c->branch?->name ?? 'Sin Sede',
+            'branch_name' => $c->branch->name,
             'name' => $c->name,
             'capacity' => $c->capacity,
             'schedules_count' => (int) $c->course_schedules_count,
-        ])->values()->all();
+        ])->all());
 
         return [
             'branches' => $branches,
@@ -117,8 +124,28 @@ class BranchController extends Controller
 
         $totalClassroomsCount = array_sum(array_column($branches, 'classrooms_count'));
 
+        $inactiveBranches = Branch::onlyTrashed()
+            ->select(['id', 'name', 'code', 'address', 'phone', 'deleted_at'])
+            ->withCount([
+                'classrooms' => fn ($q) => $q->onlyTrashed()->where('deleted_with_branch', true),
+            ])
+            ->orderByDesc('deleted_at')
+            ->get()
+            ->map(fn (Branch $b) => [
+                'id' => $b->id,
+                'name' => $b->name,
+                'code' => $b->code ?? 'SED-'.$b->id,
+                'address' => $b->address ?? '',
+                'phone' => $b->phone ?? '',
+                'deleted_at' => $b->deleted_at?->toIso8601String(),
+                'restorable_classrooms_count' => (int) $b->classrooms_count,
+            ])
+            ->values()
+            ->all();
+
         return Inertia::render('Admin/SedesAulas', [
             'branches' => $branches,
+            'inactiveBranches' => $inactiveBranches,
             'selectedBranch' => null,
             'classrooms' => [],
             'totalClassroomsCount' => $totalClassroomsCount,
@@ -171,7 +198,7 @@ class BranchController extends Controller
             ->all();
 
         $totalClassroomsCount = $staff->isAdmin()
-            ? Classroom::count()
+            ? Classroom::query()->whereHas('branch')->count()
             : count($classrooms);
 
         return Inertia::render('Admin/SedesAulas', [
@@ -219,8 +246,8 @@ class BranchController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:branches,name'],
-            'code' => ['nullable', 'string', 'max:50', 'unique:branches,code'],
+            'name' => ['required', 'string', 'max:255', Rule::unique('branches', 'name')->whereNull('deleted_at')],
+            'code' => ['nullable', 'string', 'max:50', Rule::unique('branches', 'code')->whereNull('deleted_at')],
             'address' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
         ], [
@@ -271,8 +298,8 @@ class BranchController extends Controller
         ];
 
         if ($staff->isAdmin()) {
-            $rules['name'] = ['required', 'string', 'max:255', 'unique:branches,name,'.$branch->id];
-            $rules['code'] = ['required', 'string', 'max:50', 'unique:branches,code,'.$branch->id];
+            $rules['name'] = ['required', 'string', 'max:255', Rule::unique('branches', 'name')->ignore($branch->id)->whereNull('deleted_at')];
+            $rules['code'] = ['required', 'string', 'max:50', Rule::unique('branches', 'code')->ignore($branch->id)->whereNull('deleted_at')];
         }
 
         $validated = $request->validate($rules, [
@@ -295,5 +322,147 @@ class BranchController extends Controller
         $branch->update($updateData);
 
         return redirect()->back()->with('success', "Sede \"{$branch->name}\" actualizada exitosamente.");
+    }
+
+    /**
+     * Da de baja una sede (marca is_active = false, aplica SoftDelete a la sede y en cascada lógica a sus aulas activas).
+     * Solo el Administrador General puede ejecutar esta acción, y únicamente si:
+     * - No es la última sede activa del instituto
+     * - No tiene personal administrativo (staff) asignado
+     * - No tiene alumnos vigentes o en reserva asignados a carreras en esta sede (student_careers)
+     * - No tiene cursos vigentes o programados (end_date >= hoy)
+     * - No tiene matrículas en curso o preinscripciones pendientes (activo / preinscrito)
+     */
+    public function destroy(Request $request, Branch $branch): RedirectResponse
+    {
+        $staff = $request->user()?->staff;
+
+        if (! $staff || ! $staff->isAdmin()) {
+            abort(403, 'Acceso denegado. Solo el Administrador General cuenta con permisos para dar de baja una sede.');
+        }
+
+        $hasOtherActiveBranches = Branch::query()
+            ->where('is_active', true)
+            ->whereKeyNot($branch->id)
+            ->exists();
+
+        if (! $hasOtherActiveBranches) {
+            return redirect()->back()->withErrors([
+                'branch' => "No es posible dar de baja la sede \"{$branch->name}\" porque es la única sede activa del instituto.",
+            ]);
+        }
+
+        if ($branch->staff()->exists()) {
+            return redirect()->back()->withErrors([
+                'branch' => "No es posible dar de baja la sede \"{$branch->name}\" porque tiene personal administrativo asignado.",
+            ]);
+        }
+
+        $hasActiveCareerStudents = $branch->studentCareers()
+            ->whereIn('status', [
+                StudentCareerStatus::ACTIVO->value,
+                StudentCareerStatus::EN_RESERVA->value,
+            ])
+            ->exists();
+
+        if ($hasActiveCareerStudents) {
+            return redirect()->back()->withErrors([
+                'branch' => "No es posible dar de baja la sede \"{$branch->name}\" porque tiene alumnos vigentes o en reserva asignados a esta sede.",
+            ]);
+        }
+
+        $todayInPeru = Carbon::now('America/Lima')->toDateString();
+
+        $hasActiveScheduledCourses = $branch->scheduledCourses()
+            ->whereDate('end_date', '>=', $todayInPeru)
+            ->exists();
+
+        if ($hasActiveScheduledCourses) {
+            return redirect()->back()->withErrors([
+                'branch' => "No es posible dar de baja la sede \"{$branch->name}\" porque tiene cursos vigentes o programados.",
+            ]);
+        }
+
+        $hasActiveEnrollments = Enrollment::query()
+            ->whereIn('status', [
+                EnrollmentStatus::ACTIVO->value,
+                EnrollmentStatus::PREINSCRITO->value,
+            ])
+            ->whereHas('scheduledCourse', fn ($q) => $q->withTrashed()->where('branch_id', $branch->id))
+            ->exists();
+
+        if ($hasActiveEnrollments) {
+            return redirect()->back()->withErrors([
+                'branch' => "No es posible dar de baja la sede \"{$branch->name}\" porque tiene matrículas en curso o preinscripciones pendientes.",
+            ]);
+        }
+
+        $branchName = $branch->name;
+        $now = Carbon::now();
+
+        DB::transaction(function () use ($branch, $now): void {
+            $branch->classrooms()->update([
+                'deleted_with_branch' => true,
+                'deleted_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            $branch->update(['is_active' => false]);
+            $branch->delete();
+        });
+
+        return redirect()->route('admin.sedes.index')->with('success', "Sede \"{$branchName}\" dada de baja exitosamente.");
+    }
+
+    /**
+     * Reactiva una sede dada de baja y restaura únicamente las aulas que fueron dadas de baja junto con ella.
+     * Solo el Administrador General cuenta con autorización para reactivar sedes.
+     */
+    public function restore(Request $request, Branch $branch): RedirectResponse
+    {
+        $staff = $request->user()?->staff;
+
+        if (! $staff || ! $staff->isAdmin()) {
+            abort(403, 'Acceso denegado. Solo el Administrador General cuenta con permisos para reactivar una sede.');
+        }
+
+        if (! $branch->trashed() && $branch->is_active) {
+            return redirect()->route('admin.sedes.index')->withErrors([
+                'branch' => "La sede \"{$branch->name}\" ya se encuentra activa.",
+            ]);
+        }
+
+        if (Branch::query()->where('name', $branch->name)->whereKeyNot($branch->id)->exists()) {
+            return redirect()->back()->withErrors([
+                'branch' => "No es posible reactivar la sede \"{$branch->name}\" porque ya existe otra sede activa con el mismo nombre.",
+            ]);
+        }
+
+        if ($branch->code !== null && Branch::query()->where('code', $branch->code)->whereKeyNot($branch->id)->exists()) {
+            return redirect()->back()->withErrors([
+                'branch' => "No es posible reactivar la sede \"{$branch->name}\" porque el código \"{$branch->code}\" ya está en uso por otra sede activa.",
+            ]);
+        }
+
+        $now = Carbon::now();
+
+        DB::transaction(function () use ($branch, $now): void {
+            if ($branch->trashed()) {
+                $branch->restore();
+            }
+
+            $branch->update(['is_active' => true]);
+
+            $branch->classrooms()
+                ->onlyTrashed()
+                ->where('deleted_with_branch', true)
+                ->update([
+                    'deleted_at' => null,
+                    'deleted_with_branch' => false,
+                    'updated_at' => $now,
+                ]);
+        });
+
+        return redirect()->route('admin.sedes.index')->with('success', "Sede \"{$branch->name}\" reactivada exitosamente.");
     }
 }

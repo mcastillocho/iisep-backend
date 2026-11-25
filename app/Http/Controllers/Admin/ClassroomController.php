@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 
 class ClassroomController extends Controller
 {
@@ -53,8 +54,8 @@ class ClassroomController extends Controller
 
                 return [
                     'id' => $schedule->id,
-                    'course_name' => $sc?->course?->name ?? 'Curso',
-                    'teacher_name' => $sc?->teacher?->full_name ?? 'Docente por asignar',
+                    'course_name' => $sc !== null ? $sc->course->name : 'Curso',
+                    'teacher_name' => $sc?->teacher !== null ? ($sc->teacher->full_name ?? 'Docente por asignar') : 'Docente por asignar',
                     'day_of_week' => $schedule->day_of_week->label(),
                     'start_time' => substr((string) $schedule->start_time, 0, 5),
                     'end_time' => substr((string) $schedule->end_time, 0, 5),
@@ -72,6 +73,7 @@ class ClassroomController extends Controller
             'schedules' => $schedules,
         ]);
     }
+
     /**
      * Registra una nueva aula.
      * Solo la Dirección General (branch_id === null) y la Coordinación de Sede ('coord') tienen autorización.
@@ -87,7 +89,7 @@ class ClassroomController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'branch_id' => ['required', 'integer', 'exists:branches,id'],
+            'branch_id' => ['required', 'integer', Rule::exists('branches', 'id')->whereNull('deleted_at')->where('is_active', true)],
             'capacity' => ['required', 'integer', 'min:1', 'max:500'],
         ], [
             'name.required' => 'El nombre del aula es obligatorio.',
@@ -143,7 +145,7 @@ class ClassroomController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'capacity' => ['required', 'integer', 'min:1', 'max:500'],
-            'branch_id' => ['sometimes', 'integer', 'exists:branches,id'],
+            'branch_id' => ['sometimes', 'integer', Rule::exists('branches', 'id')->whereNull('deleted_at')->where('is_active', true)],
         ], [
             'name.required' => 'El nombre del aula es obligatorio.',
             'capacity.required' => 'La capacidad es obligatoria.',

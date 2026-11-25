@@ -57,6 +57,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function (): void {
     Route::get('/sedes/{branch}', [BranchController::class, 'show'])->whereNumber('branch')->name('admin.sedes.show');
     Route::post('/sedes', [BranchController::class, 'store'])->name('admin.sedes.store');
     Route::put('/sedes/{branch}', [BranchController::class, 'update'])->whereNumber('branch')->name('admin.sedes.update');
+    Route::delete('/sedes/{branch}', [BranchController::class, 'destroy'])->whereNumber('branch')->name('admin.sedes.destroy');
+    Route::patch('/sedes/{branch}/reactivar', [BranchController::class, 'restore'])->withTrashed()->whereNumber('branch')->name('admin.sedes.restore');
     Route::get('/aulas/{classroom}/horarios', [ClassroomController::class, 'schedules'])->whereNumber('classroom')->name('admin.classrooms.schedules');
     Route::post('/aulas', [ClassroomController::class, 'store'])->name('admin.classrooms.store');
     Route::put('/aulas/{classroom}', [ClassroomController::class, 'update'])->whereNumber('classroom')->name('admin.classrooms.update');

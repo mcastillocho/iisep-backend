@@ -315,11 +315,11 @@
     </div>
 
     <div class="kpi-grid">
-      <div class="kpi k-green"><div class="num">36</div><div class="lbl">Endpoints Registrados (35 web + /up)</div></div>
+      <div class="kpi k-green"><div class="num">38</div><div class="lbl">Endpoints Registrados (37 web + /up)</div></div>
       <div class="kpi k-red"><div class="num">10</div><div class="lbl">Riesgos Críticos de Seguridad</div></div>
       <div class="kpi k-orange"><div class="num">11</div><div class="lbl">Riesgos de BD / Error 500 / Pérdida de Datos</div></div>
       <div class="kpi k-purple"><div class="num">10</div><div class="lbl">Botones / Formularios Sin Endpoint o Rotos</div></div>
-      <div class="kpi k-blue"><div class="num">9</div><div class="lbl">Módulos / Rutas Pendientes (BD sin CRUD)</div></div>
+      <div class="kpi k-blue"><div class="num">8</div><div class="lbl">Módulos / Rutas Pendientes (BD sin CRUD)</div></div>
       <div class="kpi"><div class="num">100%</div><div class="lbl">Asistencias en Mock (0% Backend)</div></div>
     </div>
   </div>
@@ -541,14 +541,14 @@
   <section id="sec-endpoints">
     <div class="sec-header">
       <h2><span class="sec-num">3</span> Catálogo Profundo de Endpoints (Principales, Variantes, Parámetros, Permisos y Payloads)</h2>
-      <span id="visible-counter" class="badge b-gray">Mostrando 35 variantes (36 rutas)</span>
+      <span id="visible-counter" class="badge b-gray">Mostrando 37 variantes (38 rutas)</span>
     </div>
 
     <!-- Barra de Filtros Interactivos -->
     <div class="toolbar">
       <input type="text" id="searchInput" class="search-input" placeholder="Buscar por ruta (/admin/matriculas), método (POST), controlador, campo (notes, guardian) o hallazgo..." oninput="filterEndpoints()" />
       <div class="filter-pills">
-        <button class="fpill active" data-filter="all" onclick="setStatusFilter('all', this)">Todos (35)</button>
+        <button class="fpill active" data-filter="all" onclick="setStatusFilter('all', this)">Todos (37)</button>
         <button class="fpill f-crit" data-filter="crit" onclick="setStatusFilter('crit', this)">Críticos / Rotos</button>
         <button class="fpill f-warn" data-filter="warn" onclick="setStatusFilter('warn', this)">Riesgos / Inconsistencias</button>
         <button class="fpill" data-filter="miss" onclick="setStatusFilter('miss', this)">Mock / Desconectados</button>
@@ -969,7 +969,7 @@
               <tr><td><code>code</code></td><td>Body</td><td>string</td><td>Solo Admin</td><td><code>required|max:50|unique:branches,code,{id}</code> (solo Admin)</td></tr>
               <tr><td><code>address</code></td><td>Body</td><td>string</td><td>No</td><td><code>nullable|string|max:255</code></td></tr>
               <tr><td><code>phone</code></td><td>Body</td><td>string</td><td>No</td><td><code>nullable|string|max:50</code></td></tr>
-              <tr class="row-blue"><td><code>is_active</code></td><td><span class="hl-blue">FALTANTE</span></td><td>boolean</td><td>—</td><td>No existe forma de desactivar/activar una sede ni ruta <code>DELETE /admin/sedes/{branch}</code>.</td></tr>
+              <tr class="row-blue"><td><code>is_active</code></td><td><span class="hl-blue">FALTANTE</span></td><td>boolean</td><td>—</td><td>La baja se realiza vía <code>DELETE /admin/sedes/{branch}</code>; falta reactivación si se requiere restaurar una sede dada de baja.</td></tr>
             </tbody>
           </table>
         </div>
@@ -984,6 +984,85 @@
 }</pre></div>
             <div class="io-col"><h4>Response</h4><pre>// HTTP 302 Redirect Back + flash success
 // HTTP 403 si Secretaría o Coord de otra sede intenta editar</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- DELETE /admin/sedes/{branch} -->
+      <div class="variant v-ok" data-status="ok" data-method="DELETE">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-delete">DELETE</span>
+            <span class="v-uri">/admin/sedes/{branch}</span>
+            <span class="v-name">admin.sedes.destroy</span>
+            <span class="v-action">BranchController@destroy</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-ok">Auth: Solo Admin (branch_id=null)</span>
+            <span class="badge b-ok">Cascada Lógica Aulas + 5 Validaciones</span>
+          </div>
+        </div>
+        <p class="v-desc">Da de baja lógica una sede (<code>is_active = false</code> + <code>SoftDelete</code>) y marca sus aulas activas con <code>deleted_with_branch = true</code> + <code>deleted_at</code> en transacción. Impide dar de baja la última sede activa o una sede con dependencias vigentes.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green">Solo <code>$staff-&gt;isAdmin()</code> (HTTP 403 a Coord/Secre/No-staff)</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Reglas de Bloqueo</div><div class="p-val">Bloquea si es la única sede activa, si tiene <code>staff</code> asignado, <code>student_careers</code> (<code>activo</code>/<code>en_reserva</code>), <code>scheduled_courses</code> (<code>end_date &gt;= hoy</code>) o <code>enrollments</code> (<code>activo</code>/<code>preinscrito</code>)</div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Nivel 4 (Dirección General)</div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
+            <tbody>
+              <tr><td><code>branch</code></td><td>Path</td><td>int (ID)</td><td><strong>Sí</strong></td><td>Route Model Binding <code>Branch</code> (<code>whereNumber('branch')</code>).</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Response)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Request</h4><pre>// DELETE /admin/sedes/{branch} (sin body)</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// Éxito: HTTP 302 Redirect → /admin/sedes + flash success
+// (Aulas activas de la sede pasan a deleted_with_branch=true + SoftDelete)
+// Bloqueo de negocio: HTTP 302 Redirect Back + errors.branch
+// Sin permisos: HTTP 403 Forbidden</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- PATCH /admin/sedes/{branch}/reactivar -->
+      <div class="variant v-ok" data-status="ok" data-method="PATCH">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-put">PATCH</span>
+            <span class="v-uri">/admin/sedes/{branch}/reactivar</span>
+            <span class="v-name">admin.sedes.restore</span>
+            <span class="v-action">BranchController@restore</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-ok">Auth: Solo Admin (branch_id=null)</span>
+            <span class="badge b-ok">Restaura Aulas Borradas en Cascada</span>
+          </div>
+        </div>
+        <p class="v-desc">Reactiva una sede dada de baja (<code>withTrashed()</code>, <code>is_active = true</code>) y restaura únicamente las aulas que fueron dadas de baja a la par con la sede (<code>deleted_with_branch = true</code>), sin revivir aulas eliminadas manualmente antes.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green">Solo <code>$staff-&gt;isAdmin()</code> (HTTP 403 a Coord/Secre/No-staff)</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Validaciones</div><div class="p-val">Bloquea si ya está activa o si otra sede activa ya utiliza el mismo <code>name</code> o <code>code</code> (índices únicos parciales)</div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Nivel 4 (Dirección General)</div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
+            <tbody>
+              <tr><td><code>branch</code></td><td>Path</td><td>int (ID)</td><td><strong>Sí</strong></td><td>Route Model Binding <code>Branch</code> con <code>withTrashed()</code> y <code>whereNumber('branch')</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Response)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Request</h4><pre>// PATCH /admin/sedes/{branch}/reactivar (sin body)</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// Éxito: HTTP 302 Redirect → /admin/sedes + flash success
+// Conflicto de name/code o ya activa: HTTP 302 + errors.branch
+// Sin permisos: HTTP 403 Forbidden</pre></div>
           </div>
         </details>
       </div>
@@ -2132,22 +2211,13 @@
             <td>Hoy se cargan 100% de los alumnos y todas sus matrículas en una sola petición sin paginación, y no se puede archivar/eliminar un alumno creado por error.</td>
           </tr>
           <tr class="row-blue">
-            <td><strong>6. Baja / Estado de Sedes</strong><br/>Tabla: <code>branches</code></td>
-            <td>
-              <code>PATCH /admin/sedes/{branch}/status</code> (toggle <code>is_active</code>)<br/>
-              <code>DELETE /admin/sedes/{branch}</code> (si sin aulas/cursos)
-            </td>
-            <td>Nivel 4 (Dirección General)</td>
-            <td>La columna <code>branches.is_active</code> existe en BD pero es inmutable desde la interfaz/API.</td>
-          </tr>
-          <tr class="row-blue">
-            <td><strong>7. Panel Resumen &amp; KPIs</strong><br/>Dashboard Dirección</td>
+            <td><strong>6. Panel Resumen &amp; KPIs</strong><br/>Dashboard Dirección</td>
             <td><code>GET /admin/resumen</code> (KPIs agregados reales)</td>
             <td>Nivel 3–4 (Coordinación / Dirección)</td>
             <td>Desacopla <code>/admin</code> para evitar cargar toda la BD en una sola vista y corrige el enlace roto del Sidebar.</td>
           </tr>
           <tr class="row-blue">
-            <td><strong>8. Seguridad de Cuenta / Perfil</strong><br/>Tabla: <code>users</code></td>
+            <td><strong>7. Seguridad de Cuenta / Perfil</strong><br/>Tabla: <code>users</code></td>
             <td>
               <code>PUT /perfil/password</code><br/>
               <code>POST /forgot-password</code> / <code>POST /reset-password</code>
@@ -2156,7 +2226,7 @@
             <td>Crítico porque las contraseñas iniciales son el número de DNI del alumno/apoderado.</td>
           </tr>
           <tr class="row-blue">
-            <td><strong>9. Portales Docente / Estudiante &amp; Constancias</strong></td>
+            <td><strong>8. Portales Docente / Estudiante &amp; Constancias</strong></td>
             <td>
               <code>/docente/*</code> (mis cursos, tomar lista)<br/>
               <code>/estudiante/*</code> (mis notas/asistencias/horario)<br/>
@@ -2195,9 +2265,9 @@
             <td>Login válido/inválido, redirección por rol, bloqueo de Alumnos/Docentes en <code>/admin/*</code>, logout, rate-limiting.</td>
           </tr>
           <tr>
-            <td><code>BranchTest.php</code> (7 tests)</td>
-            <td><code>GET /admin/sedes</code>, <code>GET /admin/sedes/{branch}</code>, <code>PUT /admin/sedes/{branch}</code></td>
-            <td>Faltan tests para <code>POST /admin/sedes</code>, <code>GET /admin</code> (props intactas), denegación a Secretaría en <code>PUT</code>.</td>
+            <td><code>BranchTest.php</code> (20 tests)</td>
+            <td><code>GET /admin/sedes</code>, <code>GET /admin/sedes/{branch}</code>, <code>POST/PUT/DELETE /admin/sedes</code>, <code>PATCH /admin/sedes/{branch}/reactivar</code></td>
+            <td>Faltan tests para <code>GET /admin</code> (props intactas) y denegación a Secretaría en <code>PUT</code>.</td>
           </tr>
           <tr>
             <td><code>ClassroomPermissionTest.php</code> (9 tests)</td>

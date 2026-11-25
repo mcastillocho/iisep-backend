@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
  * @property int $branch_id
  * @property string $name
  * @property int|null $capacity
+ * @property bool $deleted_with_branch
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
@@ -31,6 +32,7 @@ class Classroom extends Model
         'branch_id',
         'name',
         'capacity',
+        'deleted_with_branch',
     ];
 
     /**
@@ -41,6 +43,7 @@ class Classroom extends Model
         return [
             'branch_id' => 'integer',
             'capacity' => 'integer',
+            'deleted_with_branch' => 'boolean',
         ];
     }
 

@@ -31,26 +31,29 @@
 │
 ├── 📁 /admin/sedes (Sedes — BranchController)
 │   ├── GET  /admin/sedes                            🟢 [auth + Staff (Admin ve resumen; personal de sede redirige a /admin/sedes/{branch})] Resumen liviano de sedes.
-│   │   ├── ↳ Recibe props: branches[{id,name,code,address,phone,classrooms_count,total_capacity,classrooms[{id,branch_id,name,capacity}]}], selectedBranch:null, classrooms:[], totalClassroomsCount, initialEditing:false.
+│   │   ├── ↳ Recibe props: branches[{id,name,code,address,phone,classrooms_count,total_capacity,classrooms[{id,branch_id,name,capacity}]}], inactiveBranches[{id,name,code,address,phone,deleted_at,restorable_classrooms_count}], selectedBranch:null, classrooms:[], totalClassroomsCount, initialEditing:false.
 │   │   └── 🟡 Sidebar aún usa contadores mock para carreras/módulos/cursos/matrículas.
 │   ├── GET  /admin/sedes/{branch}                   🟢 [auth + Admin o Staff de esa sede] Detalle de sede y gestión de sus aulas.
 │   │   ├── {branch}         (path, int, req)        — ID de la sede (whereNumber).
 │   │   ├── ?edit            (query, bool, opc)      — Si es true/1 abre el formulario de edición de la sede al cargar.
 │   │   └── ↳ Recibe props: branches[{id,name,code,address,phone}], selectedBranch, classrooms[{id,branch_id,branch_name,name,capacity,schedules_count}], totalClassroomsCount, initialEditing.
-│   ├── POST /admin/sedes                            🟡 [auth + Admin (branch_id=null)] Registra nueva sede física → redirige a /admin/sedes.
-│   │   ├── name             (body, string, req)     — Nombre único de sede (max:255).
-│   │   ├── code             (body, string, opc)     — Código único (max:50); si va vacío se autogenera de 3 letras (riesgo colisión/vacío).
+│   ├── POST /admin/sedes                            🟢 [auth + Admin (branch_id=null)] Registra nueva sede física → redirige a /admin/sedes.
+│   │   ├── name             (body, string, req)     — Nombre único entre sedes activas (max:255; índice único parcial WHERE deleted_at IS NULL).
+│   │   ├── code             (body, string, opc)     — Código único entre sedes activas (max:50); si va vacío se autogenera de 3 letras.
 │   │   ├── address          (body, string, opc)     — Dirección física (max:255).
-│   │   ├── phone            (body, string, opc)     — Teléfono de contacto (max:50).
-│   │   └── 🔵 is_active     (FALTANTE)              — Existe en tabla branches pero no se acepta en formulario.
-│   ├── PUT  /admin/sedes/{branch}                   🟡 [auth + Admin o Coord de esa sede] Actualiza datos de una sede.
+│   │   └── phone            (body, string, opc)     — Teléfono de contacto (max:50).
+│   ├── PUT  /admin/sedes/{branch}                   🟢 [auth + Admin o Coord de esa sede] Actualiza datos de una sede.
 │   │   ├── {branch}         (path, int, req)        — ID de la sede a modificar (whereNumber).
-│   │   ├── name             (body, string, Admin)   — Solo Admin puede cambiarlo (bloqueado en UI para Coord).
-│   │   ├── code             (body, string, Admin)   — Solo Admin puede cambiarlo (bloqueado en UI para Coord).
+│   │   ├── name             (body, string, Admin)   — Solo Admin puede cambiarlo (único entre activas; bloqueado en UI para Coord).
+│   │   ├── code             (body, string, Admin)   — Solo Admin puede cambiarlo (único entre activas; bloqueado en UI para Coord).
 │   │   ├── address          (body, string, opc)     — Dirección física (editable por Admin y Coord).
-│   │   ├── phone            (body, string, opc)     — Teléfono (editable por Admin y Coord).
-│   │   └── 🔵 is_active     (FALTANTE)              — No permite activar/desactivar la sede.
-│   └── 🔵 DELETE /admin/sedes/{branch}              [PENDIENTE] No existe baja lógica ni toggle de is_active.
+│   │   └── phone            (body, string, opc)     — Teléfono (editable por Admin y Coord).
+│   ├── DELETE /admin/sedes/{branch}                 🟢 [auth + Admin (branch_id=null)] Da de baja lógica una sede (is_active=false + SoftDelete) y sus aulas activas en cascada lógica (deleted_with_branch=true).
+│   │   ├── {branch}         (path, int, req)        — ID de la sede (whereNumber).
+│   │   └── ↳ Bloqueos: última sede activa, personal staff asignado, alumnos en carrera (activo/en_reserva), cursos vigentes/programados (end_date ≥ hoy), matrículas en curso (activo/preinscrito). Redirige a /admin/sedes.
+│   └── PATCH  /admin/sedes/{branch}/reactivar       🟢 [auth + Admin (branch_id=null)] Reactiva una sede dada de baja (withTrashed) y restaura únicamente las aulas borradas junto con ella (deleted_with_branch=true).
+│       ├── {branch}         (path, int, req)        — ID de la sede dada de baja (whereNumber + withTrashed).
+│       └── ↳ Validaciones: bloquea si ya está activa o si otra sede activa ya ocupa su mismo name o code. Redirige a /admin/sedes.
 │
 ├── 📁 /admin/aulas (Aulas / Ambientes Físicos — ClassroomController)
 │   ├── GET  /admin/aulas/{classroom}/horarios       🟢 [auth + Admin o Staff de esa sede] Consulta JSON bajo demanda de horarios del aula (modal "Ver Disponibilidad").

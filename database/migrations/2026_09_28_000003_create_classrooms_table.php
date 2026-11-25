@@ -18,6 +18,7 @@ return new class extends Migration
             $table->foreignId('branch_id')->constrained('branches')->cascadeOnDelete();
             $table->text('name');
             $table->integer('capacity')->nullable();
+            $table->boolean('deleted_with_branch')->default(false);
             $table->timestamps();
             $table->softDeletes();
 

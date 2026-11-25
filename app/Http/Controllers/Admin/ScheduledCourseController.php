@@ -344,7 +344,7 @@ class ScheduledCourseController extends Controller
 
         $validated = $request->validate([
             'course_id' => ['required', 'integer', 'exists:courses,id'],
-            'branch_id' => ['required', 'integer', 'exists:branches,id'],
+            'branch_id' => ['required', 'integer', Rule::exists('branches', 'id')->whereNull('deleted_at')->where('is_active', true)],
             'classroom_id' => ['required', 'integer', 'exists:classrooms,id'],
             'teacher_id' => ['nullable', 'integer', 'exists:teachers,id'],
             'start_date' => ['required', 'date'],
@@ -418,7 +418,7 @@ class ScheduledCourseController extends Controller
 
         $validated = $request->validate([
             'course_id' => ['required', 'integer', 'exists:courses,id'],
-            'branch_id' => ['required', 'integer', 'exists:branches,id'],
+            'branch_id' => ['required', 'integer', Rule::exists('branches', 'id')->whereNull('deleted_at')->where('is_active', true)],
             'classroom_id' => ['required', 'integer', 'exists:classrooms,id'],
             'teacher_id' => ['nullable', 'integer', 'exists:teachers,id'],
             'start_date' => ['required', 'date'],
