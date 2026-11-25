@@ -1,0 +1,2296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Auditoría y Documentación de Endpoints — CETPRO IISEP</title>
+<style>
+  :root {
+    --primary: #2e8b57;
+    --primary-dark: #216840;
+    --primary-soft: #ecfdf5;
+    --bg: #f1f5f9;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #475569;
+    --border: #e2e8f0;
+    --red: #dc2626;
+    --red-bg: #fef2f2;
+    --red-border: #fecaca;
+    --orange: #d97706;
+    --orange-bg: #fffbeb;
+    --orange-border: #fde68a;
+    --purple: #7c3aed;
+    --purple-bg: #f5f3ff;
+    --purple-border: #ddd6fe;
+    --blue: #2563eb;
+    --blue-bg: #eff6ff;
+    --blue-border: #bfdbfe;
+    --green: #059669;
+    --green-bg: #ecfdf5;
+    --green-border: #a7f3d0;
+    --code-bg: #0f172a;
+    --code-text: #e2e8f0;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    font-size: 14px;
+  }
+
+  /* Header */
+  .hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #14532d 100%);
+    color: #fff;
+    padding: 32px 24px 28px;
+    border-bottom: 4px solid var(--primary);
+  }
+  .container { max-width: 1380px; margin: 0 auto; padding: 0 20px; }
+  .hero-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand-logo {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: var(--primary); color: #fff; font-weight: 900; font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 20px rgba(46,139,87,.35);
+  }
+  .hero h1 { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: -0.02em; }
+  .hero p { margin: 4px 0 0; color: #cbd5e1; font-size: 13.5px; }
+  .meta-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .meta-pill {
+    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18);
+    padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #e2e8f0;
+  }
+
+  /* KPI Grid */
+  .kpi-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+    gap: 14px; margin-top: 22px;
+  }
+  .kpi {
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+    border-radius: 12px; padding: 14px 16px; backdrop-filter: blur(6px);
+  }
+  .kpi .num { font-size: 28px; font-weight: 900; line-height: 1.1; }
+  .kpi .lbl { font-size: 11.5px; color: #cbd5e1; font-weight: 600; margin-top: 4px; text-transform: uppercase; letter-spacing: .04em; }
+  .kpi.k-red { border-color: rgba(248,113,113,.5); background: rgba(220,38,38,.18); }
+  .kpi.k-red .num { color: #fca5a5; }
+  .kpi.k-orange { border-color: rgba(251,191,36,.5); background: rgba(217,119,6,.18); }
+  .kpi.k-orange .num { color: #fcd34d; }
+  .kpi.k-purple { border-color: rgba(196,181,253,.5); background: rgba(124,58,237,.2); }
+  .kpi.k-purple .num { color: #ddd6fe; }
+  .kpi.k-blue { border-color: rgba(147,197,253,.5); background: rgba(37,99,235,.2); }
+  .kpi.k-blue .num { color: #bfdbfe; }
+  .kpi.k-green .num { color: #6ee7b7; }
+
+  /* Sticky nav */
+  .topnav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255,255,255,.96); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border); box-shadow: 0 2px 8px rgba(15,23,42,.05);
+  }
+  .topnav-inner {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 10px 20px; max-width: 1380px; margin: 0 auto;
+  }
+  .nav-links { display: flex; flex-wrap: wrap; gap: 6px; }
+  .nav-links a {
+    text-decoration: none; color: #334155; font-weight: 700; font-size: 12.5px;
+    padding: 6px 11px; border-radius: 8px; transition: .15s;
+  }
+  .nav-links a:hover { background: var(--primary-soft); color: var(--primary-dark); }
+
+  /* Legend */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 16px; margin: 20px 0;
+  }
+  .legend-title { font-weight: 800; font-size: 12px; color: var(--muted); text-transform: uppercase; margin-right: 4px; }
+
+  /* Badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 800;
+    letter-spacing: .02em; text-transform: uppercase; white-space: nowrap;
+  }
+  .b-crit { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .b-bug  { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
+  .b-warn { background: var(--orange-bg); color: #b45309; border: 1px solid var(--orange-border); }
+  .b-btn  { background: var(--purple-bg); color: var(--purple); border: 1px solid var(--purple-border); }
+  .b-miss { background: var(--blue-bg); color: #1d4ed8; border: 1px solid var(--blue-border); }
+  .b-ok   { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .b-gray { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+  /* HTTP Method badges */
+  .m-badge {
+    display: inline-block; min-width: 64px; text-align: center;
+    padding: 4px 8px; border-radius: 7px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px; font-weight: 900; letter-spacing: .04em;
+  }
+  .m-get { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+  .m-post { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .m-put { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .m-delete { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+  .m-patch { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+
+  /* Sections */
+  section { margin: 28px 0; }
+  .sec-header {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+    margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid var(--border);
+  }
+  .sec-header h2 { margin: 0; font-size: 20px; font-weight: 900; color: #0f172a; display: flex; align-items: center; gap: 10px; }
+  .sec-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 8px; background: var(--primary); color: #fff;
+    font-size: 14px; font-weight: 900;
+  }
+
+  /* Alert Cards */
+  .alert-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 14px; }
+  .alert-card {
+    background: #fff; border-radius: 12px; padding: 16px 18px;
+    border: 1px solid var(--border); border-left: 5px solid var(--red);
+    box-shadow: 0 1px 3px rgba(15,23,42,.05);
+  }
+  .alert-card.a-orange { border-left-color: var(--orange); }
+  .alert-card.a-purple { border-left-color: var(--purple); }
+  .alert-card.a-blue { border-left-color: var(--blue); }
+  .alert-card h3 { margin: 0 0 6px; font-size: 14.5px; font-weight: 800; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .alert-card p { margin: 4px 0; font-size: 13px; color: #334155; }
+  .alert-card .ref { font-family: ui-monospace, monospace; font-size: 11.5px; color: #64748b; background: #f8fafc; padding: 2px 6px; border-radius: 4px; border: 1px solid #e2e8f0; }
+
+  /* Highlight inline markers */
+  .hl-red { color: #b91c1c; font-weight: 800; background: #fee2e2; padding: 1px 5px; border-radius: 4px; }
+  .hl-orange { color: #92400e; font-weight: 800; background: #fef3c7; padding: 1px 5px; border-radius: 4px; }
+  .hl-purple { color: #6d28d9; font-weight: 800; background: #ede9fe; padding: 1px 5px; border-radius: 4px; }
+  .hl-blue { color: #1d4ed8; font-weight: 800; background: #dbeafe; padding: 1px 5px; border-radius: 4px; }
+  .hl-green { color: #065f46; font-weight: 800; background: #d1fae5; padding: 1px 5px; border-radius: 4px; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    background: #f1f5f9; color: #0f172a; padding: 1.5px 5px; border-radius: 4px; font-size: 12px;
+  }
+
+  /* Filter Toolbar */
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 16px;
+  }
+  .search-input {
+    flex: 1; min-width: 260px; padding: 9px 14px; border-radius: 8px;
+    border: 1px solid #cbd5e1; font-size: 13.5px; outline: none;
+  }
+  .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(46,139,87,.15); }
+  .filter-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .fpill {
+    border: 1px solid #cbd5e1; background: #f8fafc; color: #334155;
+    padding: 6px 11px; border-radius: 8px; font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: .15s;
+  }
+  .fpill:hover { background: #e2e8f0; }
+  .fpill.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+  .fpill.active.f-crit { background: var(--red); border-color: var(--red); }
+  .fpill.active.f-warn { background: var(--orange); border-color: var(--orange); }
+  .fpill.active.f-ok   { background: var(--primary); border-color: var(--primary); }
+
+  /* Endpoint Groups */
+  .group-card {
+    background: #fff; border: 1px solid var(--border); border-radius: 14px;
+    margin-bottom: 22px; overflow: hidden; box-shadow: 0 1px 4px rgba(15,23,42,.05);
+  }
+  .group-head {
+    background: #f8fafc; border-bottom: 1px solid var(--border);
+    padding: 14px 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .group-head h3 { margin: 0; font-size: 16.5px; font-weight: 900; color: #0f172a; }
+  .group-head .g-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+  /* Variant block */
+  .variant {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+  }
+  .variant:last-child { border-bottom: none; }
+  .variant.v-crit { background: linear-gradient(90deg, rgba(254,242,242,.65) 0%, #fff 18%); border-left: 4px solid var(--red); }
+  .variant.v-warn { background: linear-gradient(90deg, rgba(255,251,235,.75) 0%, #fff 18%); border-left: 4px solid var(--orange); }
+  .variant.v-miss { background: linear-gradient(90deg, rgba(245,243,255,.75) 0%, #fff 18%); border-left: 4px solid var(--purple); }
+  .variant.v-ok   { border-left: 4px solid var(--primary); }
+
+  .v-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+  .v-route { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .v-uri { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; font-weight: 800; color: #0f172a; }
+  .v-name { font-family: ui-monospace, monospace; font-size: 11.5px; color: #64748b; background: #f1f5f9; padding: 2px 7px; border-radius: 5px; }
+  .v-action { font-family: ui-monospace, monospace; font-size: 11.5px; color: #0369a1; }
+  .v-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+  .v-desc { margin: 8px 0 12px; font-size: 13px; color: #334155; }
+
+  /* Permission strip */
+  .perm-box {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;
+    background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px;
+  }
+  .perm-item .p-lbl { font-size: 10.5px; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: .04em; }
+  .perm-item .p-val { font-size: 12.5px; font-weight: 700; margin-top: 2px; color: #0f172a; }
+
+  /* Tables */
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; margin: 10px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; background: #fff; }
+  th {
+    background: #f8fafc; color: #475569; text-align: left; font-size: 11px;
+    font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+    padding: 9px 12px; border-bottom: 1px solid var(--border);
+  }
+  td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr.row-red td { background: #fef2f2; }
+  tr.row-orange td { background: #fffbeb; }
+  tr.row-purple td { background: #f5f3ff; }
+  tr.row-blue td { background: #eff6ff; }
+
+  /* JSON details */
+  details { margin: 10px 0; border: 1px solid var(--border); border-radius: 10px; background: #fff; overflow: hidden; }
+  summary {
+    cursor: pointer; padding: 9px 14px; font-weight: 800; font-size: 12.5px;
+    background: #f8fafc; color: #1e293b; user-select: none; list-style: none;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "▾ Mostrar estructura"; font-size: 11px; color: var(--primary); font-weight: 700; }
+  details[open] summary::after { content: "▴ Ocultar estructura"; }
+  .io-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; padding: 12px; background: #f8fafc; }
+  .io-col h4 { margin: 0 0 6px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: #475569; }
+  pre {
+    margin: 0; padding: 12px; border-radius: 8px; background: var(--code-bg); color: var(--code-text);
+    overflow-x: auto; font-size: 12px; line-height: 1.45;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  /* Findings list inside variant */
+  .findings { margin: 10px 0 0; padding: 10px 14px; border-radius: 9px; background: #fff7ed; border: 1px solid #fed7aa; }
+  .findings.f-red { background: #fef2f2; border-color: #fecaca; }
+  .findings.f-purple { background: #f5f3ff; border-color: #ddd6fe; }
+  .findings ul { margin: 4px 0 0 18px; padding: 0; }
+  .findings li { margin: 4px 0; font-size: 12.5px; color: #1e293b; }
+  .findings-title { font-size: 11.5px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; color: #9a3412; }
+  .findings.f-red .findings-title { color: #b91c1c; }
+  .findings.f-purple .findings-title { color: #6d28d9; }
+
+  .hidden { display: none !important; }
+  footer {
+    text-align: center; padding: 28px 20px; color: #64748b; font-size: 12px;
+    border-top: 1px solid var(--border); margin-top: 40px; background: #fff;
+  }
+
+  @media print {
+    .topnav, .toolbar { display: none !important; }
+    details { break-inside: avoid; }
+    body { background: #fff; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="container">
+    <div class="hero-top">
+      <div class="brand">
+        <div class="brand-logo">IISEP</div>
+        <div>
+          <h1>Auditoría Profunda y Documentación de Endpoints</h1>
+          <p>Proyecto <strong>CETPRO IISEP</strong> (Laravel 13 + Inertia.js v3 + Vue 3 + PostgreSQL) — Análisis de Rutas, Permisos, Payloads, Riesgos de Seguridad, Integridad de BD y UI Desconectada</p>
+        </div>
+      </div>
+      <div class="meta-pills">
+        <span class="meta-pill">Fecha auditoría: 2026-11-24</span>
+        <span class="meta-pill">Fase 1: Diagnóstico de Endpoints (Solo Lectura)</span>
+        <span class="meta-pill">Fuente: routes/web.php + 8 Controllers + 16 Migraciones + 14 Vistas Vue</span>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi k-green"><div class="num">36</div><div class="lbl">Endpoints Registrados (35 web + /up)</div></div>
+      <div class="kpi k-red"><div class="num">10</div><div class="lbl">Riesgos Críticos de Seguridad</div></div>
+      <div class="kpi k-orange"><div class="num">11</div><div class="lbl">Riesgos de BD / Error 500 / Pérdida de Datos</div></div>
+      <div class="kpi k-purple"><div class="num">10</div><div class="lbl">Botones / Formularios Sin Endpoint o Rotos</div></div>
+      <div class="kpi k-blue"><div class="num">9</div><div class="lbl">Módulos / Rutas Pendientes (BD sin CRUD)</div></div>
+      <div class="kpi"><div class="num">100%</div><div class="lbl">Asistencias en Mock (0% Backend)</div></div>
+    </div>
+  </div>
+</header>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <div class="nav-links">
+      <a href="#sec-criticos">1. Riesgos Críticos (Seguridad &amp; BD)</a>
+      <a href="#sec-permisos">2. Matriz de Permisos</a>
+      <a href="#sec-endpoints">3. Catálogo Completo de Endpoints</a>
+      <a href="#sec-botones">4. Botones UI Sin Endpoint / Rotos</a>
+      <a href="#sec-faltantes">5. Rutas &amp; Módulos Pendientes</a>
+      <a href="#sec-tests">6. Cobertura de Tests (Fase 2)</a>
+    </div>
+    <div>
+      <button class="fpill" onclick="toggleAllDetails(true)">Expandir JSONs</button>
+      <button class="fpill" onclick="toggleAllDetails(false)">Contraer JSONs</button>
+    </div>
+  </div>
+</nav>
+
+<main class="container">
+
+  <!-- LEYENDA VISUAL -->
+  <div class="legend">
+    <span class="legend-title">Leyenda visual rápida:</span>
+    <span class="badge b-crit">CRÍTICO SEGURIDAD</span>
+    <span class="badge b-bug">ROTO / ERROR 500 / PÉRDIDA DATOS</span>
+    <span class="badge b-warn">PARÁMETRO FALTANTE / INCONSISTENTE</span>
+    <span class="badge b-btn">BOTÓN SIN ENDPOINT / MOCK</span>
+    <span class="badge b-miss">RUTA PENDIENTE / FALTANTE</span>
+    <span class="badge b-ok">FUNCIONAL / PROTEGIDO</span>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- SECCIÓN 1: RESUMEN EJECUTIVO DE RIESGOS CRÍTICOS                      -->
+  <!-- ===================================================================== -->
+  <section id="sec-criticos">
+    <div class="sec-header">
+      <h2><span class="sec-num">1</span> Hallazgos Críticos Antes de Tomar Decisiones (Seguridad &amp; Base de Datos)</h2>
+      <span class="badge b-crit">Revisar con prioridad máxima</span>
+    </div>
+
+    <div class="alert-grid">
+      <!-- Seguridad 1 -->
+      <div class="alert-card">
+        <h3><span class="badge b-crit">SEG-01</span> Acceso libre a TODO <code>/admin/*</code> para Alumnos y Docentes</h3>
+        <p>El grupo <code>/admin</code> en <code>routes/web.php:29</code> solo usa <code>middleware(['auth'])</code>. <span class="hl-red">NO existe middleware que verifique isStaff()</span>.</p>
+        <p><strong>Impacto catastrófico:</strong> Como las consultas en <code>BranchController</code>, <code>AcademicOfferController</code> y <code>ScheduledCourseController</code> filtran con <code>if ($staff &amp;&amp; $staff-&gt;branch_id !== null)</code>, cuando un <strong>Estudiante o Docente</strong> entra (donde <code>$staff === null</code>), se salta el filtro y obtiene <span class="hl-red">lectura GLOBAL de todas las sedes, matrículas y PII de todos los alumnos y apoderados</span>. Peor aún: <code>MatriculasView.vue:184</code> tiene <code>if (!user.staff) return true;</code> tratando a un alumno como <strong>Super Admin</strong> en la UI.</p>
+        <p><span class="ref">routes/web.php:29</span> <span class="ref">MatriculasView.vue:184</span> <span class="ref">Sidebar.vue:77</span></p>
+      </div>
+
+      <!-- Seguridad 2 -->
+      <div class="alert-card">
+        <h3><span class="badge b-crit">SEG-02</span> Fuga masiva de PII y mutación de BD en <code>GET /buscar-dni</code></h3>
+        <p><code>ScheduledCourseController::searchStudentByDni()</code> tiene <span class="hl-red">CERO validación de permisos ni rate-limit</span>. Cualquier usuario logueado puede enumerar todos los DNIs del sistema y extraer nombre completo, fecha de nacimiento, teléfono, correo y datos del apoderado.</p>
+        <p><strong>Corrupción de BD en GET:</strong> Las líneas 708-711 ejecutan <code>Student::firstOrCreate(['user_id' =&gt; $user-&gt;id])</code>. Buscar el DNI del <strong>Director General o de un Docente</strong> vía GET <span class="hl-red">lo convierte automáticamente en Alumno en la base de datos</span>.</p>
+        <p><span class="ref">ScheduledCourseController.php:696-758</span></p>
+      </div>
+
+      <!-- Seguridad 3 -->
+      <div class="alert-card">
+        <h3><span class="badge b-crit">SEG-03</span> Secuestro/Sobreescritura de cualquier usuario vía <code>guardian_document</code></h3>
+        <p>En <code>storeEnrollment</code>, <code>storeStudent</code> y <code>updateStudent</code>, si se ingresa un <code>guardian_document</code> que coincide con el DNI de <span class="hl-red">CUALQUIER usuario existente (ej. Director, Coordinador o Docente)</span>, el endpoint <strong>sobreescribe su nombre, apellidos, teléfono y correo en <code>users</code></strong> y además lo inserta como <code>Student</code>.</p>
+        <p><span class="ref">ScheduledCourseController.php:628-654, 875-901, 983-1009</span></p>
+      </div>
+
+      <!-- Seguridad 4 -->
+      <div class="alert-card">
+        <h3><span class="badge b-crit">SEG-04</span> Fuga de alumnos multi-sede &amp; Bug <code>isCoordinador(null)</code></h3>
+        <p><strong>1)</strong> <code>ScheduledCourseController::getScheduledCourseData():222</code> carga <span class="hl-red">TODOS los <code>Student</code> de todas las sedes sin <code>where</code></span>; una Secretaria de Comas recibe en el JSON de Inertia a todos los alumnos/apoderados de Puente Piedra.</p>
+        <p><strong>2)</strong> <code>storeStudent</code> y <code>updateStudent</code> solo verifican <code>if (!$staff)</code> — sin validar rol ni sede (IDOR).</p>
+        <p><strong>3)</strong> En <code>Staff.php:91,112</code>, <code>isCoordinador($branchId)</code> y <code>isSecretaria($branchId)</code> devuelven <code>true</code> si <code>$branchId === null</code>. Si un <code>ScheduledCourse</code> fue soft-deleted, <code>$enrollment-&gt;scheduledCourse?-&gt;branch_id</code> es <code>null</code> y <span class="hl-red">cualquier Secretaria/Coord de otra sede puede editar/borrar esa matrícula</span>.</p>
+        <p><span class="ref">Staff.php:85-113</span> <span class="ref">ScheduledCourseController.php:222, 770, 791, 814, 920</span></p>
+      </div>
+
+      <!-- Seguridad 5 -->
+      <div class="alert-card">
+        <h3><span class="badge b-crit">SEG-05</span> Login sin Rate-Limiting, Credenciales Demo expuestas y Password = DNI</h3>
+        <p><strong>1)</strong> <code>POST /login</code> no tiene <code>throttle</code> ni <code>RateLimiter</code> (vulnerable a fuerza bruta).</p>
+        <p><strong>2)</strong> <code>Login.vue:172-201</code> expone en el cliente los botones de autollenado con <code>admin / admin123</code> y <code>storres / admin123</code>.</p>
+        <p><strong>3)</strong> Todos los alumnos y apoderados se crean con <code>username = est_&lt;DNI&gt;</code> y <code>password = bcrypt(&lt;DNI&gt;)</code> — trivialmente adivinables, y con acceso a <code>/admin</code> por SEG-01.</p>
+        <p><span class="ref">AuthenticatedSessionController.php:36-68</span> <span class="ref">Login.vue:172-201</span></p>
+      </div>
+
+      <!-- BD 1 -->
+      <div class="alert-card a-orange">
+        <h3><span class="badge b-bug">BD-01</span> Columna <code>notes</code> NO EXISTE en tabla <code>enrollments</code> (Pérdida silenciosa)</h3>
+        <p>El Asistente de Matrícula y el Modal de Cambio de Estado tienen un campo <strong>Notas / Observaciones</strong> (convalidaciones, resoluciones). <code>storeEnrollment</code> y <code>updateEnrollmentStatus</code> validan <code>notes</code>, pero <span class="hl-red">la migración de <code>enrollments</code> y <code>Enrollment::$fillable</code> NO tienen columna <code>notes</code></span>. Todo lo que escriba Secretaría/Coordinación se pierde al recargar.</p>
+        <p><span class="ref">2026_09_28_000015_create_enrollments_table.php</span> <span class="ref">Enrollment.php:38-46</span> <span class="ref">ScheduledCourseController.php:217, 687, 801</span></p>
+      </div>
+
+      <!-- BD 2 -->
+      <div class="alert-card a-orange">
+        <h3><span class="badge b-bug">BD-02</span> Errores 500 SQL no controlados por Índices Únicos + SoftDeletes</h3>
+        <p><strong>1) Re-matrícula tras retiro/anulación:</strong> <code>enrollments</code> tiene <code>UNIQUE (scheduled_course_id, student_id) WHERE deleted_at IS NULL</code>, pero <code>storeEnrollment:663</code> excluye estados <code>retirado</code> y <code>anulado</code> en el check previo → al re-matricular <span class="hl-red">explota con Error 500 SQL</span>.</p>
+        <p><strong>2) Aulas duplicadas:</strong> <code>classrooms</code> tiene <code>UNIQUE (branch_id, name)</code> (sin <code>WHERE deleted_at IS NULL</code>), pero <code>ClassroomController::store/update</code> <span class="hl-red">NO valida unicidad</span> → Error 500 SQL.</p>
+        <p><strong>3) Usuarios/Sedes soft-deleted:</strong> <code>users.username</code>, <code>uq_user_document</code>, <code>branches.name/code</code> y <code>uq_daily_attendance</code> no son índices parciales; re-registrar un DNI o aula soft-deleted lanza Error 500.</p>
+        <p><span class="ref">ClassroomController.php:28, 83</span> <span class="ref">ScheduledCourseController.php:661, 838</span></p>
+      </div>
+
+      <!-- BD 3 -->
+      <div class="alert-card a-orange">
+        <h3><span class="badge b-bug">BD-03</span> Falta de <code>DB::transaction()</code> — Registros Huérfanos y Borrado Destructivo</h3>
+        <p><strong>1) <code>storeStudent</code> y <code>updateStudent</code>:</strong> Guardan/actualizan el <code>User</code> del alumno <em>antes</em> de validar el apoderado. Si el apoderado falla validación, <span class="hl-red">queda un <code>User</code> huérfano sin <code>Student</code></span> y el siguiente reintento queda bloqueado por "DNI ya existe".</p>
+        <p><strong>2) <code>ScheduledCourseController::update</code>:</strong> Ejecuta <code>schedules()-&gt;forceDelete()</code> antes de crear los nuevos horarios sin transacción. Además, en cursos de 2 días (como los del seeder), <code>AperturasView.vue:372</code> solo carga <code>days[0]</code> y <span class="hl-red">borra permanentemente el 2° día al guardar</span>.</p>
+        <p><span class="ref">ScheduledCourseController.php:464, 844-873, 956-981</span> <span class="ref">AperturasView.vue:372</span></p>
+      </div>
+
+      <!-- BD 4 -->
+      <div class="alert-card a-orange">
+        <h3><span class="badge b-bug">BD-04</span> Validaciones Académicas Críticas Ausentes (Aforo, Sede-Aula, Choques, Horarios)</h3>
+        <p>• <strong>Sobreaforo:</strong> <code>storeEnrollment</code> nunca valida <code>classroom.capacity</code>.<br/>
+           • <strong>Aula de otra sede:</strong> <code>ScheduledCourseController::store/update</code> no valida que <code>classroom_id</code> pertenezca a <code>branch_id</code>.<br/>
+           • <strong>Choque de horarios:</strong> Permite solapar misma aula o mismo docente el mismo día/hora.<br/>
+           • <strong>Formato de hora:</strong> <code>start_time/end_time</code> solo valida <code>string</code>; un valor malformado produce Error 500 en PostgreSQL.<br/>
+           • <strong><code>student_career_id</code></strong> jamás se llena en <code>enrollments</code> y <code>document_type</code> siempre se fuerza a <code>DNI</code> (bloqueando CE/Pasaporte).</p>
+        <p><span class="ref">ScheduledCourseController.php:345-477, 524-690</span></p>
+      </div>
+
+      <!-- BD 5 -->
+      <div class="alert-card a-orange">
+        <h3><span class="badge b-bug">BD-05</span> Dashboard <code>GET /admin</code> sobreescribe props por <code>array_merge</code></h3>
+        <p><code>BranchController::dashboard()</code> hace <code>array_merge(getOfferData, getScheduledCourseData, getDashboardBranchData)</code>. Las claves repetidas (<code>careers</code>, <code>coursesList</code>) son <strong>sobreescritas</strong>:</p>
+        <p><span class="hl-red"><code>careers</code> pierde <code>modules</code> y <code>available_branch_ids</code></span>, y <code>coursesList</code> pierde <code>description</code> y <code>has_scheduled_courses</code>.</p>
+        <p><span class="ref">BranchController.php:185-196</span></p>
+      </div>
+
+      <!-- BD 6 -->
+      <div class="alert-card a-purple">
+        <h3><span class="badge b-btn">UI/BD-06</span> Módulo Asistencias 100% Mock + Esquema <code>attendances</code> Insuficiente</h3>
+        <p><code>GET /admin/asistencias</code> usa <code>Route::inertia()</code> sin controlador. Todos los botones y listas en <code>AsistenciasView.vue</code> operan sobre arrays falsos en memoria.</p>
+        <p><strong>Inconsistencia grave de BD:</strong> La UI requiere <strong>4 estados</strong> (<code>presente</code>, <code>tardanza</code>, <code>falta</code>, <code>justificado</code>) y <code>registered_at</code> (hora de marcación), pero la tabla <code>attendances</code> solo tiene <span class="hl-orange"><code>attended: boolean</code></span> (sin estado ni hora).</p>
+        <p><span class="ref">routes/web.php:63</span> <span class="ref">AsistenciasView.vue</span> <span class="ref">2026_09_28_000016_create_attendances_table.php</span></p>
+      </div>
+
+      <!-- BD 7 -->
+      <div class="alert-card a-blue">
+        <h3><span class="badge b-warn">CONS-07</span> Catálogo Global manipulable por Coordinador de una sola sede</h3>
+        <p><code>CareerController</code>, <code>ModuleController</code> y <code>WorkshopController</code> verifican <code>isAdmin() || isCoordinador()</code> (sin sede). Un Coordinador de Comas puede editar/eliminar carreras, módulos y talleres usados en Puente Piedra, o asignar cursos que ya pertenecen a otro módulo (robándolos silenciosamente en <code>ModuleController:55,97</code>).</p>
+        <p>Además, en <code>ROLES_Y_PERMISOS.md</code> las Carreras MINEDU corresponden solo a <strong>Nivel 4 (Dirección)</strong>.</p>
+        <p><span class="ref">CareerController.php:19</span> <span class="ref">ModuleController.php:20, 55</span> <span class="ref">WorkshopController.php:19</span></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- SECCIÓN 2: MATRIZ DE PERMISOS                                         -->
+  <!-- ===================================================================== -->
+  <section id="sec-permisos">
+    <div class="sec-header">
+      <h2><span class="sec-num">2</span> Matriz de Permisos: Diseño (<code>ROLES_Y_PERMISOS.md</code>) vs Implementación Real</h2>
+      <span class="badge b-warn">Nota: <code>staff.position</code> es texto libre sin Enum/Policy</span>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Perfil / Nivel</th>
+            <th>Representación Actual en BD (<code>staff</code>)</th>
+            <th>Alcance Sede</th>
+            <th>Acceso Real en Backend (Hoy)</th>
+            <th>Discrepancias / Riesgos Detectados</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Nivel 4: Dirección General / Admin</strong></td>
+            <td><code>branch_id === null</code><br/>(<code>position = 'admin'</code>, aunque <code>isAdmin()</code> SOLO mira <code>branch_id === null</code>)</td>
+            <td>Global (todas las sedes)</td>
+            <td>Acceso total a los 35 endpoints web actuales.</td>
+            <td><span class="hl-orange">Riesgo:</span> Cualquier registro en <code>staff</code> con <code>branch_id = null</code> (aunque <code>position = 'recepcion'</code>) es tratado como Super Admin por <code>Staff::isAdmin()</code>!</td>
+          </tr>
+          <tr>
+            <td><strong>Nivel 3: Coordinación de Sede</strong></td>
+            <td><code>branch_id = ID</code> y <code>position === 'coord'</code></td>
+            <td>Solo su sede (en sedes/aulas/aperturas/matrículas)</td>
+            <td>Edita dirección/teléfono de su sede; CRUD aulas de su sede; CRUD global de carreras, módulos y talleres; CRUD aperturas de su sede; matrícula/edición de alumnos.</td>
+            <td><span class="hl-orange">Inconsistencia:</span> Puede modificar carreras/módulos/talleres de otras sedes; ve todos los alumnos de todas las sedes en payload JSON; en <code>updateStudent</code> puede editar alumnos de otra sede.</td>
+          </tr>
+          <tr>
+            <td><strong>Nivel 2: Secretaría Académica</strong></td>
+            <td><code>branch_id = ID</code> y <code>position === 'secre'</code></td>
+            <td>Solo su sede</td>
+            <td>Solo edita <code>capacity</code> de aulas de su sede; matricula, cambia estado y elimina matrículas de su sede; crea/edita alumnos.</td>
+            <td><span class="hl-red">Discrepancias:</span> Puede marcar <code>convalidado/anulado</code> y eliminar matrículas (doc dice Nivel 3/4); no puede pulsar "Ingresar" en <code>AperturasView</code> para matricular; puede editar alumnos de otra sede.</td>
+          </tr>
+          <tr class="row-orange">
+            <td><strong>Nivel 1: Recepción / Front-Desk</strong></td>
+            <td><span class="hl-orange">NO implementado en <code>Staff.php</code></span></td>
+            <td>Su sede (según doc)</td>
+            <td>Si existiera un staff con <code>position = 'recep'</code>, hoy <span class="hl-red">SÍ podría crear y editar alumnos</span> (<code>storeStudent/updateStudent</code> solo revisa <code>if (!$staff)</code>) y ver todo <code>/admin</code>!</td>
+            <td>No hay método <code>isRecepcion()</code> ni <code>StaffPosition</code> enum ni controlador de Asistencias donde deba operar.</td>
+          </tr>
+          <tr class="row-red">
+            <td><strong>Docente / Estudiante / Apoderado (No-Staff)</strong></td>
+            <td><code>user.staff === null</code></td>
+            <td>No deberían acceder a <code>/admin</code></td>
+            <td><span class="hl-red">CRÍTICO:</span> Pueden abrir <strong>TODAS las vistas GET de <code>/admin/*</code></strong> con visibilidad GLOBAL, consultar <code>/admin/estudiantes/buscar-dni</code> sin límite (y mutar la tabla <code>students</code>!), y en <code>MatriculasView.vue</code> son marcados como <code>isAdmin = true</code>.</td>
+            <td><span class="hl-red">Falta urgente:</span> Middleware <code>EnsureUserIsStaff</code> en el grupo <code>/admin</code> + chequeo en <code>searchStudentByDni</code>.</td>
+          </tr>
+          <tr>
+            <td><strong>Invitado (No autenticado)</strong></td>
+            <td>Sin sesión</td>
+            <td>Público</td>
+            <td>Solo <code>GET /</code>, <code>GET/POST /login</code>, <code>GET /up</code>. Resto redirige a <code>/login</code>.</td>
+            <td><code>Login.vue</code> le muestra contraseñas demo en texto claro y <code>POST /login</code> no tiene throttle.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- SECCIÓN 3: CATÁLOGO PROFUNDO DE ENDPOINTS                             -->
+  <!-- ===================================================================== -->
+  <section id="sec-endpoints">
+    <div class="sec-header">
+      <h2><span class="sec-num">3</span> Catálogo Profundo de Endpoints (Principales, Variantes, Parámetros, Permisos y Payloads)</h2>
+      <span id="visible-counter" class="badge b-gray">Mostrando 35 variantes (36 rutas)</span>
+    </div>
+
+    <!-- Barra de Filtros Interactivos -->
+    <div class="toolbar">
+      <input type="text" id="searchInput" class="search-input" placeholder="Buscar por ruta (/admin/matriculas), método (POST), controlador, campo (notes, guardian) o hallazgo..." oninput="filterEndpoints()" />
+      <div class="filter-pills">
+        <button class="fpill active" data-filter="all" onclick="setStatusFilter('all', this)">Todos (35)</button>
+        <button class="fpill f-crit" data-filter="crit" onclick="setStatusFilter('crit', this)">Críticos / Rotos</button>
+        <button class="fpill f-warn" data-filter="warn" onclick="setStatusFilter('warn', this)">Riesgos / Inconsistencias</button>
+        <button class="fpill" data-filter="miss" onclick="setStatusFilter('miss', this)">Mock / Desconectados</button>
+        <button class="fpill f-ok" data-filter="ok" onclick="setStatusFilter('ok', this)">Saludables</button>
+      </div>
+      <div class="filter-pills">
+        <button class="fpill active" data-method="ALL" onclick="setMethodFilter('ALL', this)">Todos HTTP</button>
+        <button class="fpill" data-method="GET" onclick="setMethodFilter('GET', this)">GET</button>
+        <button class="fpill" data-method="POST" onclick="setMethodFilter('POST', this)">POST</button>
+        <button class="fpill" data-method="PUT" onclick="setMethodFilter('PUT', this)">PUT</button>
+        <button class="fpill" data-method="DELETE" onclick="setMethodFilter('DELETE', this)">DELETE</button>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- GRUPO 1: PÚBLICO Y AUTENTICACIÓN                             -->
+    <!-- ============================================================ -->
+    <div class="group-card">
+      <div class="group-head">
+        <div>
+          <h3>Endpoint Principal 1: Portal Público, Salud y Autenticación (<code>/</code>, <code>/login</code>, <code>/logout</code>, <code>/up</code>)</h3>
+          <div class="g-sub">Controlador: <code>AuthenticatedSessionController</code> + <code>Inertia\Controller</code> &bull; Prefijo: raíz <code>/</code></div>
+        </div>
+        <span class="badge b-crit">1 Crítico Seguridad &bull; 1 Advertencia</span>
+      </div>
+
+      <!-- GET /up -->
+      <div class="variant v-ok" data-status="ok" data-method="GET">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-get">GET</span>
+            <span class="v-uri">/up</span>
+            <span class="v-name">healthcheck</span>
+            <span class="v-action">bootstrap/app.php (Laravel Health)</span>
+          </div>
+          <div class="v-badges"><span class="badge b-ok">OK</span></div>
+        </div>
+        <p class="v-desc">Endpoint nativo de Laravel para monitoreo de salud de la aplicación (Docker / Nginx).</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Middleware Real</div><div class="p-val">Ninguno (Público)</div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val">Público</div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Público / Red Interna</div></div>
+        </div>
+      </div>
+
+      <!-- GET / -->
+      <div class="variant v-warn" data-status="warn" data-method="GET">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-get">GET</span>
+            <span class="v-uri">/</span>
+            <span class="v-name">home</span>
+            <span class="v-action">Route::inertia → Welcome.vue</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-warn">Datos Hardcodeados</span>
+            <span class="badge b-warn">Link /admin a no-staff</span>
+          </div>
+        </div>
+        <p class="v-desc">Landing pública institucional de CETPRO IISEP.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Middleware Real</div><div class="p-val"><code>web</code> (Público)</div></div>
+          <div class="perm-item"><div class="p-lbl">Props Compartidas</div><div class="p-val"><code>auth.user</code> (con <code>student</code>, <code>teacher</code>, <code>staff</code>, <code>guardianEnrollments</code>)</div></div>
+          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Ninguno</div></div>
+        </div>
+        <div class="findings">
+          <div class="findings-title">Observaciones</div>
+          <ul>
+            <li>Las listas de carreras (5), talleres (7) y sedes (2) en <code>Welcome.vue:8-93</code> son <span class="hl-orange">estáticas hardcodeadas</span>, no reflejan cambios hechos en el panel admin.</li>
+            <li>Si un <strong>Estudiante/Docente</strong> está autenticado, <code>Welcome.vue:159-169</code> le renderiza el botón <strong>"Panel Admin"</strong> (<code>href="/admin"</code>) sin comprobar <code>user.staff</code>.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- GET /login -->
+      <div class="variant v-warn" data-status="warn" data-method="GET">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-get">GET</span>
+            <span class="v-uri">/login</span>
+            <span class="v-name">login</span>
+            <span class="v-action">AuthenticatedSessionController@create</span>
+          </div>
+          <div class="v-badges"><span class="badge b-crit">Credenciales Demo en UI</span></div>
+        </div>
+        <p class="v-desc">Renderiza <code>Auth/Login.vue</code>. Si ya hay sesión, redirige a <code>/admin</code> (si <code>isStaff()</code>) o <code>/</code>.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Middleware Real</div><div class="p-val"><code>web</code>, <code>guest</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val">Solo no autenticados</div></div>
+          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Ninguno</div></div>
+        </div>
+        <div class="findings f-red">
+          <div class="findings-title">Riesgo de Seguridad</div>
+          <ul>
+            <li><code>Login.vue:172-201</code> muestra públicamente las contraseñas <span class="hl-red"><code>admin / admin123</code> y <code>storres / admin123</code></span> con botones de autollenado. Remover antes de producción.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- POST /login -->
+      <div class="variant v-crit" data-status="crit" data-method="POST">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-post">POST</span>
+            <span class="v-uri">/login</span>
+            <span class="v-name">login.store</span>
+            <span class="v-action">AuthenticatedSessionController@store</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-crit">Sin Rate Limit / Throttle</span>
+            <span class="badge b-warn">Redirección Docente = /</span>
+          </div>
+        </div>
+        <p class="v-desc">Autentica por <code>email</code> (si cumple <code>FILTER_VALIDATE_EMAIL</code>) o por <code>username</code>. Regenera sesión.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Middleware Real</div><div class="p-val"><code>web</code>, <code>guest</code> (CSRF activo)</div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val">Cualquier <code>User</code> activo (no soft-deleted)</div></div>
+          <div class="perm-item"><div class="p-lbl">Redirección</div><div class="p-val">Staff → <code>/admin</code> &bull; Otros → <code>/</code></div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas de Validación</th></tr></thead>
+            <tbody>
+              <tr><td><code>login</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string</code> (se aplica <code>trim</code>; detecta email vs username)</td></tr>
+              <tr><td><code>password</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string</code></td></tr>
+              <tr><td><code>remember</code></td><td>Body</td><td>boolean</td><td>No</td><td><code>boolean</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Request &amp; Response)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Request Body (JSON / Form)</h4><pre>{
+  "login": "admin",          // username o email
+  "password": "********",
+  "remember": false
+}</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// Éxito: HTTP 302 Redirect → /admin (staff) o / (otros)
+// Error credenciales: HTTP 302 + Inertia errors:
+{
+  "errors": {
+    "login": "Las credenciales proporcionadas no coinciden con nuestros registros."
+  }
+}</pre></div>
+          </div>
+        </details>
+        <div class="findings f-red">
+          <div class="findings-title">Riesgos Detectados</div>
+          <ul>
+            <li><span class="hl-red">Sin protección contra fuerza bruta:</span> Falta <code>RateLimiter</code> / middleware <code>throttle:5,1</code>.</li>
+            <li><code>User</code> de alumnos/apoderados usa el DNI como contraseña (<code>est_&lt;DNI&gt;</code> / <code>&lt;DNI&gt;</code>), haciendo trivial el acceso no autorizado.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- POST /logout -->
+      <div class="variant v-ok" data-status="ok" data-method="POST">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-post">POST</span>
+            <span class="v-uri">/logout</span>
+            <span class="v-name">logout</span>
+            <span class="v-action">AuthenticatedSessionController@destroy</span>
+          </div>
+          <div class="v-badges"><span class="badge b-ok">OK</span></div>
+        </div>
+        <p class="v-desc">Cierra sesión del guard <code>web</code>, invalida la sesión, regenera token CSRF y redirige a <code>/</code>.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Middleware Real</div><div class="p-val"><code>web</code>, <code>auth</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Ninguno (solo token CSRF)</div></div>
+          <div class="perm-item"><div class="p-lbl">Consumido en</div><div class="p-val"><code>Sidebar.vue:96</code></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- GRUPO 2: DASHBOARD CENTRAL /admin                            -->
+    <!-- ============================================================ -->
+    <div class="group-card">
+      <div class="group-head">
+        <div>
+          <h3>Endpoint Principal 2: Panel Central / Dashboard (<code>/admin</code>)</h3>
+          <div class="g-sub">Controlador: <code>BranchController@dashboard</code> &bull; Vista: <code>Admin/Index.vue</code></div>
+        </div>
+        <span class="badge b-crit">CRÍTICO SEGURIDAD &bull; PROPS CORRUPTAS</span>
+      </div>
+
+      <div class="variant v-crit" data-status="crit" data-method="GET">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-get">GET</span>
+            <span class="v-uri">/admin</span>
+            <span class="v-name">admin</span>
+            <span class="v-action">BranchController@dashboard</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-crit">Sin check isStaff()</span>
+            <span class="badge b-bug">array_merge rompe props</span>
+            <span class="badge b-warn">Sin paginación / N+1</span>
+          </div>
+        </div>
+        <p class="v-desc">Renderiza <code>Admin/Index.vue</code> fusionando datos de Sedes/Aulas, Oferta Académica y Aperturas/Matrículas/Alumnos.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Middleware Real</div><div class="p-val"><span class="hl-red">Solo <code>auth</code> (NO verifica Staff)</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-red">Ninguna — Alumno/Docente ven TODO</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Solo Staff (Nivel 1–4) filtrado por sede</div></div>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Inertia Props devueltas)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Props Recibidas por Admin/Index.vue</h4><pre>{
+  "branches": [ { "id", "name", "code", "address", "phone", "classrooms_count", "total_capacity", "classrooms": [...] } ],
+  "classrooms": [ { "id", "branch_id", "branch_name", "name", "capacity", "schedules_count" } ],
+  "careers": [ { "id", "name", "description" } ], // ¡PERDIÓ modules y available_branch_ids!
+  "allModulesPool": [ ... ],
+  "coursesList": [ { "id", "name", "duration_in_weeks", "career_id", "career_name", "module_id", "module_name", "is_workshop" } ], // ¡perdió description!
+  "teachers": [ { "id", "full_name", "specialty" } ],
+  "scheduledCourses": [ ... ],
+  "enrollments": [ ... ],
+  "students": [ ... ] // ¡SIN FILTRO DE SEDE EN BACKEND!
+}</pre></div>
+          </div>
+        </details>
+        <div class="findings f-red">
+          <div class="findings-title">Bugs y Riesgos Críticos</div>
+          <ul>
+            <li><span class="hl-red">Sobreescritura por <code>array_merge</code> (<code>BranchController.php:185-196</code>):</span> <code>ScheduledCourseController::getScheduledCourseData()</code> sobreescribe <code>careers</code> y <code>coursesList</code> eliminando campos de Oferta Académica (<code>modules</code>, <code>available_branch_ids</code>, <code>description</code>).</li>
+            <li><span class="hl-red">Acceso no autorizado:</span> Un alumno/docente entra a <code>/admin</code> y descarga toda la BD institucional (incluyendo PII de todos los alumnos y apoderados).</li>
+            <li>El botón <strong>"Panel Resumen &amp; KPIs"</strong> desde otras páginas hace <code>router.visit('/admin')</code>, pero <code>Admin/Index.vue:80</code> siempre abre <code>infraestructura</code> (no soporta query <code>?tab=resumen</code> ni ruta <code>/admin/resumen</code>).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- GRUPO 3: SEDES & AULAS                                       -->
+    <!-- ============================================================ -->
+    <div class="group-card">
+      <div class="group-head">
+        <div>
+          <h3>Endpoint Principal 3: Sedes y Aulas (<code>/admin/sedes</code>, <code>/admin/sedes/{branch}</code>, <code>/admin/aulas</code>)</h3>
+          <div class="g-sub">Controladores: <code>BranchController</code> &amp; <code>ClassroomController</code> &bull; Vista: <code>Admin/SedesAulas.vue</code> + <code>SedesAulasView.vue</code></div>
+        </div>
+        <span class="badge b-bug">Error 500 Aula Duplicada &bull; Sin DELETE Sede</span>
+      </div>
+
+      <!-- GET /admin/sedes -->
+      <div class="variant v-ok" data-status="ok" data-method="GET">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-get">GET</span>
+            <span class="v-uri">/admin/sedes</span>
+            <span class="v-name">admin.sedes.index</span>
+            <span class="v-action">BranchController@index</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-ok">Auth: Solo Staff (Admin)</span>
+            <span class="badge b-ok">Resumen Liviano</span>
+          </div>
+        </div>
+        <p class="v-desc">Muestra el resumen liviano de todas las sedes y sus aulas básicas (sin consultar horarios). Si el personal tiene sede fija (<code>branch_id !== null</code>), redirige automáticamente a <code>/admin/sedes/{branch}</code>.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Middleware Real</div><div class="p-val"><code>auth</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green">Exige <code>$staff</code> (403 no-staff); Coord/Secre redirige a su sede</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Admin General (Nivel 4) — Coincide</div></div>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Inertia Props)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Props devueltas a Admin/SedesAulas.vue</h4><pre>{
+  "branches": [
+    {
+      "id": 1,
+      "name": "Sede Comas",
+      "code": "COM",
+      "address": "Av. Túpac Amaru 3850...",
+      "phone": "970518364",
+      "classrooms_count": 3,
+      "total_capacity": 79,
+      "classrooms": [
+        { "id": 1, "branch_id": 1, "name": "Aula 101 - Teoría", "capacity": 35 }
+      ]
+    }
+  ],
+  "selectedBranch": null,
+  "classrooms": [],
+  "totalClassroomsCount": 6,
+  "initialEditing": false
+}</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- GET /admin/sedes/{branch} -->
+      <div class="variant v-ok" data-status="ok" data-method="GET">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-get">GET</span>
+            <span class="v-uri">/admin/sedes/{branch}</span>
+            <span class="v-name">admin.sedes.show</span>
+            <span class="v-action">BranchController@show</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-ok">Auth: Admin o Staff Sede</span>
+            <span class="badge b-ok">Solo conteo horarios</span>
+          </div>
+        </div>
+        <p class="v-desc">Muestra el detalle de una sede específica y la tabla de sus aulas con <code>schedules_count</code> (sin cargar los horarios completos). Soporta <code>?edit=1</code> para abrir directamente la edición de sede.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green"><code>isAdmin()</code> o <code>$staff-&gt;branch_id === $branch-&gt;id</code> (403 resto)</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Path <code>{branch}</code> (int, req) + Query <code>?edit</code> (bool, opc)</div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Staff Nivel 2–4 limitado a su sede — Coincide</div></div>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Inertia Props)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Props devueltas a Admin/SedesAulas.vue</h4><pre>{
+  "branches": [ { "id": 1, "name": "Sede Comas", "code": "COM", "address": "...", "phone": "..." } ],
+  "selectedBranch": { "id": 1, "name": "Sede Comas", "code": "COM", "address": "...", "phone": "..." },
+  "classrooms": [
+    {
+      "id": 1,
+      "branch_id": 1,
+      "branch_name": "Sede Comas",
+      "name": "Aula 101 - Teoría",
+      "capacity": 35,
+      "schedules_count": 2
+    }
+  ],
+  "totalClassroomsCount": 6,
+  "initialEditing": false
+}</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- POST /admin/sedes -->
+      <div class="variant v-warn" data-status="warn" data-method="POST">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-post">POST</span>
+            <span class="v-uri">/admin/sedes</span>
+            <span class="v-name">admin.sedes.store</span>
+            <span class="v-action">BranchController@store</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-ok">Auth: Solo Admin</span>
+            <span class="badge b-warn">Sin is_active &bull; Edge-case código</span>
+          </div>
+        </div>
+        <p class="v-desc">Crea una nueva sede física. Autogenera código de 3 letras si <code>code</code> viene vacío.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Middleware Real</div><div class="p-val"><code>auth</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green">Solo <code>$user-&gt;staff-&gt;isAdmin()</code> (403 resto)</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Visibilidad UI</div><div class="p-val"><code>v-if="isAdmin"</code> (+ Nueva Sede)</div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Nivel 4 (Dirección General) — Coincide</div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
+            <tbody>
+              <tr><td><code>name</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:255|unique:branches,name</code></td></tr>
+              <tr><td><code>code</code></td><td>Body</td><td>string</td><td>No</td><td><code>nullable|string|max:50|unique:branches,code</code> (se guarda en mayúsculas)</td></tr>
+              <tr><td><code>address</code></td><td>Body</td><td>string</td><td>No</td><td><code>nullable|string|max:255</code></td></tr>
+              <tr><td><code>phone</code></td><td>Body</td><td>string</td><td>No</td><td><code>nullable|string|max:50</code></td></tr>
+              <tr class="row-blue"><td><code>is_active</code></td><td><span class="hl-blue">FALTANTE</span></td><td>boolean</td><td>—</td><td>Existe en tabla <code>branches</code>, pero no se acepta en Request (siempre <code>true</code>).</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Request &amp; Response)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Request Body</h4><pre>{
+  "name": "Sede Los Olivos",
+  "code": "LSO",
+  "address": "Av. Carlos Izaguirre 1234",
+  "phone": "987654321"
+}</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// HTTP 302 Redirect → /admin/sedes
+// Flash session: success = 'Sede "Sede Los Olivos" registrada exitosamente.'</pre></div>
+          </div>
+        </details>
+        <div class="findings">
+          <div class="findings-title">Observaciones</div>
+          <ul>
+            <li>Si <code>name</code> solo tiene dígitos/símbolos y <code>code</code> va vacío, <code>preg_replace('/[^A-Za-z]/', '', ...)</code> produce <code>""</code> (código vacío).</li>
+            <li>No hay test unitario/feature para <code>POST /admin/sedes</code>.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- PUT /admin/sedes/{branch} -->
+      <div class="variant v-warn" data-status="warn" data-method="PUT">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-put">PUT</span>
+            <span class="v-uri">/admin/sedes/{branch}</span>
+            <span class="v-name">admin.sedes.update</span>
+            <span class="v-action">BranchController@update</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-ok">Auth: Admin / Coord Sede</span>
+            <span class="badge b-warn">Sin is_active</span>
+          </div>
+        </div>
+        <p class="v-desc">Actualiza datos de una sede. El Admin puede editar <code>name, code, address, phone</code>; el Coordinador solo <code>address, phone</code>.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green"><code>isAdmin()</code> o <code>isCoordinador($branch-&gt;id)</code></span></div></div>
+          <div class="perm-item"><div class="p-lbl">Visibilidad UI</div><div class="p-val"><code>v-if="canEditBranch"</code> (Admin / Coord; inputs <code>name/code</code> deshabilitados para Coord)</div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Nivel 4 (estructura) / Nivel 3 (contacto de su sede)</div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
+            <tbody>
+              <tr><td><code>branch</code></td><td>Path</td><td>int (ID)</td><td><strong>Sí</strong></td><td>Route Model Binding <code>Branch</code></td></tr>
+              <tr><td><code>name</code></td><td>Body</td><td>string</td><td>Solo Admin</td><td><code>required|max:255|unique:branches,name,{id}</code> (solo Admin)</td></tr>
+              <tr><td><code>code</code></td><td>Body</td><td>string</td><td>Solo Admin</td><td><code>required|max:50|unique:branches,code,{id}</code> (solo Admin)</td></tr>
+              <tr><td><code>address</code></td><td>Body</td><td>string</td><td>No</td><td><code>nullable|string|max:255</code></td></tr>
+              <tr><td><code>phone</code></td><td>Body</td><td>string</td><td>No</td><td><code>nullable|string|max:50</code></td></tr>
+              <tr class="row-blue"><td><code>is_active</code></td><td><span class="hl-blue">FALTANTE</span></td><td>boolean</td><td>—</td><td>No existe forma de desactivar/activar una sede ni ruta <code>DELETE /admin/sedes/{branch}</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Request &amp; Response)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Request Body (enviado por SedesAulasView.vue)</h4><pre>{
+  "name": "Sede Comas",
+  "code": "COM",
+  "address": "Av. Túpac Amaru 3850",
+  "phone": "970518364"
+}</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// HTTP 302 Redirect Back + flash success
+// HTTP 403 si Secretaría o Coord de otra sede intenta editar</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- GET /admin/aulas/{classroom}/horarios -->
+      <div class="variant v-ok" data-status="ok" data-method="GET">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-get">GET</span>
+            <span class="v-uri">/admin/aulas/{classroom}/horarios</span>
+            <span class="v-name">admin.classrooms.schedules</span>
+            <span class="v-action">ClassroomController@schedules</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-ok">Auth: Admin o Staff Sede</span>
+            <span class="badge b-ok">Carga Bajo Demanda (JSON)</span>
+          </div>
+        </div>
+        <p class="v-desc">Devuelve en JSON los horarios programados de un aula específica al abrir el modal "Ver Disponibilidad".</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green"><code>isAdmin()</code> o <code>$staff-&gt;branch_id === $classroom-&gt;branch_id</code></span></div></div>
+          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Path <code>{classroom}</code> (int, req)</div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Staff de la sede del aula o Admin — Coincide</div></div>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Response JSON)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Response JSON (HTTP 200)</h4><pre>{
+  "classroom_id": 1,
+  "classroom_name": "Aula 101 - Teoría",
+  "schedules": [
+    {
+      "id": 3,
+      "course_name": "Excel Avanzado y Macros",
+      "teacher_name": "Marco Antonio Rojas Quispe",
+      "day_of_week": "Martes",
+      "start_time": "18:00",
+      "end_time": "20:00",
+      "start_date": "2026-10-01",
+      "end_date": "2026-10-31",
+      "status": "en_curso"
+    }
+  ]
+}</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- POST /admin/aulas -->
+      <div class="variant v-crit" data-status="crit" data-method="POST">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-post">POST</span>
+            <span class="v-uri">/admin/aulas</span>
+            <span class="v-name">admin.classrooms.store</span>
+            <span class="v-action">ClassroomController@store</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-bug">ERROR 500 Nombre Duplicado</span>
+            <span class="badge b-ok">Auth: Admin / Coord Sede</span>
+          </div>
+        </div>
+        <p class="v-desc">Registra un nuevo ambiente físico (<code>classrooms</code>) en una sede.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green"><code>isAdmin()</code> o <code>isCoordinador($targetBranchId)</code></span></div></div>
+          <div class="perm-item"><div class="p-lbl">Visibilidad UI</div><div class="p-val"><code>v-if="canCreateClassroom"</code> (Admin/Coord)</div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Nivel 3–4 (Coincide)</div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
+            <tbody>
+              <tr class="row-red"><td><code>name</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:255</code> — <span class="hl-red">FALTA <code>Rule::unique('classrooms')-&gt;where('branch_id', ...)</code></span> → Error 500 SQL!</td></tr>
+              <tr><td><code>branch_id</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|exists:branches,id</code> (forzado al del Coord si no es Admin)</td></tr>
+              <tr><td><code>capacity</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|min:1|max:500</code> (en BD es nullable, pero backend exige ≥ 1)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Request &amp; Response)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Request Body</h4><pre>{
+  "name": "Aula 102 - Teoría",
+  "branch_id": 1,
+  "capacity": 30
+}</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// Éxito: HTTP 302 Redirect Back + flash success
+// Nombre repetido en misma sede: ❌ HTTP 500 SQLSTATE[23505] uq_branch_classroom_name!</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- PUT /admin/aulas/{classroom} -->
+      <div class="variant v-crit" data-status="crit" data-method="PUT">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-put">PUT</span>
+            <span class="v-uri">/admin/aulas/{classroom}</span>
+            <span class="v-name">admin.classrooms.update</span>
+            <span class="v-action">ClassroomController@update</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-bug">ERROR 500 Nombre Duplicado</span>
+            <span class="badge b-warn">Transferencia sede sin validar horarios</span>
+          </div>
+        </div>
+        <p class="v-desc">Edita un aula. Admin edita <code>name, capacity, branch_id</code>; Coord edita <code>name, capacity</code>; Secretaría solo <code>capacity</code>.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin()</code>, <code>isCoordinador($room-&gt;branch_id)</code>, <code>isSecretaria($room-&gt;branch_id)</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Visibilidad UI</div><div class="p-val"><code>canEditClassroom(room)</code> — deshabilita <code>name/branch_id</code> para Secretaría</div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Alineado con tests (Secretaría solo aforo)</div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
+            <tbody>
+              <tr><td><code>classroom</code></td><td>Path</td><td>int (ID)</td><td><strong>Sí</strong></td><td>Route Model Binding <code>Classroom</code></td></tr>
+              <tr class="row-red"><td><code>name</code></td><td>Body</td><td>string</td><td>Admin/Coord</td><td><code>required|string|max:255</code> — <span class="hl-red">Sin regla <code>unique</code> por sede</span> (Error 500 SQL). Ignorado para Secretaría.</td></tr>
+              <tr><td><code>capacity</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|min:1|max:500</code></td></tr>
+              <tr class="row-orange"><td><code>branch_id</code></td><td>Body</td><td>int</td><td>No (solo Admin)</td><td><code>sometimes|integer|exists:branches,id</code> — <span class="hl-orange">Si el aula tiene horarios activos, al cambiar sede deja cursos apuntando al aula de otra sede!</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Request &amp; Response)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Request Body</h4><pre>{
+  "name": "Laboratorio de Cómputo 1",
+  "branch_id": 1,
+  "capacity": 28
+}</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// HTTP 302 Redirect Back + flash success</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- DELETE /admin/aulas/{classroom} -->
+      <div class="variant v-warn" data-status="warn" data-method="DELETE">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-delete">DELETE</span>
+            <span class="v-uri">/admin/aulas/{classroom}</span>
+            <span class="v-name">admin.classrooms.destroy</span>
+            <span class="v-action">ClassroomController@destroy</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-ok">Auth: Admin / Coord Sede</span>
+            <span class="badge b-warn">SoftDelete bloquea reutilizar nombre</span>
+          </div>
+        </div>
+        <p class="v-desc">Eliminación lógica (SoftDelete) de un aula siempre que no tenga <code>courseSchedules</code> activos.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green"><code>isAdmin()</code> o <code>isCoordinador($classroom-&gt;branch_id)</code></span></div></div>
+          <div class="perm-item"><div class="p-lbl">Validación Integridad</div><div class="p-val">Bloquea si <code>$classroom-&gt;courseSchedules()-&gt;exists()</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Riesgo BD</div><div class="p-val"><span class="hl-orange">Índice <code>uq_branch_classroom_name</code> no excluye <code>deleted_at IS NOT NULL</code></span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- GRUPO 4: OFERTA ACADÉMICA (CARRERAS, MÓDULOS, TALLERES)      -->
+    <!-- ============================================================ -->
+    <div class="group-card">
+      <div class="group-head">
+        <div>
+          <h3>Endpoint Principal 4: Oferta Académica (<code>/admin/oferta-academica</code>, <code>/carreras</code>, <code>/modulos</code>, <code>/talleres</code>)</h3>
+          <div class="g-sub">Controladores: <code>AcademicOfferController</code>, <code>CareerController</code>, <code>ModuleController</code>, <code>WorkshopController</code></div>
+        </div>
+        <span class="badge b-warn">Campo description faltante en UI &bull; Sin filtro sede en Coord</span>
+      </div>
+
+      <!-- GET /admin/oferta-academica -->
+      <div class="variant v-crit" data-status="crit" data-method="GET">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-get">GET</span>
+            <span class="v-uri">/admin/oferta-academica</span>
+            <span class="v-name">admin.oferta-academica</span>
+            <span class="v-action">AcademicOfferController@index</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-crit">Sin check isStaff()</span>
+            <span class="badge b-warn">Contadores Sidebar Mock</span>
+          </div>
+        </div>
+        <p class="v-desc">Carga el catálogo curricular completo (<code>branches</code>, <code>careers</code>, <code>allModulesPool</code>, <code>coursesList</code>).</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Middleware Real</div><div class="p-val"><span class="hl-red">Solo <code>auth</code></span></div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val">Solo filtra <code>branches</code> por sede; carreras/módulos/cursos son globales</div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Staff (lectura), Nivel 3–4 (edición)</div></div>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Inertia Props)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Props devueltas a Admin/OfertaAcademica.vue</h4><pre>{
+  "branches": [{ "id", "name", "code", "address", "phone" }],
+  "careers": [{
+    "id", "name", "description", "duration_in_weeks",
+    "available_branch_ids": [1, 2],
+    "has_dependencies": true, "students_count": 3,
+    "modules": [{ "id", "name", "duration_in_weeks", "order" }]
+  }],
+  "allModulesPool": [{
+    "id", "name", "description", "duration_in_weeks",
+    "careers_associated": ["Computación e Informática"],
+    "courses_count": 2, "has_dependencies": true,
+    "courses": [{ "id", "name", "description", "duration_in_weeks", "is_workshop" }]
+  }],
+  "coursesList": [{
+    "id", "module_id", "module_name", "name", "description",
+    "duration_in_weeks", "is_workshop",
+    "has_scheduled_courses": true, "scheduled_courses_count": 2
+  }]
+}</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- POST & PUT /admin/carreras -->
+      <div class="variant v-warn" data-status="warn" data-method="POST">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-post">POST</span>
+            <span class="v-uri">/admin/carreras</span>
+            <span class="v-name">admin.careers.store</span>
+            <span class="v-action">CareerController@store</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-warn">Sin input description en UI</span>
+            <span class="badge b-warn">Sin DB::transaction</span>
+            <span class="badge b-warn">Coord edita global</span>
+          </div>
+        </div>
+        <p class="v-desc">Crea una carrera técnica y sincroniza sus pivotes <code>career_module</code> (con <code>order</code>) y <code>branch_career</code>.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin() || isCoordinador()</code> (sin validar sede)</div></div>
+          <div class="perm-item"><div class="p-lbl">Visibilidad UI</div><div class="p-val"><code>canManageCareers</code> (Admin / Coord)</div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado (Doc)</div><div class="p-val"><span class="hl-orange">Nivel 4 Dirección General</span> (Planes MINEDU)</div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
+            <tbody>
+              <tr><td><code>name</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:255</code> (falta <code>unique</code>)</td></tr>
+              <tr class="row-orange"><td><code>description</code></td><td>Body</td><td>string</td><td>No</td><td><code>nullable|string|max:1000</code> — <span class="hl-orange">NO EXISTE CAMPO EN FORMULARIO VUE (<code>OfertaAcademicaView.vue:722-755</code>)!</span></td></tr>
+              <tr><td><code>duration_in_weeks</code></td><td>Body</td><td>int</td><td>No</td><td><code>nullable|integer|min:1|max:200</code> (se envía <code>48</code> si hay 0 módulos, aunque UI muestre <code>0</code>)</td></tr>
+              <tr><td><code>modules</code></td><td>Body</td><td>array</td><td>No</td><td><code>nullable|array</code> con <code>modules.*.id (exists:modules,id)</code> y <code>modules.*.order (int)</code></td></tr>
+              <tr><td><code>available_branch_ids</code> / <code>branch_ids</code></td><td>Body</td><td>int[]</td><td>No</td><td><code>nullable|array</code> de <code>exists:branches,id</code> (parámetro duplicado; UI envía <code>available_branch_ids</code>)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Request &amp; Response)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Request Body (enviado por OfertaAcademicaView.vue)</h4><pre>{
+  "name": "Computación e Informática",
+  "description": null,              // ⚠️ siempre vacío al crear desde UI!
+  "duration_in_weeks": 24,
+  "available_branch_ids": [1, 2],
+  "modules": [
+    { "id": 1, "order": 1 },
+    { "id": 2, "order": 2 }
+  ]
+}</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// HTTP 302 Redirect Back + flash success</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- PUT /admin/carreras/{career} -->
+      <div class="variant v-warn" data-status="warn" data-method="PUT">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-put">PUT</span>
+            <span class="v-uri">/admin/carreras/{career}</span>
+            <span class="v-name">admin.careers.update</span>
+            <span class="v-action">CareerController@update</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-warn">Sin input description en UI</span>
+            <span class="badge b-warn">Coord puede alterar otras sedes</span>
+          </div>
+        </div>
+        <p class="v-desc">Actualiza una carrera técnica y hace <code>sync()</code> completo de <code>modules</code> y <code>branches</code> (si vienen en el payload).</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin() || isCoordinador()</code> (cualquier sede)</div></div>
+          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Path <code>{career}</code> + mismo Body que <code>POST /admin/carreras</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Riesgo</div><div class="p-val"><span class="hl-orange">Coord de Comas puede quitar/agregar otras sedes</span></div></div>
+        </div>
+      </div>
+
+      <!-- DELETE /admin/carreras/{career} -->
+      <div class="variant v-warn" data-status="warn" data-method="DELETE">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-delete">DELETE</span>
+            <span class="v-uri">/admin/carreras/{career}</span>
+            <span class="v-name">admin.careers.destroy</span>
+            <span class="v-action">CareerController@destroy</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-ok">Check studentCareers</span>
+            <span class="badge b-warn">Coord borra carrera global</span>
+          </div>
+        </div>
+        <p class="v-desc">SoftDelete de carrera. Bloquea si existen registros en <code>student_careers</code>.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin() || isCoordinador()</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Validación Integridad</div><div class="p-val"><code>$career-&gt;studentCareers()-&gt;exists()</code> (Error key: <code>error</code>)</div></div>
+          <div class="perm-item"><div class="p-lbl">Observación</div><div class="p-val">Como <code>storeEnrollment</code> nunca crea <code>student_careers</code>, una carrera con alumnos matriculados en sus cursos SÍ podría eliminarse si no se creó admisión en <code>student_careers</code>!</div></div>
+        </div>
+      </div>
+
+      <!-- POST /admin/modulos -->
+      <div class="variant v-warn" data-status="warn" data-method="POST">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-post">POST</span>
+            <span class="v-uri">/admin/modulos</span>
+            <span class="v-name">admin.modules.store</span>
+            <span class="v-action">ModuleController@store</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-warn">Robo silencioso de cursos</span>
+            <span class="badge b-warn">Sin DB::transaction</span>
+          </div>
+        </div>
+        <p class="v-desc">Crea un módulo formativo y reasigna <code>courses.module_id</code> para los <code>course_ids</code> recibidos.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin() || isCoordinador()</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Visibilidad UI</div><div class="p-val"><code>canManageModules</code> (Admin / Coord)</div></div>
+          <div class="perm-item"><div class="p-lbl">Riesgo Integridad</div><div class="p-val"><span class="hl-orange">Si un curso ya pertenecía a otro módulo, se sobreescribe su <code>module_id</code> sin aviso</span></div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas</th></tr></thead>
+            <tbody>
+              <tr><td><code>name</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:255</code></td></tr>
+              <tr><td><code>description</code></td><td>Body</td><td>string</td><td>No</td><td><code>nullable|string|max:1000</code></td></tr>
+              <tr><td><code>duration_in_weeks</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|min:1|max:52</code></td></tr>
+              <tr class="row-orange"><td><code>course_ids</code></td><td>Body</td><td>int[]</td><td>No</td><td><code>nullable|array</code>, <code>course_ids.* =&gt; exists:courses,id</code> (no verifica si ya tiene otro <code>module_id</code>)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Request &amp; Response)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Request Body</h4><pre>{
+  "name": "Ofimática Empresarial",
+  "description": "Word, Excel y gestión documental",
+  "duration_in_weeks": 8,
+  "course_ids": [1, 2]
+}</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// HTTP 302 Redirect Back + flash success</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- PUT /admin/modulos/{module} -->
+      <div class="variant v-warn" data-status="warn" data-method="PUT">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-put">PUT</span>
+            <span class="v-uri">/admin/modulos/{module}</span>
+            <span class="v-name">admin.modules.update</span>
+            <span class="v-action">ModuleController@update</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-warn">Cursos huérfanos al quitar</span>
+            <span class="badge b-warn">Desincroniza duración carrera</span>
+          </div>
+        </div>
+        <p class="v-desc">Actualiza módulo y sincroniza <code>courses.module_id</code> (pone <code>null</code> en los removidos y asigna el módulo a los incluidos).</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin() || isCoordinador()</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Path <code>{module}</code> + mismo Body que <code>POST /admin/modulos</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Inconsistencia</div><div class="p-val">Al cambiar <code>duration_in_weeks</code> no recalcula <code>careers.duration_in_weeks</code>.</div></div>
+        </div>
+      </div>
+
+      <!-- DELETE /admin/modulos/{module} -->
+      <div class="variant v-ok" data-status="ok" data-method="DELETE">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-delete">DELETE</span>
+            <span class="v-uri">/admin/modulos/{module}</span>
+            <span class="v-name">admin.modules.destroy</span>
+            <span class="v-action">ModuleController@destroy</span>
+          </div>
+          <div class="v-badges"><span class="badge b-ok">Check Dependencias OK</span></div>
+        </div>
+        <p class="v-desc">SoftDelete del módulo solo si no tiene <code>courses</code>, <code>careers</code> ni <code>enrollments</code> asociados.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin() || isCoordinador()</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Integridad</div><div class="p-val">Bloquea si <code>courses() || careers() || enrollments()</code> existen</div></div>
+        </div>
+      </div>
+
+      <!-- POST /admin/talleres -->
+      <div class="variant v-warn" data-status="warn" data-method="POST">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-post">POST</span>
+            <span class="v-uri">/admin/talleres</span>
+            <span class="v-name">admin.workshops.store</span>
+            <span class="v-action">WorkshopController@store</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-warn">Permite estado mixto is_workshop + module_id</span>
+          </div>
+        </div>
+        <p class="v-desc">Crea un registro en <code>courses</code> (puede ser Taller libre <code>is_workshop=true</code> o Curso modular <code>is_workshop=false</code>).</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin() || isCoordinador()</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Visibilidad UI</div><div class="p-val"><code>canManageWorkshops</code> (Admin / Coord)</div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
+            <tbody>
+              <tr><td><code>name</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:255</code></td></tr>
+              <tr><td><code>description</code></td><td>Body</td><td>string</td><td>No</td><td><code>nullable|string|max:1000</code></td></tr>
+              <tr><td><code>duration_in_weeks</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|min:1|max:52</code></td></tr>
+              <tr><td><code>module_id</code></td><td>Body</td><td>int|null</td><td>No</td><td><code>nullable|integer|exists:modules,id</code></td></tr>
+              <tr class="row-orange"><td><code>is_workshop</code></td><td>Body</td><td>bool</td><td>No</td><td><code>nullable|boolean</code> — Si se omite, se infiere <code>empty(module_id)</code>. Pero si se envían ambos, permite <code>is_workshop=true</code> con <code>module_id</code> asignado!</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Request &amp; Response)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Request Body</h4><pre>{
+  "name": "Taller de Barber Shop",
+  "description": "Técnicas de fade y perfilado",
+  "duration_in_weeks": 6,
+  "module_id": null,
+  "is_workshop": true
+}</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// HTTP 302 Redirect Back + flash success</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- PUT /admin/talleres/{course} -->
+      <div class="variant v-ok" data-status="ok" data-method="PUT">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-put">PUT</span>
+            <span class="v-uri">/admin/talleres/{course}</span>
+            <span class="v-name">admin.workshops.update</span>
+            <span class="v-action">WorkshopController@update</span>
+          </div>
+          <div class="v-badges"><span class="badge b-ok">OK (Auth Coord/Admin)</span></div>
+        </div>
+        <p class="v-desc">Actualiza curso/taller en tabla <code>courses</code>. Mismo payload que <code>POST /admin/talleres</code>.</p>
+      </div>
+
+      <!-- DELETE /admin/talleres/{course} -->
+      <div class="variant v-ok" data-status="ok" data-method="DELETE">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-delete">DELETE</span>
+            <span class="v-uri">/admin/talleres/{course}</span>
+            <span class="v-name">admin.workshops.destroy</span>
+            <span class="v-action">WorkshopController@destroy</span>
+          </div>
+          <div class="v-badges"><span class="badge b-ok">Check Dependencias OK</span></div>
+        </div>
+        <p class="v-desc">SoftDelete del curso/taller solo si <code>!$course-&gt;scheduledCourses()-&gt;exists()</code> (error key: <code>workshop</code>).</p>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- GRUPO 5: APERTURA DE CURSOS                                  -->
+    <!-- ============================================================ -->
+    <div class="group-card">
+      <div class="group-head">
+        <div>
+          <h3>Endpoint Principal 5: Cursos Aperturados / Programación (<code>/admin/cursos-aperturados</code>)</h3>
+          <div class="g-sub">Controlador: <code>ScheduledCourseController</code> &bull; Vista: <code>AperturasView.vue</code> (dentro de <code>/admin/matriculas?tab=aperturas</code>)</div>
+        </div>
+        <span class="badge b-crit">Sin validación Aula-Sede / Choques &bull; forceDelete destructivo</span>
+      </div>
+
+      <!-- POST /admin/cursos-aperturados -->
+      <div class="variant v-crit" data-status="crit" data-method="POST">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-post">POST</span>
+            <span class="v-uri">/admin/cursos-aperturados</span>
+            <span class="v-name">admin.scheduled-courses.store</span>
+            <span class="v-action">ScheduledCourseController@store</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-bug">Sin check Aula ∈ Sede</span>
+            <span class="badge b-bug">Sin check Choque Horario</span>
+            <span class="badge b-bug">Error 500 hora inválida</span>
+            <span class="badge b-warn">Sin DB::transaction</span>
+          </div>
+        </div>
+        <p class="v-desc">Crea un <code>ScheduledCourse</code> y su(s) <code>CourseSchedule</code>. Recalcula <code>end_date</code> automáticamente usando <code>course.duration_in_weeks</code>.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green"><code>isAdmin()</code> o <code>isCoordinador($branchId)</code> (Secretaría: 403)</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Visibilidad UI</div><div class="p-val"><code>canManageAperturas</code> (Admin / Coord)</div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Nivel 3–4 (Coincide)</div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Problemas</th></tr></thead>
+            <tbody>
+              <tr><td><code>course_id</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|exists:courses,id</code></td></tr>
+              <tr><td><code>branch_id</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|exists:branches,id</code> (no valida tabla <code>branch_career</code>)</td></tr>
+              <tr class="row-red"><td><code>classroom_id</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|exists:classrooms,id</code> — <span class="hl-red">NO valida que el aula pertenezca a <code>branch_id</code> ni disponibilidad horaria!</span></td></tr>
+              <tr class="row-orange"><td><code>teacher_id</code></td><td>Body</td><td>int|null</td><td>No</td><td><code>nullable|integer|exists:teachers,id</code> — <span class="hl-orange">NO valida cruce de horario del docente</span></td></tr>
+              <tr><td><code>start_date</code></td><td>Body</td><td>date</td><td><strong>Sí</strong></td><td><code>required|date</code> (YYYY-MM-DD)</td></tr>
+              <tr class="row-orange"><td><code>end_date</code></td><td>Body</td><td>date</td><td>No (Ignorado)</td><td><code>nullable|date</code> — <span class="hl-orange">Se valida pero se IGNORA siempre</span> (se sobreescribe por <code>start_date + duration_in_weeks</code>)</td></tr>
+              <tr class="row-orange"><td><code>days</code></td><td>Body</td><td>string[]</td><td><strong>Sí</strong></td><td><code>required|array|size:1</code> (<code>DayOfWeek</code>) — <span class="hl-orange">Conflicto con <code>DatabaseSeeder</code> que tiene cursos de 2 días/semana!</span></td></tr>
+              <tr class="row-red"><td><code>start_time</code> / <code>end_time</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string</code> — <span class="hl-red">Sin <code>date_format:H:i</code></span>! Cualquier texto inválido crashea PostgreSQL con HTTP 500.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Request &amp; Response)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Request Body (enviado por AperturasView.vue)</h4><pre>{
+  "course_id": 1,
+  "branch_id": 1,
+  "classroom_id": 2,
+  "teacher_id": 1,
+  "start_date": "2026-11-24",
+  "days": ["sabado"],
+  "start_time": "18:00",
+  "end_time": "20:00"
+}</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// Éxito: HTTP 302 Redirect Back + flash success
+// Si start_time >= end_time: error en 'end_time'</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- PUT /admin/cursos-aperturados/{scheduledCourse} -->
+      <div class="variant v-crit" data-status="crit" data-method="PUT">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-put">PUT</span>
+            <span class="v-uri">/admin/cursos-aperturados/{scheduledCourse}</span>
+            <span class="v-name">admin.scheduled-courses.update</span>
+            <span class="v-action">ScheduledCourseController@update</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-bug">forceDelete() sin transacción</span>
+            <span class="badge b-bug">Borra 2° día de cursos sembrados</span>
+            <span class="badge b-btn">Botón Ingresar bloquea a Secre</span>
+          </div>
+        </div>
+        <p class="v-desc">Modifica la apertura de curso y borra/recrea sus horarios en <code>course_schedules</code>.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin()</code> o <code>isCoordinador</code> (de sede actual y sede destino)</div></div>
+          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Path <code>{scheduledCourse}</code> + mismo Body que <code>POST</code></div></div>
+        </div>
+        <div class="findings f-red">
+          <div class="findings-title">Bugs Críticos</div>
+          <ul>
+            <li><code>ScheduledCourseController.php:464</code> llama a <code>$scheduledCourse-&gt;schedules()-&gt;forceDelete()</code> <span class="hl-red">fuera de una transacción</span>.</li>
+            <li><code>AperturasView.vue:372</code> recorta <code>sched.days</code> a <code>[sched.days[0]]</code>: editar cualquier curso del seeder (ej. Lunes y Miércoles) <span class="hl-red">destruye permanentemente el miércoles</span>.</li>
+            <li>En la tabla de <code>AperturasView.vue:1455</code>, el botón <strong>"Ingresar"</strong> está bloqueado para Secretaría (<code>!canManageAperturas</code>), impidiéndole ver el padrón de alumnos del curso o usar la barra de matrícula por DNI.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- DELETE /admin/cursos-aperturados/{scheduledCourse} -->
+      <div class="variant v-warn" data-status="warn" data-method="DELETE">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-delete">DELETE</span>
+            <span class="v-uri">/admin/cursos-aperturados/{scheduledCourse}</span>
+            <span class="v-name">admin.scheduled-courses.destroy</span>
+            <span class="v-action">ScheduledCourseController@destroy</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-ok">Check Matrículas OK</span>
+            <span class="badge b-warn">No verifica attendances</span>
+          </div>
+        </div>
+        <p class="v-desc">SoftDelete de horarios y apertura de curso. Bloquea si tiene <code>enrollments</code> (error key: <code>error</code>).</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin()</code> o <code>isCoordinador($scheduledCourse-&gt;branch_id)</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Riesgo Integridad</div><div class="p-val"><span class="hl-orange">No verifica <code>attendances</code> / <code>originAttendances</code></span> ni usa <code>DB::transaction</code>.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- GRUPO 6: MATRÍCULAS Y DIRECTORIO DE ALUMNOS                  -->
+    <!-- ============================================================ -->
+    <div class="group-card">
+      <div class="group-head">
+        <div>
+          <h3>Endpoint Principal 6: Matrículas y Alumnos (<code>/admin/matriculas</code>, <code>/admin/alumnos</code>, <code>/admin/estudiantes/buscar-dni</code>)</h3>
+          <div class="g-sub">Controlador: <code>ScheduledCourseController</code> &bull; Vistas: <code>Admin/Matriculas.vue</code> + <code>MatriculasView.vue</code> + <code>AperturasView.vue</code></div>
+        </div>
+        <span class="badge b-crit">MÁXIMO RIESGO: Seguridad PII + Columna notes ausente + Error 500</span>
+      </div>
+
+      <!-- GET /admin/matriculas & GET /admin/alumnos -->
+      <div class="variant v-crit" data-status="crit" data-method="GET">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-get">GET</span>
+            <span class="v-uri">/admin/matriculas</span>
+            <span class="v-name">admin.matriculas</span>
+            <span class="v-action">ScheduledCourseController@index</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-crit">Sin check isStaff()</span>
+            <span class="badge b-crit">Fuga PII multi-sede</span>
+            <span class="badge b-warn">N+1 Query &bull; Sin paginación</span>
+          </div>
+        </div>
+        <div class="v-route" style="margin-top:6px;">
+          <span class="m-badge m-get">GET</span>
+          <span class="v-uri">/admin/alumnos</span>
+          <span class="v-name">admin.alumnos</span>
+          <span class="v-action">Alias idéntico a ScheduledCourseController@index (no usado por el Sidebar)</span>
+        </div>
+        <p class="v-desc">Renderiza <code>Admin/Matriculas.vue</code>. Acepta query param <code>?tab=aperturas</code> para abrir directamente la vista de Apertura de Cursos.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Middleware Real</div><div class="p-val"><span class="hl-red">Solo <code>auth</code></span></div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-red">Ninguna — Alumnos/Docentes entran y <code>students</code> nunca se filtra por sede!</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Query Params</div><div class="p-val"><code>tab</code> (opcional: <code>'aperturas'</code> | <code>'inscripciones'</code>)</div></div>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Inertia Props)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Props devueltas a Admin/Matriculas.vue</h4><pre>{
+  "initialTab": "inscripciones", // o "aperturas"
+  "branches": [...],
+  "classrooms": [...], // ⚠️ N+1 en $c->branch->name (falta with('branch'))
+  "careers": [{ "id", "name", "description" }],
+  "coursesList": [{ "id", "name", "duration_in_weeks", "career_id", "career_name", "module_id", "module_name", "is_workshop" }],
+  "teachers": [{ "id", "full_name", "specialty" }],
+  "scheduledCourses": [{ "id", "course_id", "course_name", "branch_id", "classroom_id", "teacher_id", "start_date", "end_date", "day_of_week", "days", "start_time", "end_time", "time_range", "capacity", "enrolled_count", "status" }],
+  "enrollments": [{ "id", "scheduled_course_id", "student_full_name", "student_document", ..., "status", "notes": null }], // ⚠️ notes siempre null
+  "students": [{
+    "id", "user_id", "document", "document_type", "first_name", "paternal_surname", "maternal_surname",
+    "full_name", "birth_date", "phone", "email",
+    "guardian": { "id", "document", "first_name", "paternal_surname", "maternal_surname", "full_name", "phone", "email" } | null,
+    "enrollments": [...]
+  }] // ⚠️ SIN FILTRO POR SEDE NI PAGINACIÓN!
+}</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- POST /admin/matriculas -->
+      <div class="variant v-crit" data-status="crit" data-method="POST">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-post">POST</span>
+            <span class="v-uri">/admin/matriculas</span>
+            <span class="v-name">admin.enrollments.store</span>
+            <span class="v-action">ScheduledCourseController@storeEnrollment</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-bug">Pierde notes (sin col BD)</span>
+            <span class="badge b-bug">Error 500 re-matrícula</span>
+            <span class="badge b-bug">Sin check aforo</span>
+            <span class="badge b-crit">Secuestro vía guardian_document</span>
+          </div>
+        </div>
+        <p class="v-desc">Matricula un estudiante existente o nuevo (creando <code>User</code>, <code>Student</code> y opcionalmente <code>guardian</code>) en un <code>ScheduledCourse</code>.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin()</code>, <code>isCoordinador($branchId)</code>, <code>isSecretaria($branchId)</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Nivel 2–4 para matrícula regular; <span class="hl-orange">Nivel 3+ para <code>status=convalidado</code></span></div></div>
+          <div class="perm-item"><div class="p-lbl">Riesgo Transacción</div><div class="p-val"><span class="hl-red">Sin <code>DB::transaction</code> — deja usuarios huérfanos si falla</span></div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Hallazgos</th></tr></thead>
+            <tbody>
+              <tr class="row-orange"><td><code>scheduled_course_id</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>findOrFail()</code> corre ANTES de <code>validate()</code> → devuelve <strong>404</strong> en vez de <strong>422</strong>!</td></tr>
+              <tr class="row-orange"><td><code>student_document</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:20</code> — Sin regex DNI; siempre fuerza <code>DocumentType::DNI</code>.</td></tr>
+              <tr><td><code>first_name</code>, <code>paternal_surname</code>, <code>maternal_surname</code></td><td>Body</td><td>string</td><td>Si alumno nuevo</td><td><code>nullable|string|max:255</code> (o alternativo <code>student_full_name</code> parseado)</td></tr>
+              <tr><td><code>birth_date</code>, <code>phone</code>, <code>email</code></td><td>Body</td><td>date/string</td><td>No</td><td><span class="hl-orange">Faltan estos campos en el Asistente de Matrícula de <code>MatriculasView.vue</code></span> (solo presentes en modal de <code>AperturasView.vue</code>).</td></tr>
+              <tr class="row-red"><td><code>has_guardian</code> + <code>guardian_*</code> (6 campos)</td><td>Body</td><td>bool/string</td><td>No</td><td><span class="hl-red">CRÍTICO:</span> Si <code>guardian_document</code> ya existe en <code>users</code>, <strong>sobreescribe nombre/teléfono/email de ese usuario</strong> y lo registra como <code>Student</code>!</td></tr>
+              <tr><td><code>enrollment_date</code></td><td>Body</td><td>date</td><td>No</td><td><code>nullable|date</code> (por defecto hoy Lima)</td></tr>
+              <tr class="row-orange"><td><code>status</code></td><td>Body</td><td>enum</td><td>No</td><td><code>EnrollmentStatus</code> (por defecto <code>activo</code>). Secretaría puede insertar <code>convalidado</code>.</td></tr>
+              <tr class="row-red"><td><code>notes</code></td><td>Body</td><td>string</td><td>No</td><td><span class="hl-red">DATO DESCARTADO:</span> Validado (<code>max:1000</code>), pero <strong>la tabla <code>enrollments</code> NO tiene columna <code>notes</code></strong>!</td></tr>
+              <tr class="row-blue"><td><code>student_career_id</code></td><td><span class="hl-blue">FALTANTE</span></td><td>int</td><td>—</td><td>Existe FK en <code>enrollments</code>, pero jamás se recibe ni se vincula a <code>student_careers</code>.</td></tr>
+              <tr class="row-blue"><td><code>document_type</code></td><td><span class="hl-blue">FALTANTE</span></td><td>enum</td><td>—</td><td>Existe <code>DocumentType</code> (dni/ce/pasaporte/ruc), pero el endpoint siempre hardcodea <code>DNI</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Request &amp; Response)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Request Body Completo (AperturasView / MatriculasView)</h4><pre>{
+  "scheduled_course_id": 1,
+  "student_document": "74819203",
+  "first_name": "Carlos Raúl",
+  "paternal_surname": "Gómez",
+  "maternal_surname": "Morales",
+  "birth_date": "2005-05-10",
+  "phone": "987654321",
+  "email": "carlos@ejemplo.com",
+  "has_guardian": true,
+  "guardian_document": "09876543",
+  "guardian_first_name": "María",
+  "guardian_paternal_surname": "Morales",
+  "guardian_maternal_surname": "Díaz",
+  "guardian_phone": "912345678",
+  "guardian_email": "maria@ejemplo.com",
+  "enrollment_date": "2026-11-24",
+  "status": "activo",
+  "notes": "Se descarta silenciosamente ❌"
+}</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// Éxito: HTTP 302 Redirect Back + flash success
+// Si alumno estaba 'retirado' o 'anulado' en mismo curso:
+// ❌ HTTP 500 SQLSTATE[23505] uq_enrollment_student_course!</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- PUT /admin/matriculas/{enrollment}/status -->
+      <div class="variant v-crit" data-status="crit" data-method="PUT">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-put">PUT</span>
+            <span class="v-uri">/admin/matriculas/{enrollment}/status</span>
+            <span class="v-name">admin.enrollments.status</span>
+            <span class="v-action">ScheduledCourseController@updateEnrollmentStatus</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-bug">notes NO SE GUARDA</span>
+            <span class="badge b-crit">Bug $branchId null</span>
+            <span class="badge b-warn">Secre puede convalidar/anular</span>
+          </div>
+        </div>
+        <p class="v-desc">Cambia el estado de una matrícula (<code>preinscrito</code>, <code>activo</code>, <code>completado</code>, <code>convalidado</code>, <code>retirado</code>, <code>anulado</code>).</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin()</code>, <code>isCoordinador($branchId)</code>, <code>isSecretaria($branchId)</code> (<span class="hl-red">bypass si <code>$branchId === null</code></span>)</div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado (Doc)</div><div class="p-val">Nivel 3+ para <code>convalidado/retirado</code>; Nivel 4 para <code>anulado</code></div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
+            <tbody>
+              <tr><td><code>enrollment</code></td><td>Path</td><td>int (ID)</td><td><strong>Sí</strong></td><td>Route Model Binding <code>Enrollment</code></td></tr>
+              <tr><td><code>status</code></td><td>Body</td><td>enum</td><td><strong>Sí</strong></td><td><code>required|Rule::enum(EnrollmentStatus::class)</code></td></tr>
+              <tr class="row-red"><td><code>notes</code></td><td>Body</td><td>string</td><td>No</td><td><span class="hl-red">VALIDADO PERO IGNORADO:</span> Línea 801 solo actualiza <code>status</code>; la columna <code>notes</code> no existe en BD!</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Request &amp; Response)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Request Body</h4><pre>{
+  "status": "convalidado",
+  "notes": "Aprobado por Resolución N° 1024" // ❌ NO SE PERSISTE!
+}</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// HTTP 302 Redirect Back + flash "Estado de matrícula actualizado."
+// ⚠️ 0 tests cubren este endpoint!</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- DELETE /admin/matriculas/{enrollment} -->
+      <div class="variant v-warn" data-status="warn" data-method="DELETE">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-delete">DELETE</span>
+            <span class="v-uri">/admin/matriculas/{enrollment}</span>
+            <span class="v-name">admin.enrollments.destroy</span>
+            <span class="v-action">ScheduledCourseController@destroyEnrollment</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-crit">Bug $branchId null</span>
+            <span class="badge b-warn">Secre puede eliminar</span>
+          </div>
+        </div>
+        <p class="v-desc">Eliminación lógica (SoftDelete) de una matrícula.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin()</code>, <code>isCoordinador($branchId)</code>, <code>isSecretaria($branchId)</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado (Doc)</div><div class="p-val"><span class="hl-orange">Nivel 4 (Dirección)</span> para anulación definitiva; Secretaría no debería borrar historial.</div></div>
+          <div class="perm-item"><div class="p-lbl">Riesgo Integridad</div><div class="p-val">No verifica si existen <code>attendances</code> vinculadas al alumno en ese curso.</div></div>
+        </div>
+      </div>
+
+      <!-- POST /admin/alumnos -->
+      <div class="variant v-crit" data-status="crit" data-method="POST">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-post">POST</span>
+            <span class="v-uri">/admin/alumnos</span>
+            <span class="v-name">admin.students.store</span>
+            <span class="v-action">ScheduledCourseController@storeStudent</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-bug">Crea User huérfano si falla apoderado</span>
+            <span class="badge b-crit">Sin check de cargo/nivel</span>
+            <span class="badge b-crit">Secuestro vía guardian_document</span>
+          </div>
+        </div>
+        <p class="v-desc">Registra un nuevo estudiante y opcionalmente su apoderado.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-red">Solo <code>if (!$staff)</code> — Cualquier cargo (incluso Recepción) puede crear!</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Nivel 2–4 (Secretaría, Coordinación, Dirección)</div></div>
+          <div class="perm-item"><div class="p-lbl">Transacción BD</div><div class="p-val"><span class="hl-red">AUSENTE — Error de apoderado deja <code>User</code> huérfano</span></div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
+            <tbody>
+              <tr><td><code>first_name</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:100</code></td></tr>
+              <tr><td><code>paternal_surname</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:100</code></td></tr>
+              <tr><td><code>maternal_surname</code></td><td>Body</td><td>string</td><td>No</td><td><code>nullable|string|max:100</code></td></tr>
+              <tr class="row-orange"><td><code>document</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|regex:/^[0-9]{8}$/</code> (no soporta CE/Pasaporte ni <code>withTrashed</code> → Error 500 si soft-deleted)</td></tr>
+              <tr><td><code>birth_date</code>, <code>phone</code>, <code>email</code></td><td>Body</td><td>date/string</td><td>No</td><td><code>nullable</code> (<code>email</code> validado)</td></tr>
+              <tr class="row-red"><td><code>has_guardian</code> + <code>guardian_*</code></td><td>Body</td><td>bool/string</td><td>No</td><td><code>guardian_document</code> exige 8 dígitos. <span class="hl-red">Sobreescribe datos de cualquier <code>User</code> existente con ese DNI!</span></td></tr>
+              <tr class="row-blue"><td><code>document_type</code> / <code>branch_id</code></td><td><span class="hl-blue">FALTANTES</span></td><td>enum / int</td><td>—</td><td>Siempre fija <code>DocumentType::DNI</code>; el alumno no queda asignado a ninguna sede en BD.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Request &amp; Response)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Request Body</h4><pre>{
+  "first_name": "Renzo",
+  "paternal_surname": "Palacios",
+  "maternal_surname": "Rios",
+  "document": "71829304",
+  "birth_date": "2005-06-15",
+  "phone": "987123456",
+  "email": "renzo@gmail.com",
+  "has_guardian": true,
+  "guardian_document": "08765432",
+  "guardian_first_name": "Elena",
+  "guardian_paternal_surname": "Rios",
+  "guardian_maternal_surname": "Mendoza",
+  "guardian_phone": "912345678",
+  "guardian_email": "elena@gmail.com"
+}</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// Éxito: HTTP 302 Redirect Back + flash success
+// ⚠️ Si has_guardian=true y falta guardian_first_name:
+// Devuelve error 302 PERO el User del estudiante YA FUE INSERTADO en BD!</pre></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- PUT /admin/alumnos/{student} -->
+      <div class="variant v-crit" data-status="crit" data-method="PUT">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-put">PUT</span>
+            <span class="v-uri">/admin/alumnos/{student}</span>
+            <span class="v-name">admin.students.update</span>
+            <span class="v-action">ScheduledCourseController@updateStudent</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-crit">Sin check cargo ni sede (IDOR)</span>
+            <span class="badge b-bug">Sin DB::transaction</span>
+            <span class="badge b-crit">Secuestro vía guardian_document</span>
+          </div>
+        </div>
+        <p class="v-desc">Actualiza ficha de un estudiante y asigna/actualiza/desvincula su apoderado.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-red">Solo <code>if (!$staff)</code> — Sin check de cargo ni de sede!</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Path <code>{student}</code> + mismo Body que <code>POST /admin/alumnos</code> (UI también envía <code>id</code> ignorado)</div></div>
+          <div class="perm-item"><div class="p-lbl">Ruta Faltante</div><div class="p-val"><span class="hl-blue">No existe <code>DELETE /admin/alumnos/{student}</code></span></div></div>
+        </div>
+      </div>
+
+      <!-- GET /admin/estudiantes/buscar-dni -->
+      <div class="variant v-crit" data-status="crit" data-method="GET">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-get">GET</span>
+            <span class="v-uri">/admin/estudiantes/buscar-dni</span>
+            <span class="v-name">admin.students.search</span>
+            <span class="v-action">ScheduledCourseController@searchStudentByDni</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-crit">0% AUTH CHECK (PII LEAK)</span>
+            <span class="badge b-bug">GET MUTA LA BASE DE DATOS</span>
+            <span class="badge b-crit">Sin Rate Limit</span>
+          </div>
+        </div>
+        <p class="v-desc">Endpoint JSON usado para autocompletar por DNI en registro de alumnos, apoderados y matrículas.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Middleware Real</div><div class="p-val"><span class="hl-red">Solo <code>auth</code></span></div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-red">NINGUNA! Cualquier alumno/docente extrae PII de todo el instituto</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Solo Staff (Nivel 1–4) + Rate Limit + Solo Lectura</div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
+            <tbody>
+              <tr><td><code>document</code></td><td>Query</td><td>string</td><td><strong>Sí</strong> (len ≥ 6)</td><td>Sin <code>$request-&gt;validate()</code>; si len &lt; 6 devuelve <code>{"found": false}</code></td></tr>
+              <tr><td><code>scheduled_course_id</code></td><td>Query</td><td>int</td><td>No</td><td>Verifica si ya está matriculado en esa apertura (<code>already_enrolled</code>)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Estructura de Datos (Response JSON)</summary>
+          <div class="io-grid">
+            <div class="io-col"><h4>Response JSON (Encontrado — HTTP 200)</h4><pre>{
+  "found": true,
+  "document": "76543210",
+  "full_name": "Diego Mendoza Salazar",
+  "first_name": "Diego",
+  "paternal_surname": "Mendoza",
+  "maternal_surname": "Salazar",
+  "birth_date": "2006-08-20",
+  "phone": "987999000",
+  "email": "diego.mendoza@iisep.edu.pe",
+  "guardian": {
+    "id": 10, "document": "12345670", "full_name": "Juan Carlos Mendoza Huaman",
+    "first_name": "Juan Carlos", "paternal_surname": "Mendoza",
+    "maternal_surname": "Huaman", "phone": "987777888", "email": "juan.mendoza@gmail.com"
+  },
+  "already_enrolled": false,
+  "enrolled_course_ids": [3, 1]
+}</pre></div>
+            <div class="io-col"><h4>Efecto Secundario Peligroso (Líneas 708-711)</h4><pre>if (! $user->student) {
+    // ❌ MUTA LA BD EN UN GET!!
+    // Buscar el DNI del Director o un Docente lo inserta en `students`!
+    Student::firstOrCreate(['user_id' => $user->id]);
+}</pre></div>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- GRUPO 7: ASISTENCIAS                                         -->
+    <!-- ============================================================ -->
+    <div class="group-card">
+      <div class="group-head">
+        <div>
+          <h3>Endpoint Principal 7: Asistencias y Sesiones (<code>/admin/asistencias</code>)</h3>
+          <div class="g-sub">Controlador: <span class="hl-purple">NO EXISTE (<code>Route::inertia</code>)</span> &bull; Vista: <code>Admin/Asistencias.vue</code> + <code>AsistenciasView.vue</code></div>
+        </div>
+        <span class="badge b-btn">100% MOCK — 0% CONECTADO A BD</span>
+      </div>
+
+      <div class="variant v-miss" data-status="miss" data-method="GET">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-get">GET</span>
+            <span class="v-uri">/admin/asistencias</span>
+            <span class="v-name">admin.asistencias</span>
+            <span class="v-action">Route::inertia → Admin/Asistencias.vue</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-btn">100% Datos Mock</span>
+            <span class="badge b-crit">Sin check isStaff()</span>
+            <span class="badge b-bug">Tabla attendances incompatible</span>
+          </div>
+        </div>
+        <p class="v-desc">Renderiza la interfaz de control de asistencia por DNI y pase de lista, pero <strong>NO consulta PostgreSQL ni persiste ningún dato</strong>.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Middleware Real</div><div class="p-val"><span class="hl-red">Solo <code>auth</code></span></div></div>
+          <div class="perm-item"><div class="p-lbl">Endpoints de Escritura</div><div class="p-val"><span class="hl-purple">NO EXISTEN (0 POST / 0 PUT / 0 GET de sesiones)</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Staff Nivel 1–4 (Recepción+) y Docentes (en sus cursos)</div></div>
+        </div>
+        <div class="findings f-purple">
+          <div class="findings-title">Brechas Críticas de Arquitectura &amp; Esquema BD</div>
+          <ul>
+            <li><strong>Botones desconectados:</strong> "Buscar Alumno", "Marcar Presente", "Tardanza", "Autorizar y Marcar Asistencia", "Tomar Lista", "Marcar Todos Presentes", "Guardar Registro de Asistencia" solo editan variables reactivas en memoria.</li>
+            <li><strong>Sedes hardcodeadas:</strong> <code>Admin/Asistencias.vue:13-16</code> solo define Comas (id:1) y Puente Piedra (id:2) en código fijo.</li>
+            <li><strong>Bug de navegación:</strong> <code>Admin/Asistencias.vue:50-51</code> redirige el clic en "Apertura de Cursos" a <code>/admin/matriculas</code> en lugar de <code>/admin/matriculas?tab=aperturas</code>.</li>
+            <li><strong>Desfase de BD (<code>attendances</code>):</strong> La tabla solo tiene <code>attended: boolean</code>, mientras la UI exige 4 estados (<code>presente | tardanza | falta | justificado</code>) y <code>registered_at</code> (hora). Se requiere migración antes de crear <code>AttendanceController</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- SECCIÓN 4: BOTONES Y ELEMENTOS UI SIN ENDPOINT O ROTOS                -->
+  <!-- ===================================================================== -->
+  <section id="sec-botones">
+    <div class="sec-header">
+      <h2><span class="sec-num">4</span> Mapa de Botones, Formularios y Acciones UI Sin Endpoint Conectado o Rotos</h2>
+      <span class="badge b-btn">10 elementos remarcados para atención inmediata</span>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Vista / Archivo (Línea)</th>
+            <th>Botón / Control UI</th>
+            <th>Estado Actual</th>
+            <th>Problema Detectado &amp; Qué Requiere</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="row-purple">
+            <td><strong>1</strong></td>
+            <td><code>AsistenciasView.vue</code><br/>Líneas 806, 1660</td>
+            <td><strong>"Buscar Alumno"</strong> (DNI en Asistencias y dentro del Modal)</td>
+            <td><span class="badge b-btn">SIN ENDPOINT</span></td>
+            <td>Busca en array estático <code>studentsDirectory</code> (5 alumnos falsos). <span class="hl-purple">Requiere:</span> <code>GET /admin/asistencias/buscar-dni</code> que devuelva matrículas activas del día y sesiones del alumno.</td>
+          </tr>
+          <tr class="row-purple">
+            <td><strong>2</strong></td>
+            <td><code>AsistenciasView.vue</code><br/>Líneas 1011, 1017, 1095</td>
+            <td><strong>"✓ Marcar Presente"</strong>, <strong>"⏱ Tardanza"</strong>, <strong>"✓ Autorizar y Marcar Asistencia"</strong></td>
+            <td><span class="badge b-btn">SIN ENDPOINT</span></td>
+            <td>Solo inserta en array local <code>sessions</code>. Al refrescar la página se pierde todo. <span class="hl-purple">Requiere:</span> <code>POST /admin/asistencias</code> (incluyendo <code>origin_scheduled_course_id</code>, <code>date</code>, <code>status</code>, <code>notes</code>).</td>
+          </tr>
+          <tr class="row-purple">
+            <td><strong>3</strong></td>
+            <td><code>AsistenciasView.vue</code><br/>Líneas 1428, 1603, 1858–1926</td>
+            <td><strong>"Tomar Lista"</strong> → <strong>"Marcar Todos Presentes"</strong>, estados individuales y <strong>"Guardar Registro de Asistencia"</strong></td>
+            <td><span class="badge b-btn">SIN ENDPOINT</span></td>
+            <td>No envía petición al servidor. Además la tabla <code>attendances</code> no tiene columnas para <code>tardanza/justificado</code> ni <code>registered_at</code>. <span class="hl-purple">Requiere:</span> <code>POST /admin/asistencias/nomina</code> + migración de esquema.</td>
+          </tr>
+          <tr class="row-purple">
+            <td><strong>4</strong></td>
+            <td><code>AsistenciasView.vue</code><br/>Líneas 1674, 1681</td>
+            <td>Botones <strong>"34567890"</strong> y <strong>"76543210"</strong> (Demostración con 1 clic)</td>
+            <td><span class="badge b-warn">CÓDIGO DEMO</span></td>
+            <td>Botones de datos mock dejados en el modal de producción. Eliminar al conectar backend.</td>
+          </tr>
+          <tr class="row-red">
+            <td><strong>5</strong></td>
+            <td><code>MatriculasView.vue</code><br/>Líneas 1218, 1975</td>
+            <td>Textarea <strong>"Notas / Observaciones"</strong> y <strong>"Nota / Motivo del Cambio"</strong></td>
+            <td><span class="badge b-bug">NO GUARDA EN BD</span></td>
+            <td>El botón sí envía <code>notes</code> a <code>POST /admin/matriculas</code> y <code>PUT /admin/matriculas/{id}/status</code>, pero <span class="hl-red">la columna <code>notes</code> NO existe en la tabla <code>enrollments</code></span>. El dato desaparece silenciosamente.</td>
+          </tr>
+          <tr class="row-orange">
+            <td><strong>6</strong></td>
+            <td><code>OfertaAcademicaView.vue</code><br/>Líneas 722–755</td>
+            <td>Formulario <strong>"Nueva Carrera" / "Editar Carrera"</strong></td>
+            <td><span class="badge b-warn">CAMPO FALTANTE</span></td>
+            <td><span class="hl-orange">Falta el input/textarea para <code>description</code></span> aunque el backend lo acepta y la lista de carreras lo renderiza.</td>
+          </tr>
+          <tr class="row-orange">
+            <td><strong>7</strong></td>
+            <td><code>AperturasView.vue</code><br/>Líneas 354, 1455, 1933</td>
+            <td>Botón <strong>"Ingresar"</strong> (tabla horarios) y Modal <code>showQuickDniModal</code></td>
+            <td><span class="badge b-warn">BLOQUEADO / MUERTO</span></td>
+            <td><strong>Secretaría</strong> ve el botón "Ingresar" pero al pulsarlo le sale alerta de denegación (no puede ver el padrón ni usar la barra de DNI). Además <code>showQuickDniModal</code> (líneas 1933–2109) es <strong>código muerto</strong> sin botón disparador.</td>
+          </tr>
+          <tr class="row-orange">
+            <td><strong>8</strong></td>
+            <td><code>Sidebar.vue</code> + <code>Admin/Index.vue</code><br/>Línea 399 / 80</td>
+            <td>Botón Sidebar <strong>"Panel Resumen &amp; KPIs"</strong></td>
+            <td><span class="badge b-warn">RUTA FALTANTE</span></td>
+            <td>Desde cualquier subpágina navega a <code>/admin</code>, que siempre inicializa en <code>infraestructura</code> (Sedes &amp; Aulas). Imposible llegar al Resumen desde otras vistas. <span class="hl-blue">Requiere:</span> ruta <code>GET /admin/resumen</code> con KPIs reales.</td>
+          </tr>
+          <tr class="row-orange">
+            <td><strong>9</strong></td>
+            <td><code>Admin/Asistencias.vue</code><br/>Línea 50–51</td>
+            <td>Botón Sidebar <strong>"Apertura de Cursos"</strong> (cuando estás en Asistencias)</td>
+            <td><span class="badge b-bug">LINK INCORRECTO</span></td>
+            <td>Hace <code>router.visit('/admin/matriculas')</code> en vez de <code>/admin/matriculas?tab=aperturas</code>, llevando al usuario a la pestaña equivocada.</td>
+          </tr>
+          <tr class="row-red">
+            <td><strong>10</strong></td>
+            <td><code>Login.vue</code> (178–199) &amp; <code>Welcome.vue</code> (160, 320)</td>
+            <td>Botones <strong>"Autollenar Demo"</strong> y <strong>"Consultar vacante"</strong> / <strong>"Panel Admin"</strong></td>
+            <td><span class="badge b-crit">SEGURIDAD / STATIC</span></td>
+            <td><code>Login.vue</code> expone contraseñas reales. <code>Welcome.vue</code> muestra "Panel Admin" a no-staff y "Consultar vacante" solo hace scroll a datos estáticos (sin formulario/endpoint de preinscripción o consulta).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- SECCIÓN 5: ENDPOINTS Y MÓDULOS FALTANTES / PENDIENTES                 -->
+  <!-- ===================================================================== -->
+  <section id="sec-faltantes">
+    <div class="sec-header">
+      <h2><span class="sec-num">5</span> Endpoints y Módulos Pendientes / Faltantes (Tablas BD ya creadas sin CRUD)</h2>
+      <span class="badge b-miss">9 áreas pendientes detectadas</span>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Módulo / Tabla BD</th>
+            <th>Endpoints Faltantes Sugeridos</th>
+            <th>Permiso Requerido (según diseño)</th>
+            <th>Por qué es crítico / Impacto en BD</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="row-purple">
+            <td><strong>1. Control de Asistencias</strong><br/>Tabla: <code>attendances</code></td>
+            <td>
+              <code>GET /admin/asistencias</code> (Controlador real)<br/>
+              <code>GET /admin/asistencias/buscar-dni</code><br/>
+              <code>POST /admin/asistencias</code> (individual / cruzada)<br/>
+              <code>POST /admin/asistencias/nomina</code> (lote)<br/>
+              <code>PUT /admin/asistencias/{attendance}</code>
+            </td>
+            <td>Nivel 1+ (Recepción, Secre, Coord, Admin) + Docentes (en sus cursos)</td>
+            <td>La vista ya existe en mock al 100%, pero requiere primero <strong>migrar <code>attendances</code></strong> para agregar <code>status</code> (enum: presente/tardanza/falta/justificado), <code>registered_at</code> y hacer parcial el índice <code>uq_daily_attendance</code>.</td>
+          </tr>
+          <tr class="row-blue">
+            <td><strong>2. Gestión de Docentes</strong><br/>Tabla: <code>teachers</code></td>
+            <td>
+              <code>GET /admin/docentes</code><br/>
+              <code>POST /admin/docentes</code><br/>
+              <code>PUT /admin/docentes/{teacher}</code><br/>
+              <code>DELETE /admin/docentes/{teacher}</code>
+            </td>
+            <td>Nivel 3–4 (Coordinación / Dirección)</td>
+            <td><code>ScheduledCourseController</code> depende de <code>teachers</code> para asignar profesor a cada apertura, pero <strong>no existe forma de crear/editar docentes desde la app</strong> (solo existen los 5 del seeder).</td>
+          </tr>
+          <tr class="row-blue">
+            <td><strong>3. Personal Administrativo (Staff)</strong><br/>Tabla: <code>staff</code></td>
+            <td>
+              <code>GET /admin/staff</code><br/>
+              <code>POST /admin/staff</code><br/>
+              <code>PUT /admin/staff/{staff}</code><br/>
+              <code>DELETE /admin/staff/{staff}</code>
+            </td>
+            <td>Nivel 4 (Solo Dirección General)</td>
+            <td>Exigido en <code>ROLES_Y_PERMISOS.md</code>. Actualmente no se pueden dar de alta secretarias, recepcionistas ni coordinadores ni cambiar sus cargos/sedes. Requiere formalizar <code>StaffPosition</code> enum.</td>
+          </tr>
+          <tr class="row-blue">
+            <td><strong>4. Admisiones a Carreras</strong><br/>Tabla: <code>student_careers</code></td>
+            <td>
+              <code>POST /admin/alumnos/{student}/carreras</code><br/>
+              <code>PUT /admin/student-careers/{sc}</code><br/>
+              <code>DELETE /admin/student-careers/{sc}</code>
+            </td>
+            <td>Nivel 2–3 (Secretaría admite; Coord/Dir cambia a egresado/titulado)</td>
+            <td>La tabla <code>student_careers</code> existe con enum <code>StudentCareerStatus</code> y es FK de <code>enrollments.student_career_id</code>, pero <strong>nunca se crea desde ningún endpoint</strong> — rompiendo el seguimiento de egresados/titulados y la protección de borrado de carreras.</td>
+          </tr>
+          <tr class="row-blue">
+            <td><strong>5. Ciclo de Vida de Alumnos</strong><br/>Tabla: <code>students</code></td>
+            <td>
+              <code>GET /admin/alumnos/{student}</code> (ficha individual)<br/>
+              <code>DELETE /admin/alumnos/{student}</code> (soft-delete)
+            </td>
+            <td>Nivel 2–4 (lectura), Nivel 3–4 (baja)</td>
+            <td>Hoy se cargan 100% de los alumnos y todas sus matrículas en una sola petición sin paginación, y no se puede archivar/eliminar un alumno creado por error.</td>
+          </tr>
+          <tr class="row-blue">
+            <td><strong>6. Baja / Estado de Sedes</strong><br/>Tabla: <code>branches</code></td>
+            <td>
+              <code>PATCH /admin/sedes/{branch}/status</code> (toggle <code>is_active</code>)<br/>
+              <code>DELETE /admin/sedes/{branch}</code> (si sin aulas/cursos)
+            </td>
+            <td>Nivel 4 (Dirección General)</td>
+            <td>La columna <code>branches.is_active</code> existe en BD pero es inmutable desde la interfaz/API.</td>
+          </tr>
+          <tr class="row-blue">
+            <td><strong>7. Panel Resumen &amp; KPIs</strong><br/>Dashboard Dirección</td>
+            <td><code>GET /admin/resumen</code> (KPIs agregados reales)</td>
+            <td>Nivel 3–4 (Coordinación / Dirección)</td>
+            <td>Desacopla <code>/admin</code> para evitar cargar toda la BD en una sola vista y corrige el enlace roto del Sidebar.</td>
+          </tr>
+          <tr class="row-blue">
+            <td><strong>8. Seguridad de Cuenta / Perfil</strong><br/>Tabla: <code>users</code></td>
+            <td>
+              <code>PUT /perfil/password</code><br/>
+              <code>POST /forgot-password</code> / <code>POST /reset-password</code>
+            </td>
+            <td>Usuario autenticado / Invitado</td>
+            <td>Crítico porque las contraseñas iniciales son el número de DNI del alumno/apoderado.</td>
+          </tr>
+          <tr class="row-blue">
+            <td><strong>9. Portales Docente / Estudiante &amp; Constancias</strong></td>
+            <td>
+              <code>/docente/*</code> (mis cursos, tomar lista)<br/>
+              <code>/estudiante/*</code> (mis notas/asistencias/horario)<br/>
+              <code>GET /admin/constancias/...</code> (PDF)
+            </td>
+            <td>Docente / Estudiante / Nivel 2+</td>
+            <td>Hoy tras hacer login, Docentes y Alumnos caen en <code>/</code> (landing pública) y pueden entrar indebidamente a <code>/admin</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- SECCIÓN 6: COBERTURA DE TESTS EXISTENTES (PREPARACIÓN FASE 2)         -->
+  <!-- ===================================================================== -->
+  <section id="sec-tests">
+    <div class="sec-header">
+      <h2><span class="sec-num">6</span> Estado de Cobertura de Tests Actuales (Base para Fase 2: Validación Funcional)</h2>
+      <span class="badge b-gray">6 archivos Pest Feature existentes</span>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Módulo / Archivo de Test</th>
+            <th>Endpoints Cubiertos</th>
+            <th>Vacíos Críticos Sin Probar (Para Fase 2)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Auth &amp; Middleware</strong><br/><em>(Sin archivo de test)</em></td>
+            <td><span class="hl-red">0% cobertura</span></td>
+            <td>Login válido/inválido, redirección por rol, bloqueo de Alumnos/Docentes en <code>/admin/*</code>, logout, rate-limiting.</td>
+          </tr>
+          <tr>
+            <td><code>BranchTest.php</code> (7 tests)</td>
+            <td><code>GET /admin/sedes</code>, <code>GET /admin/sedes/{branch}</code>, <code>PUT /admin/sedes/{branch}</code></td>
+            <td>Faltan tests para <code>POST /admin/sedes</code>, <code>GET /admin</code> (props intactas), denegación a Secretaría en <code>PUT</code>.</td>
+          </tr>
+          <tr>
+            <td><code>ClassroomPermissionTest.php</code> (9 tests)</td>
+            <td><code>GET /admin/aulas/{classroom}/horarios</code>, <code>POST/PUT/DELETE /admin/aulas</code></td>
+            <td>Faltan tests de nombre duplicado en misma sede (hoy da 500!), transferencia de aula con horarios activos. <span class="hl-orange">Bug en test línea 160:</span> usa columnas inexistentes (<code>code</code>, <code>duration_weeks</code>, <code>total_hours</code>) en <code>Course::create</code>.</td>
+          </tr>
+          <tr>
+            <td><code>CareerTest.php</code> (9 tests)</td>
+            <td><code>POST/PUT/DELETE /admin/carreras</code></td>
+            <td>Falta test de <code>GET /admin/oferta-academica</code>, restricción por sede de <code>coord</code> y persistencia de <code>description</code>.</td>
+          </tr>
+          <tr>
+            <td><code>ModuleTest.php</code> (10 tests)</td>
+            <td><code>POST/PUT/DELETE /admin/modulos</code></td>
+            <td>Falta test de colisión al asignar un curso ya perteneciente a otro módulo y validación con matrículas activas en <code>destroy</code>.</td>
+          </tr>
+          <tr>
+            <td><code>WorkshopTest.php</code> (8 tests)</td>
+            <td><code>POST/PUT/DELETE /admin/talleres</code></td>
+            <td>Falta test de coherencia entre <code>is_workshop</code> y <code>module_id</code>.</td>
+          </tr>
+          <tr>
+            <td><code>ScheduledCourseTest.php</code> (16 tests)</td>
+            <td><code>GET /admin</code>, <code>GET /matriculas</code>, <code>GET /alumnos</code>, <code>POST/PUT/DELETE /cursos-aperturados</code>, <code>POST/DELETE /matriculas</code>, <code>POST/PUT /alumnos</code>, <code>GET /buscar-dni</code></td>
+            <td><span class="hl-red">0 tests</span> para <code>PUT /admin/matriculas/{id}/status</code>; faltan tests de persistencia de <code>notes</code>, re-matrícula tras <code>retirado/anulado</code> (hoy 500), aforo máximo, aula de otra sede, choque de horario, rollback de <code>User</code> huérfano en <code>storeStudent</code>, seguridad de <code>buscar-dni</code> y no-mutación en GET.</td>
+          </tr>
+          <tr class="row-purple">
+            <td><strong>Asistencias</strong><br/><em>(Sin archivo de test)</em></td>
+            <td><span class="hl-purple">0% cobertura (Sin backend)</span></td>
+            <td>Pendiente de implementar controlador, migración y suite completa de tests.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <strong>CETPRO IISEP — Documento de Auditoría Técnica de Endpoints</strong> &bull; Generado mediante análisis estático completo de rutas, controladores, modelos, migraciones, vistas Vue y suite de tests.
+</footer>
+
+<script>
+  let currentStatus = 'all';
+  let currentMethod = 'ALL';
+
+  function setStatusFilter(status, btn) {
+    currentStatus = status;
+    document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filterEndpoints();
+  }
+
+  function setMethodFilter(method, btn) {
+    currentMethod = method;
+    document.querySelectorAll('[data-method]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filterEndpoints();
+  }
+
+  function filterEndpoints() {
+    const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+    const variants = document.querySelectorAll('#sec-endpoints .variant');
+    let visibleCount = 0;
+
+    variants.forEach(v => {
+      const st = v.getAttribute('data-status');
+      const m = v.getAttribute('data-method');
+      const text = v.innerText.toLowerCase();
+
+      const matchStatus = currentStatus === 'all' || st === currentStatus;
+      const matchMethod = currentMethod === 'ALL' || m === currentMethod;
+      const matchQuery = !q || text.includes(q);
+
+      if (matchStatus && matchMethod && matchQuery) {
+        v.classList.remove('hidden');
+        visibleCount++;
+      } else {
+        v.classList.add('hidden');
+      }
+    });
+
+    document.querySelectorAll('#sec-endpoints .group-card').forEach(g => {
+      const hasVisible = g.querySelectorAll('.variant:not(.hidden)').length > 0;
+      g.classList.toggle('hidden', !hasVisible);
+    });
+
+    document.getElementById('visible-counter').textContent = `Mostrando ${visibleCount} endpoints`;
+  }
+
+  function toggleAllDetails(open) {
+    document.querySelectorAll('details').forEach(d => { d.open = open; });
+  }
+</script>
+</body>
+</html>
