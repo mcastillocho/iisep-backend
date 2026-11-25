@@ -15,64 +15,57 @@ use Inertia\Response;
 class BranchController extends Controller
 {
     /**
-     * Obtiene los datos reales de sedes y aulas filtrados según la autorización del usuario.
+     * Obtiene el resumen liviano de sedes y conteo de horarios por aula para el Dashboard.
      *
      * @return array{branches: list<array<string, mixed>>, classrooms: list<array<string, mixed>>}
      */
-    public function getBranchData(Request $request): array
+    protected function getDashboardBranchData(Request $request): array
     {
-        $user = $request->user();
-        $staff = $user?->staff;
+        $staff = $request->user()?->staff;
 
-        $branchQuery = Branch::query()->orderBy('id');
-        $classroomQuery = Classroom::query()->with(['branch', 'courseSchedules.scheduledCourse.course'])->orderBy('id');
+        $branchQuery = Branch::query()
+            ->select(['id', 'name', 'code', 'address', 'phone'])
+            ->with([
+                'classrooms' => fn ($q) => $q->select(['id', 'branch_id', 'name', 'capacity'])->orderBy('id'),
+            ])
+            ->withCount('classrooms')
+            ->orderBy('id');
 
-        // Si el personal tiene sede asignada (branch_id !== null), solo accede a su sede
+        $classroomQuery = Classroom::query()
+            ->select(['id', 'branch_id', 'name', 'capacity'])
+            ->with(['branch:id,name'])
+            ->withCount('courseSchedules')
+            ->orderBy('id');
+
         if ($staff && $staff->branch_id !== null) {
             $branchQuery->where('id', $staff->branch_id);
             $classroomQuery->where('branch_id', $staff->branch_id);
         }
 
-        $branches = $branchQuery
-            ->get()
-            ->map(fn (Branch $b) => [
-                'id' => $b->id,
-                'name' => $b->name,
-                'code' => $b->code ?? 'SED-'.$b->id,
-                'address' => $b->address ?? 'Dirección por registrar',
-                'phone' => $b->phone ?? 'Sin teléfono',
-                'is_active' => $b->is_active,
-            ])
-            ->values()
-            ->all();
+        $branches = $branchQuery->get()->map(fn (Branch $b) => [
+            'id' => $b->id,
+            'name' => $b->name,
+            'code' => $b->code ?? 'SED-'.$b->id,
+            'address' => $b->address ?? '',
+            'phone' => $b->phone ?? '',
+            'classrooms_count' => (int) $b->classrooms_count,
+            'total_capacity' => (int) $b->classrooms->sum('capacity'),
+            'classrooms' => $b->classrooms->map(fn (Classroom $c) => [
+                'id' => $c->id,
+                'branch_id' => $c->branch_id,
+                'name' => $c->name,
+                'capacity' => $c->capacity,
+            ])->values()->all(),
+        ])->values()->all();
 
-        $classrooms = $classroomQuery
-            ->get()
-            ->map(function (Classroom $c) {
-                $coursesList = $c->courseSchedules
-                    ->map(function ($schedule) {
-                        $courseName = $schedule->scheduledCourse?->course?->name ?? 'Curso';
-                        $day = $schedule->day_of_week->label();
-                        $time = "{$schedule->start_time} - {$schedule->end_time}";
-
-                        return "{$courseName} ({$day} {$time})";
-                    })
-                    ->filter()
-                    ->unique()
-                    ->values()
-                    ->all();
-
-                return [
-                    'id' => $c->id,
-                    'branch_id' => $c->branch_id,
-                    'branch_name' => $c->branch?->name ?? 'Sin Sede',
-                    'name' => $c->name,
-                    'capacity' => $c->capacity,
-                    'current_scheduled_courses' => $coursesList,
-                ];
-            })
-            ->values()
-            ->all();
+        $classrooms = $classroomQuery->get()->map(fn (Classroom $c) => [
+            'id' => $c->id,
+            'branch_id' => $c->branch_id,
+            'branch_name' => $c->branch?->name ?? 'Sin Sede',
+            'name' => $c->name,
+            'capacity' => $c->capacity,
+            'schedules_count' => (int) $c->course_schedules_count,
+        ])->values()->all();
 
         return [
             'branches' => $branches,
@@ -81,11 +74,119 @@ class BranchController extends Controller
     }
 
     /**
-     * Muestra la vista de administración de Sedes y Aulas (/admin/sedes-aulas).
+     * Muestra el resumen liviano de todas las sedes (/admin/sedes).
+     * Si el personal pertenece a una sede específica, redirige directamente a su sede (/admin/sedes/{branch}).
      */
-    public function index(Request $request): Response
+    public function index(Request $request): Response|RedirectResponse
     {
-        return Inertia::render('Admin/SedesAulas', $this->getBranchData($request));
+        $staff = $request->user()?->staff;
+
+        if (! $staff) {
+            abort(403, 'Acceso denegado: no cuenta con perfil administrativo.');
+        }
+
+        if ($staff->branch_id !== null) {
+            return redirect()->route('admin.sedes.show', $staff->branch_id);
+        }
+
+        $branches = Branch::query()
+            ->select(['id', 'name', 'code', 'address', 'phone'])
+            ->with([
+                'classrooms' => fn ($q) => $q->select(['id', 'branch_id', 'name', 'capacity'])->orderBy('id'),
+            ])
+            ->withCount('classrooms')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Branch $b) => [
+                'id' => $b->id,
+                'name' => $b->name,
+                'code' => $b->code ?? 'SED-'.$b->id,
+                'address' => $b->address ?? '',
+                'phone' => $b->phone ?? '',
+                'classrooms_count' => (int) $b->classrooms_count,
+                'total_capacity' => (int) $b->classrooms->sum('capacity'),
+                'classrooms' => $b->classrooms->map(fn (Classroom $c) => [
+                    'id' => $c->id,
+                    'branch_id' => $c->branch_id,
+                    'name' => $c->name,
+                    'capacity' => $c->capacity,
+                ])->values()->all(),
+            ])
+            ->values()
+            ->all();
+
+        $totalClassroomsCount = array_sum(array_column($branches, 'classrooms_count'));
+
+        return Inertia::render('Admin/SedesAulas', [
+            'branches' => $branches,
+            'selectedBranch' => null,
+            'classrooms' => [],
+            'totalClassroomsCount' => $totalClassroomsCount,
+            'initialEditing' => false,
+        ]);
+    }
+
+    /**
+     * Muestra el detalle y gestión de aulas de una sede específica (/admin/sedes/{branch}).
+     */
+    public function show(Request $request, Branch $branch): Response
+    {
+        $staff = $request->user()?->staff;
+
+        if (! $staff || (! $staff->isAdmin() && $staff->branch_id !== $branch->id)) {
+            abort(403, 'Acceso denegado. No tienes autorización para consultar esta sede.');
+        }
+
+        $branchQuery = Branch::query()
+            ->select(['id', 'name', 'code'])
+            ->orderBy('id');
+
+        if (! $staff->isAdmin() && $staff->branch_id !== null) {
+            $branchQuery->where('id', $staff->branch_id);
+        }
+
+        $branches = $branchQuery->get()->map(fn (Branch $b) => [
+            'id' => $b->id,
+            'name' => $b->name,
+            'code' => $b->code ?? 'SED-'.$b->id,
+            'address' => $b->id === $branch->id ? ($branch->address ?? '') : '',
+            'phone' => $b->id === $branch->id ? ($branch->phone ?? '') : '',
+        ])->values()->all();
+
+        $classrooms = Classroom::query()
+            ->where('branch_id', $branch->id)
+            ->select(['id', 'branch_id', 'name', 'capacity'])
+            ->withCount('courseSchedules')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Classroom $c) => [
+                'id' => $c->id,
+                'branch_id' => $c->branch_id,
+                'branch_name' => $branch->name,
+                'name' => $c->name,
+                'capacity' => $c->capacity,
+                'schedules_count' => (int) $c->course_schedules_count,
+            ])
+            ->values()
+            ->all();
+
+        $totalClassroomsCount = $staff->isAdmin()
+            ? Classroom::count()
+            : count($classrooms);
+
+        return Inertia::render('Admin/SedesAulas', [
+            'branches' => $branches,
+            'selectedBranch' => [
+                'id' => $branch->id,
+                'name' => $branch->name,
+                'code' => $branch->code ?? 'SED-'.$branch->id,
+                'address' => $branch->address ?? '',
+                'phone' => $branch->phone ?? '',
+            ],
+            'classrooms' => $classrooms,
+            'totalClassroomsCount' => $totalClassroomsCount,
+            'initialEditing' => $request->boolean('edit'),
+        ]);
     }
 
     /**
@@ -93,10 +194,12 @@ class BranchController extends Controller
      */
     public function dashboard(Request $request): Response
     {
+        $branchData = $this->getDashboardBranchData($request);
+
         $data = array_merge(
-            $this->getBranchData($request),
             AcademicOfferController::getOfferData($request),
             ScheduledCourseController::getScheduledCourseData($request),
+            $branchData,
         );
 
         return Inertia::render('Admin/Index', $data);
@@ -147,7 +250,7 @@ class BranchController extends Controller
             'is_active' => true,
         ]);
 
-        return redirect()->route('admin.sedes-aulas')->with('success', "Sede \"{$branch->name}\" registrada exitosamente.");
+        return redirect()->route('admin.sedes.index')->with('success', "Sede \"{$branch->name}\" registrada exitosamente.");
     }
 
     /**

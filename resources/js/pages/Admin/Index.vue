@@ -22,6 +22,14 @@ interface Branch {
     code: string;
     address: string;
     phone: string;
+    classrooms_count?: number;
+    total_capacity?: number;
+    classrooms?: Array<{
+        id: number;
+        branch_id: number;
+        name: string;
+        capacity: number | null;
+    }>;
 }
 
 interface Classroom {
@@ -30,7 +38,7 @@ interface Classroom {
     branch_name: string;
     name: string;
     capacity: number | null;
-    current_scheduled_courses: string[];
+    schedules_count?: number;
 }
 
 interface CareerModuleItem {
@@ -127,7 +135,7 @@ function handleMainTabChange(tab: string) {
     if (tab === 'curricular') {
         router.visit('/admin/oferta-academica');
     } else if (tab === 'infraestructura') {
-        router.visit('/admin/sedes-aulas');
+        router.visit('/admin/sedes');
     } else if (tab === 'matriculas' || tab === 'alumnos') {
         router.visit('/admin/matriculas');
     } else if (tab === 'aperturas') {

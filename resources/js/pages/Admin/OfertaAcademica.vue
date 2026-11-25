@@ -43,7 +43,7 @@ const selectedBranchId = ref<number | 'all'>(
 
 function handleMainTabChange(tab: string) {
     if (tab === 'infraestructura') {
-        router.visit('/admin/sedes-aulas');
+        router.visit('/admin/sedes');
     } else if (tab === 'aperturas') {
         router.visit('/admin/matriculas?tab=aperturas');
     } else if (tab === 'matriculas') {

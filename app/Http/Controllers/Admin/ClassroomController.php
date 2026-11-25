@@ -6,12 +6,72 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Classroom;
+use App\Models\CourseSchedule;
 use App\Models\Staff;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class ClassroomController extends Controller
 {
+    /**
+     * Devuelve los horarios programados de un aula específica bajo demanda (JSON).
+     * Autorización: Dirección General o personal administrativo de la sede del aula.
+     */
+    public function schedules(Request $request, Classroom $classroom): JsonResponse
+    {
+        $staff = $request->user()?->staff;
+
+        if (! $staff || (! $staff->isAdmin() && $staff->branch_id !== $classroom->branch_id)) {
+            abort(403, 'Acceso denegado. No tienes permisos para consultar los horarios de esta aula.');
+        }
+
+        $todayInPeru = Carbon::now('America/Lima')->toDateString();
+
+        $schedules = $classroom->courseSchedules()
+            ->with([
+                'scheduledCourse:id,course_id,teacher_id,start_date,end_date',
+                'scheduledCourse.course:id,name',
+                'scheduledCourse.teacher:id,user_id',
+                'scheduledCourse.teacher.user:id,first_name,paternal_surname,maternal_surname',
+            ])
+            ->orderBy('day_of_week')
+            ->orderBy('start_time')
+            ->get()
+            ->map(function (CourseSchedule $schedule) use ($todayInPeru) {
+                $sc = $schedule->scheduledCourse;
+                $startDate = $sc?->start_date ? $sc->start_date->format('Y-m-d') : null;
+                $endDate = $sc?->end_date ? $sc->end_date->format('Y-m-d') : null;
+
+                $status = 'en_curso';
+                if ($startDate && $startDate > $todayInPeru) {
+                    $status = 'programado';
+                } elseif ($endDate && $endDate < $todayInPeru) {
+                    $status = 'finalizado';
+                }
+
+                return [
+                    'id' => $schedule->id,
+                    'course_name' => $sc?->course?->name ?? 'Curso',
+                    'teacher_name' => $sc?->teacher?->full_name ?? 'Docente por asignar',
+                    'day_of_week' => $schedule->day_of_week->label(),
+                    'start_time' => substr((string) $schedule->start_time, 0, 5),
+                    'end_time' => substr((string) $schedule->end_time, 0, 5),
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'status' => $status,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return response()->json([
+            'classroom_id' => $classroom->id,
+            'classroom_name' => $classroom->name,
+            'schedules' => $schedules,
+        ]);
+    }
     /**
      * Registra una nueva aula.
      * Solo la Dirección General (branch_id === null) y la Coordinación de Sede ('coord') tienen autorización.

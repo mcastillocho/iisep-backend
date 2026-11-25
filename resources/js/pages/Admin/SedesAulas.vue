@@ -9,15 +9,21 @@ import Sidebar from '../../components/Admin/Sidebar/Sidebar.vue';
 
 interface Props {
     branches?: Branch[];
+    selectedBranch?: Branch | null;
     classrooms?: Classroom[];
+    totalClassroomsCount?: number;
+    initialEditing?: boolean;
 }
 
 const props = defineProps<Props>();
 
 // Datos obtenidos exclusivamente de la base de datos
 const branches = computed<Branch[]>(() => props.branches ?? []);
+const selectedBranch = computed<Branch | null>(() => props.selectedBranch ?? null);
 const classrooms = computed<Classroom[]>(() => props.classrooms ?? []);
-
+const totalClassroomsCount = computed<number>(
+    () => props.totalClassroomsCount ?? classrooms.value.length,
+);
 
 type CurricularTab = 'carreras' | 'modulos' | 'talleres';
 const activeCurricularTab = ref<CurricularTab>('carreras');
@@ -34,10 +40,24 @@ const userStaffBranchId = computed<number | null>(() => {
 
 const canViewAllBranches = computed(() => userStaffBranchId.value === null);
 
-// Si tiene sede asignada, preselecciona su sede; si es admin global (null), selecciona 'all'
-const selectedBranchId = ref<number | 'all'>(
-    userStaffBranchId.value !== null ? userStaffBranchId.value : 'all',
-);
+// Sincronizado con la ruta actual (/admin/sedes vs /admin/sedes/{branch})
+const selectedBranchId = computed<number | 'all'>({
+    get: () => {
+        if (selectedBranch.value) return selectedBranch.value.id;
+        return userStaffBranchId.value !== null ? userStaffBranchId.value : 'all';
+    },
+    set: (value: number | 'all') => {
+        if (value === 'all') {
+            if (canViewAllBranches.value) {
+                router.visit('/admin/sedes');
+            }
+            return;
+        }
+        if (selectedBranch.value?.id !== value) {
+            router.visit(`/admin/sedes/${value}`);
+        }
+    },
+});
 
 function handleMainTabChange(tab: string) {
     if (tab === 'curricular') {
@@ -138,7 +158,7 @@ function triggerToast(message: string) {
             v-model:selected-branch-id="selectedBranchId"
             v-model:is-mobile-open="isMobileSidebarOpen"
             :branches="branches"
-            :classrooms-count="classrooms.length"
+            :classrooms-count="totalClassroomsCount"
             :careers-count="3"
             :modules-count="5"
             :courses-count="5"
@@ -209,7 +229,9 @@ function triggerToast(message: string) {
             <main class="mx-auto w-full max-w-7xl flex-1 space-y-6 p-8">
                 <SedesAulasView
                     :branches="branches"
+                    :selected-branch="selectedBranch"
                     :classrooms="classrooms"
+                    :initial-editing="props.initialEditing ?? false"
                     v-model:selected-branch-id="selectedBranchId"
                     @notify="triggerToast"
                 />

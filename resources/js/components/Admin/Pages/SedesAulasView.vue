@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+
+export interface BranchClassroomSummary {
+    id: number;
+    branch_id: number;
+    name: string;
+    capacity: number | null;
+}
 
 export interface Branch {
     id: number;
@@ -8,6 +15,9 @@ export interface Branch {
     code: string;
     address: string;
     phone: string;
+    classrooms_count?: number;
+    total_capacity?: number;
+    classrooms?: BranchClassroomSummary[];
 }
 
 export interface Classroom {
@@ -16,17 +26,33 @@ export interface Classroom {
     branch_name?: string;
     name: string;
     capacity: number | null;
-    current_scheduled_courses: string[];
+    schedules_count?: number;
+}
+
+export interface ClassroomScheduleItem {
+    id: number;
+    course_name: string;
+    teacher_name: string;
+    day_of_week: string;
+    start_time: string;
+    end_time: string;
+    start_date: string | null;
+    end_date: string | null;
+    status: 'en_curso' | 'programado' | 'finalizado';
 }
 
 interface Props {
     branches: Branch[];
+    selectedBranch?: Branch | null;
     classrooms: Classroom[];
     selectedBranchId?: number | 'all';
+    initialEditing?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
+    selectedBranch: null,
     selectedBranchId: 'all',
+    initialEditing: false,
 });
 
 const emit = defineEmits<{
@@ -97,6 +123,31 @@ function canDeleteClassroom(room: Classroom): boolean {
     return user.staff.position === 'coord' && user.staff.branch_id === room.branch_id;
 }
 
+// Permiso para EDITAR SEDES: Solo Director General y Coordinador de Sede
+const canEditBranch = computed(() => isAdmin.value || isCoordinador.value);
+
+// Sede actualmente seleccionada (desde prop dedicado o buscando en la lista)
+const currentBranch = computed<Branch | null>(() => {
+    if (props.selectedBranch) return props.selectedBranch;
+    if (props.selectedBranchId === 'all') return null;
+    return props.branches.find((b) => b.id === props.selectedBranchId) ?? null;
+});
+
+function getBranchClassrooms(branch: Branch): BranchClassroomSummary[] {
+    if (branch.classrooms) return branch.classrooms;
+    return props.classrooms.filter((c) => c.branch_id === branch.id);
+}
+
+function getBranchClassroomsCount(branch: Branch): number {
+    if (typeof branch.classrooms_count === 'number') return branch.classrooms_count;
+    return getBranchClassrooms(branch).length;
+}
+
+function getBranchTotalCapacity(branch: Branch): number {
+    if (typeof branch.total_capacity === 'number') return branch.total_capacity;
+    return getBranchClassrooms(branch).reduce((sum, c) => sum + (c.capacity || 0), 0);
+}
+
 // Filtro de búsqueda
 const searchClassroomQuery = ref('');
 const searchBranchQuery = ref('');
@@ -104,7 +155,25 @@ const searchBranchQuery = ref('');
 // --- MODO EDICIÓN DETALLADA DE SEDE (Similar al editor de carreras) ---
 const editingBranch = ref<Branch | null>(null);
 
+watch(
+    () => [props.initialEditing, props.selectedBranch] as const,
+    ([shouldEdit, branch]) => {
+        if (shouldEdit && branch && canEditBranch.value) {
+            editingBranch.value = JSON.parse(JSON.stringify(branch));
+        }
+    },
+    { immediate: true },
+);
+
 function startEditingBranch(branch: Branch) {
+    if (!canEditBranch.value) return;
+
+    // Si estamos en el resumen global (/admin/sedes) sin aulas cargadas, navegar al detalle en modo edición
+    if (props.selectedBranchId === 'all' && props.classrooms.length === 0) {
+        router.visit(`/admin/sedes/${branch.id}?edit=1`);
+        return;
+    }
+
     editingBranch.value = JSON.parse(JSON.stringify(branch));
 }
 
@@ -275,7 +344,7 @@ function deleteClassroom(roomId: number) {
     const room = props.classrooms.find((c) => c.id === roomId);
     if (!room) return;
 
-    if (room.current_scheduled_courses && room.current_scheduled_courses.length > 0) {
+    if ((room.schedules_count ?? 0) > 0) {
         emit(
             'notify',
             `No es posible eliminar el aula "${room.name}" porque tiene clases programadas.`,
@@ -297,13 +366,34 @@ function deleteClassroom(roomId: number) {
     });
 }
 
-// --- MODAL DE DISPONIBILIDAD DE AULA ---
+// --- MODAL DE DISPONIBILIDAD DE AULA (CARGA BAJO DEMANDA) ---
 const selectedRoomForSchedule = ref<Classroom | null>(null);
 const showScheduleModal = ref(false);
+const roomSchedules = ref<ClassroomScheduleItem[]>([]);
+const isLoadingSchedules = ref(false);
+const schedulesError = ref('');
 
-function viewRoomAvailability(room: Classroom) {
+async function viewRoomAvailability(room: Classroom) {
     selectedRoomForSchedule.value = room;
+    roomSchedules.value = [];
+    schedulesError.value = '';
     showScheduleModal.value = true;
+    isLoadingSchedules.value = true;
+
+    try {
+        const res = await fetch(`/admin/aulas/${room.id}/horarios`, {
+            headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) {
+            throw new Error('No se pudo obtener la disponibilidad del aula.');
+        }
+        const data = await res.json();
+        roomSchedules.value = data.schedules ?? [];
+    } catch {
+        schedulesError.value = 'Error al cargar los horarios programados de esta aula.';
+    } finally {
+        isLoadingSchedules.value = false;
+    }
 }
 
 // Filtros
@@ -391,8 +481,9 @@ const filteredClassrooms = computed(() => {
                     <input
                         v-model="editingBranch.name"
                         type="text"
+                        :disabled="!isAdmin"
                         placeholder="Ej. Sede Comas"
-                        class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                        class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-70"
                     />
                 </div>
 
@@ -403,8 +494,9 @@ const filteredClassrooms = computed(() => {
                     <input
                         v-model="editingBranch.code"
                         type="text"
+                        :disabled="!isAdmin"
                         placeholder="Ej. COM"
-                        class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm font-bold text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none"
+                        class="mt-1.5 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 font-mono text-sm font-bold text-slate-900 focus:border-[#2e8b57] focus:bg-white focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-70"
                     />
                 </div>
 
@@ -556,8 +648,8 @@ const filteredClassrooms = computed(() => {
                                         <button
                                             v-if="canDeleteClassroom(room)"
                                             @click="deleteClassroom(room.id)"
-                                            :disabled="Boolean(room.current_scheduled_courses && room.current_scheduled_courses.length > 0)"
-                                            :title="room.current_scheduled_courses && room.current_scheduled_courses.length > 0 ? 'No se puede eliminar: tiene clases programadas' : 'Eliminar aula'"
+                                            :disabled="(room.schedules_count ?? 0) > 0"
+                                            :title="(room.schedules_count ?? 0) > 0 ? 'No se puede eliminar: tiene clases programadas' : 'Eliminar aula'"
                                             class="cursor-pointer text-xs font-bold text-red-500 hover:text-red-700 disabled:cursor-not-allowed disabled:text-slate-300"
                                         >
                                             ✕
@@ -690,27 +782,13 @@ const filteredClassrooms = computed(() => {
                                 <span
                                     class="rounded bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700"
                                 >
-                                    {{
-                                        classrooms.filter(
-                                            (c) => c.branch_id === branch.id,
-                                        ).length
-                                    }}
+                                    {{ getBranchClassroomsCount(branch) }}
                                     aulas
                                 </span>
                                 <span
                                     class="rounded bg-slate-100 px-2.5 py-0.5 font-mono text-xs font-bold text-slate-700"
                                 >
-                                    {{
-                                        classrooms
-                                            .filter(
-                                                (c) =>
-                                                    c.branch_id === branch.id,
-                                            )
-                                            .reduce(
-                                                (s, c) => s + (c.capacity || 0),
-                                                0,
-                                            )
-                                    }}
+                                    {{ getBranchTotalCapacity(branch) }}
                                     aforo total
                                 </span>
                             </div>
@@ -738,7 +816,7 @@ const filteredClassrooms = computed(() => {
                                         d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                                     />
                                 </svg>
-                                <span>{{ branch.address }}</span>
+                                <span>{{ branch.address || 'Dirección por registrar' }}</span>
                             </div>
 
                             <!-- Teléfono -->
@@ -758,7 +836,7 @@ const filteredClassrooms = computed(() => {
                                         d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
                                     />
                                 </svg>
-                                <span>Tel: {{ branch.phone }}</span>
+                                <span>Tel: {{ branch.phone || 'Sin teléfono' }}</span>
                             </div>
 
                             <!-- Píldoras de Aulas registradas en esta sede -->
@@ -770,9 +848,7 @@ const filteredClassrooms = computed(() => {
                                 </span>
                                 <div class="flex flex-wrap gap-2">
                                     <span
-                                        v-for="room in classrooms.filter(
-                                            (c) => c.branch_id === branch.id,
-                                        )"
+                                        v-for="room in getBranchClassrooms(branch)"
                                         :key="room.id"
                                         class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-800"
                                     >
@@ -785,12 +861,7 @@ const filteredClassrooms = computed(() => {
                                         >
                                     </span>
                                     <span
-                                        v-if="
-                                            classrooms.filter(
-                                                (c) =>
-                                                    c.branch_id === branch.id,
-                                            ).length === 0
-                                        "
+                                        v-if="getBranchClassrooms(branch).length === 0"
                                         class="text-xs text-slate-400 italic"
                                     >
                                         Sin aulas asignadas aún
@@ -813,6 +884,7 @@ const filteredClassrooms = computed(() => {
                             </button>
 
                             <button
+                                v-if="canEditBranch"
                                 @click="startEditingBranch(branch)"
                                 class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-emerald-600 bg-white px-4 py-2 text-xs font-bold text-[#2e8b57] shadow-2xs transition hover:bg-emerald-50"
                             >
@@ -845,47 +917,24 @@ const filteredClassrooms = computed(() => {
                         <div
                             class="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2e8b57] font-bold text-white"
                         >
-                            {{
-                                branches.find((b) => b.id === selectedBranchId)
-                                    ?.code || 'SED'
-                            }}
+                            {{ currentBranch?.code || 'SED' }}
                         </div>
                         <div>
                             <h3 class="text-base font-black text-slate-900">
-                                {{
-                                    branches.find(
-                                        (b) => b.id === selectedBranchId,
-                                    )?.name
-                                }}
+                                {{ currentBranch?.name }}
                             </h3>
                             <p class="text-xs text-slate-600">
-                                {{
-                                    branches.find(
-                                        (b) => b.id === selectedBranchId,
-                                    )?.address
-                                }}
+                                {{ currentBranch?.address || 'Dirección por registrar' }}
                                 &bull; Tel:
-                                {{
-                                    branches.find(
-                                        (b) => b.id === selectedBranchId,
-                                    )?.phone
-                                }}
+                                {{ currentBranch?.phone || 'Sin teléfono' }}
                             </p>
                         </div>
                     </div>
 
                     <div class="flex items-center gap-2">
                         <button
-                            v-if="
-                                branches.find((b) => b.id === selectedBranchId)
-                            "
-                            @click="
-                                startEditingBranch(
-                                    branches.find(
-                                        (b) => b.id === selectedBranchId,
-                                    )!,
-                                )
-                            "
+                            v-if="canEditBranch && currentBranch"
+                            @click="startEditingBranch(currentBranch)"
                             class="cursor-pointer rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-bold text-[#2e8b57] transition hover:bg-emerald-50"
                         >
                             Editar esta Sede
@@ -977,8 +1026,8 @@ const filteredClassrooms = computed(() => {
                                         <button
                                             v-if="canDeleteClassroom(room)"
                                             @click="deleteClassroom(room.id)"
-                                            :disabled="Boolean(room.current_scheduled_courses && room.current_scheduled_courses.length > 0)"
-                                            :title="room.current_scheduled_courses && room.current_scheduled_courses.length > 0 ? 'No se puede eliminar: tiene clases programadas' : 'Eliminar aula'"
+                                            :disabled="(room.schedules_count ?? 0) > 0"
+                                            :title="(room.schedules_count ?? 0) > 0 ? 'No se puede eliminar: tiene clases programadas' : 'Eliminar aula'"
                                             class="cursor-pointer text-xs font-bold text-red-500 hover:text-red-700 disabled:cursor-not-allowed disabled:text-slate-300"
                                         >
                                             ✕
@@ -1284,26 +1333,57 @@ const filteredClassrooms = computed(() => {
                     </h4>
 
                     <div
-                        v-if="
-                            selectedRoomForSchedule.current_scheduled_courses
-                                .length > 0
-                        "
+                        v-if="isLoadingSchedules"
+                        class="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-6 text-sm font-semibold text-slate-500"
+                    >
+                        <svg class="h-4 w-4 animate-spin text-[#2e8b57]" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                        </svg>
+                        <span>Consultando horarios del aula...</span>
+                    </div>
+                    <div
+                        v-else-if="schedulesError"
+                        class="rounded-lg border border-rose-200 bg-rose-50 p-4 text-center text-sm font-semibold text-rose-700"
+                    >
+                        {{ schedulesError }}
+                    </div>
+                    <div
+                        v-else-if="roomSchedules.length > 0"
                         class="space-y-2"
                     >
                         <div
-                            v-for="(
-                                sched, idx
-                            ) in selectedRoomForSchedule.current_scheduled_courses"
-                            :key="idx"
-                            class="flex items-center justify-between rounded-lg border border-emerald-100 bg-emerald-50/50 p-3.5"
+                            v-for="sched in roomSchedules"
+                            :key="sched.id"
+                            class="flex items-center justify-between gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-3.5"
                         >
-                            <span class="text-sm font-bold text-slate-800">{{
-                                sched
-                            }}</span>
+                            <div>
+                                <div class="text-sm font-bold text-slate-800">
+                                    {{ sched.course_name }}
+                                </div>
+                                <div class="text-xs font-medium text-slate-500">
+                                    {{ sched.day_of_week }} &bull; {{ sched.start_time }} - {{ sched.end_time }}
+                                    &bull; {{ sched.teacher_name }}
+                                </div>
+                            </div>
                             <span
-                                class="rounded bg-emerald-100 px-2 py-0.5 text-xs font-bold text-[#2e8b57]"
-                                >En curso</span
+                                :class="
+                                    sched.status === 'en_curso'
+                                        ? 'bg-emerald-100 text-[#2e8b57]'
+                                        : sched.status === 'programado'
+                                            ? 'bg-amber-100 text-amber-800'
+                                            : 'bg-slate-200 text-slate-600'
+                                "
+                                class="shrink-0 rounded px-2 py-0.5 text-xs font-bold"
                             >
+                                {{
+                                    sched.status === 'en_curso'
+                                        ? 'En curso'
+                                        : sched.status === 'programado'
+                                            ? 'Programado'
+                                            : 'Finalizado'
+                                }}
+                            </span>
                         </div>
                     </div>
                     <div

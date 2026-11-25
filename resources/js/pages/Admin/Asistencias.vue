@@ -44,7 +44,7 @@ function handleMainTabChange(tab: string) {
     if (tab === 'curricular') {
         router.visit('/admin/oferta-academica');
     } else if (tab === 'infraestructura') {
-        router.visit('/admin/sedes-aulas');
+        router.visit('/admin/sedes');
     } else if (tab === 'matriculas') {
         router.visit('/admin/matriculas');
     } else if (tab === 'aperturas') {

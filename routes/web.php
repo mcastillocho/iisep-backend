@@ -53,12 +53,14 @@ Route::middleware(['auth'])->prefix('admin')->group(function (): void {
     Route::delete('/talleres/{course}', [WorkshopController::class, 'destroy'])->name('admin.workshops.destroy');
 
     // Sedes y Aulas
-    Route::get('/sedes-aulas', [BranchController::class, 'index'])->name('admin.sedes-aulas');
+    Route::get('/sedes', [BranchController::class, 'index'])->name('admin.sedes.index');
+    Route::get('/sedes/{branch}', [BranchController::class, 'show'])->whereNumber('branch')->name('admin.sedes.show');
     Route::post('/sedes', [BranchController::class, 'store'])->name('admin.sedes.store');
-    Route::put('/sedes/{branch}', [BranchController::class, 'update'])->name('admin.sedes.update');
+    Route::put('/sedes/{branch}', [BranchController::class, 'update'])->whereNumber('branch')->name('admin.sedes.update');
+    Route::get('/aulas/{classroom}/horarios', [ClassroomController::class, 'schedules'])->whereNumber('classroom')->name('admin.classrooms.schedules');
     Route::post('/aulas', [ClassroomController::class, 'store'])->name('admin.classrooms.store');
-    Route::put('/aulas/{classroom}', [ClassroomController::class, 'update'])->name('admin.classrooms.update');
-    Route::delete('/aulas/{classroom}', [ClassroomController::class, 'destroy'])->name('admin.classrooms.destroy');
+    Route::put('/aulas/{classroom}', [ClassroomController::class, 'update'])->whereNumber('classroom')->name('admin.classrooms.update');
+    Route::delete('/aulas/{classroom}', [ClassroomController::class, 'destroy'])->whereNumber('classroom')->name('admin.classrooms.destroy');
 
     Route::inertia('/asistencias', 'Admin/Asistencias')->name('admin.asistencias');
 });

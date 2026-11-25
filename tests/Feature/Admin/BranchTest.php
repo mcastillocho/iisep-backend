@@ -79,3 +79,60 @@ test('branch coordinator cannot update other branches', function () {
 
     $response->assertStatus(403);
 });
+
+test('admin can view lightweight branches summary at /admin/sedes', function () {
+    $branch = Branch::create(['name' => 'Sede Comas', 'code' => 'COM', 'address' => 'Av. Principal 100', 'phone' => '999000111']);
+    $admin = createStaffUser('admin_summary', 'admin', null);
+
+    $response = $this->actingAs($admin)->get(route('admin.sedes.index'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('Admin/SedesAulas')
+        ->where('selectedBranch', null)
+        ->has('branches', 1)
+        ->where('branches.0.id', $branch->id)
+        ->where('branches.0.classrooms_count', 0)
+    );
+});
+
+test('branch staff visiting /admin/sedes is redirected to their assigned branch', function () {
+    $branch = Branch::create(['name' => 'Sede Puente Piedra', 'code' => 'PUP']);
+    $coord = createStaffUser('coord_redirect', 'coord', $branch->id);
+
+    $response = $this->actingAs($coord)->get(route('admin.sedes.index'));
+
+    $response->assertRedirect(route('admin.sedes.show', $branch));
+});
+
+test('branch staff can view their own branch detail but cannot view another branch', function () {
+    $branch1 = Branch::create(['name' => 'Sede 1', 'code' => 'S1']);
+    $branch2 = Branch::create(['name' => 'Sede 2', 'code' => 'S2']);
+    $secre = createStaffUser('secre_show', 'secre', $branch1->id);
+
+    $this->actingAs($secre)->get(route('admin.sedes.show', $branch1))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Admin/SedesAulas')
+            ->where('selectedBranch.id', $branch1->id)
+            ->has('classrooms')
+        );
+
+    $this->actingAs($secre)->get(route('admin.sedes.show', $branch2))
+        ->assertStatus(403);
+});
+
+test('non-staff user cannot access branches endpoints', function () {
+    $branch = Branch::create(['name' => 'Sede Protegida', 'code' => 'PRO']);
+    $studentUser = User::create([
+        'first_name' => 'Alumno',
+        'paternal_surname' => 'Externo',
+        'document' => '70000001',
+        'document_type' => DocumentType::DNI,
+        'username' => 'alumno_ext',
+        'password' => bcrypt('password'),
+    ]);
+
+    $this->actingAs($studentUser)->get(route('admin.sedes.index'))->assertStatus(403);
+    $this->actingAs($studentUser)->get(route('admin.sedes.show', $branch))->assertStatus(403);
+});

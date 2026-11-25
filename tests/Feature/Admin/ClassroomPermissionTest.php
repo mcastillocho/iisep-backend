@@ -204,3 +204,39 @@ test('can delete classroom without course schedules', function () {
         'id' => $classroom->id,
     ]);
 });
+
+test('staff of same branch and admin can fetch classroom schedules on demand', function () {
+    $branch1 = Branch::create(['name' => 'Sede 1', 'code' => 'S1']);
+    $branch2 = Branch::create(['name' => 'Sede 2', 'code' => 'S2']);
+    $secre1 = createUserWithStaff('secre_sched_1', 'secre', $branch1->id);
+    $secre2 = createUserWithStaff('secre_sched_2', 'secre', $branch2->id);
+    $classroom = Classroom::create(['name' => 'Lab 101', 'branch_id' => $branch1->id, 'capacity' => 24]);
+
+    $course = Course::create(['name' => 'Ofimática', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+    $sc = ScheduledCourse::create([
+        'branch_id' => $branch1->id,
+        'course_id' => $course->id,
+        'start_date' => now()->toDateString(),
+        'end_date' => now()->addWeeks(4)->toDateString(),
+    ]);
+    CourseSchedule::create([
+        'scheduled_course_id' => $sc->id,
+        'classroom_id' => $classroom->id,
+        'day_of_week' => DayOfWeek::MARTES,
+        'start_time' => '18:00:00',
+        'end_time' => '20:00:00',
+    ]);
+
+    $this->actingAs($secre1)
+        ->getJson(route('admin.classrooms.schedules', $classroom))
+        ->assertOk()
+        ->assertJson([
+            'classroom_id' => $classroom->id,
+            'classroom_name' => 'Lab 101',
+        ])
+        ->assertJsonCount(1, 'schedules');
+
+    $this->actingAs($secre2)
+        ->getJson(route('admin.classrooms.schedules', $classroom))
+        ->assertStatus(403);
+});
