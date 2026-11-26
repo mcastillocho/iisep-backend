@@ -114,22 +114,20 @@
 │       └── DELETE /admin/talleres/{course}          🟢 [auth + Admin (branch_id=null)] SoftDelete (bloquea si tiene scheduledCourses; whereNumber).
 │
 ├── 📁 /admin/cursos-aperturados (Aperturas y Horarios — ScheduledCourseController)
-│   ├── POST /admin/cursos-aperturados               🟠 [auth + Admin o Coord de esa sede] Crea apertura (ScheduledCourse + CourseSchedule).
-│   │   ├── course_id        (body, int, req)        — ID del curso/taller del catálogo (exists:courses).
-│   │   ├── branch_id        (body, int, req)        — ID de la sede (exists:branches; no valida branch_career).
-│   │   ├── classroom_id     (body, int, req)        — ID del aula. 🟠 NO valida que pertenezca a branch_id ni choques de horario!
-│   │   ├── teacher_id       (body, int|null, opc)   — ID del docente (exists:teachers). 🟠 NO valida choque de horario del docente!
-│   │   ├── start_date       (body, date, req)       — Fecha de inicio del periodo (YYYY-MM-DD).
-│   │   ├── end_date         (body, date, opc)       — 🟡 Se valida pero SE IGNORA siempre (se calcula con start_date + duration_in_weeks).
-│   │   ├── days[]           (body, enum[], req)     — Exactamente 1 día (DayOfWeek, size:1). 🟡 Contradice cursos de 2 días del Seeder.
-│   │   ├── start_time       (body, string, req)     — Hora inicio (HH:MM). 🟠 Sin date_format:H:i → texto inválido da ERROR 500 en Postgres!
-│   │   └── end_time         (body, string, req)     — Hora fin (debe ser > start_time). Sin DB::transaction().
-│   ├── PUT  /admin/cursos-aperturados/{scheduledCourse}  🟠 [auth + Admin o Coord sede] Actualiza apertura y recrea horarios.
-│   │   ├── {scheduledCourse}(path, int, req)        — ID de la apertura + mismos campos del body que POST.
-│   │   ├── 🟠 Ejecuta schedules()->forceDelete() sin DB::transaction().
-│   │   ├── 🟠 UI recorta days a 1 solo día: editar cursos del seeder (2 días) BORRA permanentemente el 2° día!
-│   │   └── 🟣 UI: Botón "Ingresar" bloquea a Secretaría impidiéndole ver el padrón o matricular desde ahí; modal showQuickDniModal es código muerto.
-│   └── DELETE /admin/cursos-aperturados/{scheduledCourse} 🟡 [auth + Admin o Coord sede] SoftDelete (bloquea si tiene enrollments; no revisa attendances).
+│   ├── POST /admin/cursos-aperturados               🟢 [auth + Admin o Coord de esa sede] Crea apertura (ScheduledCourse + CourseSchedule) en transacción.
+│   │   ├── course_id        (body, int, req)        — ID del curso/taller activo (exists whereNull deleted_at).
+│   │   ├── branch_id        (body, int, req)        — ID de la sede activa (exists whereNull deleted_at & is_active=true).
+│   │   ├── classroom_id     (body, int, req)        — ID del aula activa perteneciente a branch_id; valida cruce de horario del aula en fechas/días/horas.
+│   │   ├── teacher_id       (body, int|null, opc)   — ID del docente activo; valida cruce de horario del docente en todas las sedes.
+│   │   ├── start_date       (body, date, req)       — Fecha de inicio (YYYY-MM-DD); end_date se calcula siempre en backend con course.duration_in_weeks.
+│   │   ├── days[]           (body, enum[], req)     — 1 a 7 días distintos (DayOfWeek, min:1|max:7, distinct).
+│   │   ├── start_time       (body, string, req)     — Hora inicio con formato estricto HH:MM o HH:MM:SS.
+│   │   └── end_time         (body, string, req)     — Hora fin con formato estricto (> start_time).
+│   ├── PUT  /admin/cursos-aperturados/{scheduledCourse}  🟡 [auth + Admin o Coord sede] Actualiza apertura y recrea horarios en DB::transaction().
+│   │   ├── {scheduledCourse}(path, int, req)        — ID de la apertura (whereNumber) + mismos campos del body que POST (mismos checks de aula/docente).
+│   │   ├── 🟢 Integridad: si ya tiene matrículas bloquea cambiar branch_id/course_id y bloquea pasar a un aula con menor aforo que las matrículas vigentes.
+│   │   └── 🟣 UI pendiente: AperturasView.vue aún recorta days a 1 día al editar y bloquea el botón "Ingresar" para Secretaría.
+│   └── DELETE /admin/cursos-aperturados/{scheduledCourse} 🟢 [auth + Admin o Coord sede] SoftDelete en transacción (bloquea si tiene enrollments, attendances u originAttendances; whereNumber).
 │
 ├── 📁 /admin/matriculas (Matrículas e Inscripciones — ScheduledCourseController)
 │   ├── GET  /admin/matriculas                       🔴🟠 [auth — FALTA isStaff()] Vista principal de Alumnos, Matrículas y Aperturas.

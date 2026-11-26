@@ -7,14 +7,17 @@ namespace Tests\Feature\Admin;
 use App\Enums\DayOfWeek;
 use App\Enums\DocumentType;
 use App\Enums\EnrollmentStatus;
+use App\Models\Attendance;
 use App\Models\Branch;
 use App\Models\Career;
 use App\Models\Classroom;
 use App\Models\Course;
+use App\Models\CourseSchedule;
 use App\Models\Enrollment;
 use App\Models\ScheduledCourse;
 use App\Models\Staff;
 use App\Models\Student;
+use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -386,23 +389,31 @@ test('staff can withdraw student enrollment from scheduled course', function () 
     $this->assertSoftDeleted('enrollments', ['id' => $enrollment->id]);
 });
 
-test('scheduled course opening is restricted to exactly 1 day per week', function () {
+test('scheduled course opening rejects empty or duplicate days', function () {
     $admin = createStaffUser('admin_day_test', 'admin', null);
     $branch = Branch::create(['name' => 'Sede Los Olivos', 'code' => 'LOS']);
     $course = Course::create(['name' => 'Marketing Digital', 'duration_in_weeks' => 4, 'is_workshop' => false]);
     $classroom = Classroom::create(['name' => 'Aula 301', 'branch_id' => $branch->id, 'capacity' => 25]);
 
-    $response = $this->actingAs($admin)->post(route('admin.scheduled-courses.store'), [
+    $this->actingAs($admin)->post(route('admin.scheduled-courses.store'), [
         'branch_id' => $branch->id,
         'course_id' => $course->id,
         'classroom_id' => $classroom->id,
         'start_date' => '2026-11-01',
-        'days' => ['lunes', 'miercoles'],
+        'days' => [],
         'start_time' => '18:00',
         'end_time' => '20:00',
-    ]);
+    ])->assertSessionHasErrors(['days']);
 
-    $response->assertSessionHasErrors(['days']);
+    $this->actingAs($admin)->post(route('admin.scheduled-courses.store'), [
+        'branch_id' => $branch->id,
+        'course_id' => $course->id,
+        'classroom_id' => $classroom->id,
+        'start_date' => '2026-11-01',
+        'days' => ['lunes', 'lunes'],
+        'start_time' => '18:00',
+        'end_time' => '20:00',
+    ])->assertSessionHasErrors(['days.0', 'days.1']);
 });
 
 test('student registration parses Peruvian names and never assigns IISEP', function () {
@@ -628,4 +639,268 @@ test('student cannot be their own guardian', function () {
     ]);
 
     $response->assertSessionHasErrors(['guardian_document']);
+});
+
+test('can create and update a scheduled course with multiple days and auto-calculated end_date', function () {
+    $admin = createStaffUser('admin_multiday', 'admin', null);
+    $branch = Branch::create(['name' => 'Sede Comas', 'code' => 'COM']);
+    $course = Course::create(['name' => 'Ofimática Intensiva', 'duration_in_weeks' => 6, 'is_workshop' => false]);
+    $classroom = Classroom::create(['name' => 'Lab 1', 'branch_id' => $branch->id, 'capacity' => 25]);
+
+    $this->actingAs($admin)->post(route('admin.scheduled-courses.store'), [
+        'branch_id' => $branch->id,
+        'course_id' => $course->id,
+        'classroom_id' => $classroom->id,
+        'start_date' => '2026-11-02',
+        'days' => ['lunes', 'miercoles'],
+        'start_time' => '18:00',
+        'end_time' => '20:00',
+    ])->assertSessionHasNoErrors();
+
+    $sc = ScheduledCourse::where('course_id', $course->id)->firstOrFail();
+    expect($sc->end_date->toDateString())->toBe('2026-12-14');
+    expect($sc->schedules)->toHaveCount(2);
+
+    $this->actingAs($admin)->put(route('admin.scheduled-courses.update', $sc), [
+        'branch_id' => $branch->id,
+        'course_id' => $course->id,
+        'classroom_id' => $classroom->id,
+        'start_date' => '2026-11-02',
+        'days' => ['lunes', 'miercoles', 'viernes'],
+        'start_time' => '18:00',
+        'end_time' => '20:00',
+    ])->assertSessionHasNoErrors();
+
+    expect($sc->fresh()->schedules)->toHaveCount(3);
+});
+
+test('rejects classroom from another branch and rejects invalid time formats', function () {
+    $admin = createStaffUser('admin_branch_room', 'admin', null);
+    $branch1 = Branch::create(['name' => 'Sede 1', 'code' => 'S1']);
+    $branch2 = Branch::create(['name' => 'Sede 2', 'code' => 'S2']);
+    $course = Course::create(['name' => 'Diseño', 'duration_in_weeks' => 4, 'is_workshop' => true]);
+    $roomBranch1 = Classroom::create(['name' => 'Aula S1', 'branch_id' => $branch1->id, 'capacity' => 20]);
+    $roomBranch2 = Classroom::create(['name' => 'Aula S2', 'branch_id' => $branch2->id, 'capacity' => 20]);
+
+    // Classroom from branch2 cannot be used in branch1
+    $this->actingAs($admin)->post(route('admin.scheduled-courses.store'), [
+        'branch_id' => $branch1->id,
+        'course_id' => $course->id,
+        'classroom_id' => $roomBranch2->id,
+        'start_date' => '2026-11-01',
+        'days' => ['lunes'],
+        'start_time' => '09:00',
+        'end_time' => '11:00',
+    ])->assertSessionHasErrors('classroom_id');
+
+    // Malformed time fails validation cleanly instead of throwing DB 500
+    $this->actingAs($admin)->post(route('admin.scheduled-courses.store'), [
+        'branch_id' => $branch1->id,
+        'course_id' => $course->id,
+        'classroom_id' => $roomBranch1->id,
+        'start_date' => '2026-11-01',
+        'days' => ['lunes'],
+        'start_time' => 'no-es-hora',
+        'end_time' => '25:99',
+    ])->assertSessionHasErrors(['start_time', 'end_time']);
+});
+
+test('blocks classroom schedule overlap while allowing adjacent times and non-overlapping dates', function () {
+    $admin = createStaffUser('admin_room_conflict', 'admin', null);
+    $branch = Branch::create(['name' => 'Sede Comas', 'code' => 'COM']);
+    $course1 = Course::create(['name' => 'Curso 1', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+    $course2 = Course::create(['name' => 'Curso 2', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+    $classroom = Classroom::create(['name' => 'Lab Comas', 'branch_id' => $branch->id, 'capacity' => 20]);
+
+    $this->actingAs($admin)->post(route('admin.scheduled-courses.store'), [
+        'branch_id' => $branch->id,
+        'course_id' => $course1->id,
+        'classroom_id' => $classroom->id,
+        'start_date' => '2026-11-01',
+        'days' => ['martes'],
+        'start_time' => '08:00',
+        'end_time' => '10:00',
+    ])->assertSessionHasNoErrors();
+
+    // Overlapping time on same classroom, day, and date range -> blocked
+    $this->actingAs($admin)->post(route('admin.scheduled-courses.store'), [
+        'branch_id' => $branch->id,
+        'course_id' => $course2->id,
+        'classroom_id' => $classroom->id,
+        'start_date' => '2026-11-10',
+        'days' => ['martes'],
+        'start_time' => '09:30',
+        'end_time' => '11:30',
+    ])->assertSessionHasErrors('classroom_id');
+
+    // Adjacent time (10:00 - 12:00) -> allowed
+    $this->actingAs($admin)->post(route('admin.scheduled-courses.store'), [
+        'branch_id' => $branch->id,
+        'course_id' => $course2->id,
+        'classroom_id' => $classroom->id,
+        'start_date' => '2026-11-10',
+        'days' => ['martes'],
+        'start_time' => '10:00',
+        'end_time' => '12:00',
+    ])->assertSessionHasNoErrors();
+
+    // Same time but after previous course ends (2026-12-01) -> allowed
+    $this->actingAs($admin)->post(route('admin.scheduled-courses.store'), [
+        'branch_id' => $branch->id,
+        'course_id' => $course2->id,
+        'classroom_id' => $classroom->id,
+        'start_date' => '2026-12-01',
+        'days' => ['martes'],
+        'start_time' => '08:00',
+        'end_time' => '10:00',
+    ])->assertSessionHasNoErrors();
+});
+
+test('blocks teacher schedule overlap across branches', function () {
+    $admin = createStaffUser('admin_teacher_conflict', 'admin', null);
+    $branch1 = Branch::create(['name' => 'Sede Comas', 'code' => 'COM']);
+    $branch2 = Branch::create(['name' => 'Sede Puente Piedra', 'code' => 'PUP']);
+    $room1 = Classroom::create(['name' => 'Aula 1', 'branch_id' => $branch1->id, 'capacity' => 20]);
+    $room2 = Classroom::create(['name' => 'Aula 2', 'branch_id' => $branch2->id, 'capacity' => 20]);
+    $course = Course::create(['name' => 'Excel', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+
+    $teacherUser = User::create([
+        'first_name' => 'Marco',
+        'paternal_surname' => 'Rojas',
+        'document' => '45123456',
+        'document_type' => DocumentType::DNI,
+        'username' => 'mrojas_doc',
+        'password' => bcrypt('password'),
+    ]);
+    $teacher = Teacher::create(['user_id' => $teacherUser->id, 'specialty' => 'Ofimática']);
+
+    $this->actingAs($admin)->post(route('admin.scheduled-courses.store'), [
+        'branch_id' => $branch1->id,
+        'course_id' => $course->id,
+        'classroom_id' => $room1->id,
+        'teacher_id' => $teacher->id,
+        'start_date' => '2026-11-01',
+        'days' => ['jueves'],
+        'start_time' => '18:00',
+        'end_time' => '20:00',
+    ])->assertSessionHasNoErrors();
+
+    // Same teacher in branch2 overlapping same day and time -> blocked
+    $this->actingAs($admin)->post(route('admin.scheduled-courses.store'), [
+        'branch_id' => $branch2->id,
+        'course_id' => $course->id,
+        'classroom_id' => $room2->id,
+        'teacher_id' => $teacher->id,
+        'start_date' => '2026-11-05',
+        'days' => ['jueves'],
+        'start_time' => '19:00',
+        'end_time' => '21:00',
+    ])->assertSessionHasErrors('teacher_id');
+});
+
+test('blocks changing branch, course, or shrinking to smaller classroom when enrollments exist', function () {
+    $admin = createStaffUser('admin_upd_enrolled', 'admin', null);
+    $branch1 = Branch::create(['name' => 'Sede 1', 'code' => 'S1']);
+    $branch2 = Branch::create(['name' => 'Sede 2', 'code' => 'S2']);
+    $bigRoom = Classroom::create(['name' => 'Aula Grande', 'branch_id' => $branch1->id, 'capacity' => 20]);
+    $tinyRoom = Classroom::create(['name' => 'Aula Chica', 'branch_id' => $branch1->id, 'capacity' => 1]);
+    $roomBranch2 = Classroom::create(['name' => 'Aula S2', 'branch_id' => $branch2->id, 'capacity' => 20]);
+    $course1 = Course::create(['name' => 'Curso Original', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+    $course2 = Course::create(['name' => 'Otro Curso', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+
+    $sc = ScheduledCourse::create([
+        'branch_id' => $branch1->id,
+        'course_id' => $course1->id,
+        'start_date' => '2026-11-01',
+        'end_date' => '2026-11-29',
+    ]);
+    CourseSchedule::create([
+        'scheduled_course_id' => $sc->id,
+        'classroom_id' => $bigRoom->id,
+        'day_of_week' => DayOfWeek::SABADO,
+        'start_time' => '09:00:00',
+        'end_time' => '12:00:00',
+    ]);
+
+    foreach (['76000001', '76000002'] as $idx => $dni) {
+        $u = User::create([
+            'first_name' => 'Alumno'.$idx,
+            'paternal_surname' => 'Test',
+            'document' => $dni,
+            'document_type' => DocumentType::DNI,
+            'username' => 'alu_upd_'.$idx,
+            'password' => bcrypt('password'),
+        ]);
+        $st = Student::create(['user_id' => $u->id]);
+        Enrollment::create([
+            'scheduled_course_id' => $sc->id,
+            'student_id' => $st->id,
+            'enrollment_date' => '2026-11-01',
+            'status' => EnrollmentStatus::ACTIVO,
+        ]);
+    }
+
+    // Cannot change branch
+    $this->actingAs($admin)->put(route('admin.scheduled-courses.update', $sc), [
+        'branch_id' => $branch2->id,
+        'course_id' => $course1->id,
+        'classroom_id' => $roomBranch2->id,
+        'start_date' => '2026-11-01',
+        'days' => ['sabado'],
+        'start_time' => '09:00',
+        'end_time' => '12:00',
+    ])->assertSessionHasErrors('branch_id');
+
+    // Cannot change course
+    $this->actingAs($admin)->put(route('admin.scheduled-courses.update', $sc), [
+        'branch_id' => $branch1->id,
+        'course_id' => $course2->id,
+        'classroom_id' => $bigRoom->id,
+        'start_date' => '2026-11-01',
+        'days' => ['sabado'],
+        'start_time' => '09:00',
+        'end_time' => '12:00',
+    ])->assertSessionHasErrors('course_id');
+
+    // Cannot move to classroom with capacity < active enrollments (2 > 1)
+    $this->actingAs($admin)->put(route('admin.scheduled-courses.update', $sc), [
+        'branch_id' => $branch1->id,
+        'course_id' => $course1->id,
+        'classroom_id' => $tinyRoom->id,
+        'start_date' => '2026-11-01',
+        'days' => ['sabado'],
+        'start_time' => '09:00',
+        'end_time' => '12:00',
+    ])->assertSessionHasErrors('classroom_id');
+});
+
+test('cannot delete scheduled course if it has attendance records', function () {
+    $admin = createStaffUser('admin_del_att', 'admin', null);
+    $branch = Branch::create(['name' => 'Sede Central', 'code' => 'CEN']);
+    $course = Course::create(['name' => 'Taller Con Asistencia', 'duration_in_weeks' => 4, 'is_workshop' => true]);
+    $sc = ScheduledCourse::create([
+        'branch_id' => $branch->id,
+        'course_id' => $course->id,
+        'start_date' => '2026-11-01',
+        'end_date' => '2026-11-29',
+    ]);
+    $u = User::create([
+        'first_name' => 'Maria',
+        'paternal_surname' => 'Diaz',
+        'document' => '76554433',
+        'document_type' => DocumentType::DNI,
+        'username' => 'mdiaz_att',
+        'password' => bcrypt('password'),
+    ]);
+    $st = Student::create(['user_id' => $u->id]);
+    Attendance::create([
+        'scheduled_course_id' => $sc->id,
+        'student_id' => $st->id,
+        'date' => '2026-11-05',
+        'attended' => true,
+    ]);
+
+    $this->actingAs($admin)->delete(route('admin.scheduled-courses.destroy', $sc))
+        ->assertSessionHasErrors('error');
+    $this->assertDatabaseHas('scheduled_courses', ['id' => $sc->id, 'deleted_at' => null]);
 });

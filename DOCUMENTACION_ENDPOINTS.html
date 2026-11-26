@@ -1596,11 +1596,11 @@
           <h3>Endpoint Principal 5: Cursos Aperturados / Programación (<code>/admin/cursos-aperturados</code>)</h3>
           <div class="g-sub">Controlador: <code>ScheduledCourseController</code> &bull; Vista: <code>AperturasView.vue</code> (dentro de <code>/admin/matriculas?tab=aperturas</code>)</div>
         </div>
-        <span class="badge b-crit">Sin validación Aula-Sede / Choques &bull; forceDelete destructivo</span>
+        <span class="badge b-ok">Backend validado: Aula ∈ Sede, Choques, Multi-día y Transacciones</span>
       </div>
 
       <!-- POST /admin/cursos-aperturados -->
-      <div class="variant v-crit" data-status="crit" data-method="POST">
+      <div class="variant v-ok" data-status="ok" data-method="POST">
         <div class="v-top">
           <div class="v-route">
             <span class="m-badge m-post">POST</span>
@@ -1609,13 +1609,11 @@
             <span class="v-action">ScheduledCourseController@store</span>
           </div>
           <div class="v-badges">
-            <span class="badge b-bug">Sin check Aula ∈ Sede</span>
-            <span class="badge b-bug">Sin check Choque Horario</span>
-            <span class="badge b-bug">Error 500 hora inválida</span>
-            <span class="badge b-warn">Sin DB::transaction</span>
+            <span class="badge b-ok">Aula ∈ Sede + Choques Aula/Docente</span>
+            <span class="badge b-ok">Multi-día (1..7) + DB::transaction</span>
           </div>
         </div>
-        <p class="v-desc">Crea un <code>ScheduledCourse</code> y su(s) <code>CourseSchedule</code>. Recalcula <code>end_date</code> automáticamente usando <code>course.duration_in_weeks</code>.</p>
+        <p class="v-desc">Crea un <code>ScheduledCourse</code> y sus <code>CourseSchedule</code> en transacción. Calcula <code>end_date</code> automáticamente usando <code>course.duration_in_weeks</code> y valida cruces de aula y docente.</p>
         <div class="perm-box">
           <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green"><code>isAdmin()</code> o <code>isCoordinador($branchId)</code> (Secretaría: 403)</span></div></div>
           <div class="perm-item"><div class="p-lbl">Visibilidad UI</div><div class="p-val"><code>canManageAperturas</code> (Admin / Coord)</div></div>
@@ -1623,40 +1621,39 @@
         </div>
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Problemas</th></tr></thead>
+            <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
             <tbody>
-              <tr><td><code>course_id</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|exists:courses,id</code></td></tr>
-              <tr><td><code>branch_id</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|exists:branches,id</code> (no valida tabla <code>branch_career</code>)</td></tr>
-              <tr class="row-red"><td><code>classroom_id</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|exists:classrooms,id</code> — <span class="hl-red">NO valida que el aula pertenezca a <code>branch_id</code> ni disponibilidad horaria!</span></td></tr>
-              <tr class="row-orange"><td><code>teacher_id</code></td><td>Body</td><td>int|null</td><td>No</td><td><code>nullable|integer|exists:teachers,id</code> — <span class="hl-orange">NO valida cruce de horario del docente</span></td></tr>
-              <tr><td><code>start_date</code></td><td>Body</td><td>date</td><td><strong>Sí</strong></td><td><code>required|date</code> (YYYY-MM-DD)</td></tr>
-              <tr class="row-orange"><td><code>end_date</code></td><td>Body</td><td>date</td><td>No (Ignorado)</td><td><code>nullable|date</code> — <span class="hl-orange">Se valida pero se IGNORA siempre</span> (se sobreescribe por <code>start_date + duration_in_weeks</code>)</td></tr>
-              <tr class="row-orange"><td><code>days</code></td><td>Body</td><td>string[]</td><td><strong>Sí</strong></td><td><code>required|array|size:1</code> (<code>DayOfWeek</code>) — <span class="hl-orange">Conflicto con <code>DatabaseSeeder</code> que tiene cursos de 2 días/semana!</span></td></tr>
-              <tr class="row-red"><td><code>start_time</code> / <code>end_time</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string</code> — <span class="hl-red">Sin <code>date_format:H:i</code></span>! Cualquier texto inválido crashea PostgreSQL con HTTP 500.</td></tr>
+              <tr><td><code>course_id</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer</code> + curso activo (<code>whereNull('deleted_at')</code>)</td></tr>
+              <tr><td><code>branch_id</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer</code> + sede activa (<code>whereNull('deleted_at')</code> + <code>is_active=true</code>)</td></tr>
+              <tr><td><code>classroom_id</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer</code> + aula activa perteneciente a <code>branch_id</code>; valida cruce de fechas/días/horas</td></tr>
+              <tr><td><code>teacher_id</code></td><td>Body</td><td>int|null</td><td>No</td><td><code>nullable|integer</code> + docente activo; valida cruce de horario del docente en todas las sedes</td></tr>
+              <tr><td><code>start_date</code></td><td>Body</td><td>date</td><td><strong>Sí</strong></td><td><code>required|date</code> (YYYY-MM-DD); <code>end_date</code> se calcula siempre en backend con <code>course.duration_in_weeks</code></td></tr>
+              <tr><td><code>days</code></td><td>Body</td><td>string[]</td><td><strong>Sí</strong></td><td><code>required|array|min:1|max:7</code>, elementos <code>distinct</code> del enum <code>DayOfWeek</code></td></tr>
+              <tr><td><code>start_time</code> / <code>end_time</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|regex:/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/</code> y <code>start_time &lt; end_time</code></td></tr>
             </tbody>
           </table>
         </div>
         <details>
           <summary>Estructura de Datos (Request &amp; Response)</summary>
           <div class="io-grid">
-            <div class="io-col"><h4>Request Body (enviado por AperturasView.vue)</h4><pre>{
+            <div class="io-col"><h4>Request Body</h4><pre>{
   "course_id": 1,
   "branch_id": 1,
   "classroom_id": 2,
   "teacher_id": 1,
   "start_date": "2026-11-24",
-  "days": ["sabado"],
+  "days": ["lunes", "miercoles"],
   "start_time": "18:00",
   "end_time": "20:00"
 }</pre></div>
             <div class="io-col"><h4>Response</h4><pre>// Éxito: HTTP 302 Redirect Back + flash success
-// Si start_time >= end_time: error en 'end_time'</pre></div>
+// Cruce aula: errors.classroom_id | Cruce docente: errors.teacher_id | Hora inválida: errors.start_time/end_time</pre></div>
           </div>
         </details>
       </div>
 
       <!-- PUT /admin/cursos-aperturados/{scheduledCourse} -->
-      <div class="variant v-crit" data-status="crit" data-method="PUT">
+      <div class="variant v-warn" data-status="warn" data-method="PUT">
         <div class="v-top">
           <div class="v-route">
             <span class="m-badge m-put">PUT</span>
@@ -1665,28 +1662,26 @@
             <span class="v-action">ScheduledCourseController@update</span>
           </div>
           <div class="v-badges">
-            <span class="badge b-bug">forceDelete() sin transacción</span>
-            <span class="badge b-bug">Borra 2° día de cursos sembrados</span>
-            <span class="badge b-btn">Botón Ingresar bloquea a Secre</span>
+            <span class="badge b-ok">DB::transaction + Protección Matrículas/Aforo</span>
+            <span class="badge b-btn">UI pendiente en AperturasView.vue</span>
           </div>
         </div>
-        <p class="v-desc">Modifica la apertura de curso y borra/recrea sus horarios en <code>course_schedules</code>.</p>
+        <p class="v-desc">Modifica la apertura de curso y recrea sus horarios en <code>DB::transaction()</code>. Si ya hay alumnos matriculados, bloquea cambiar sede, cambiar curso o pasar a un aula con aforo inferior a las matrículas vigentes.</p>
         <div class="perm-box">
           <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin()</code> o <code>isCoordinador</code> (de sede actual y sede destino)</div></div>
-          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Path <code>{scheduledCourse}</code> + mismo Body que <code>POST</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Path <code>{scheduledCourse}</code> (<code>whereNumber</code>) + mismo Body que <code>POST</code></div></div>
         </div>
-        <div class="findings f-red">
-          <div class="findings-title">Bugs Críticos</div>
+        <div class="findings f-warn">
+          <div class="findings-title">Pendientes de Frontend (compañero UI)</div>
           <ul>
-            <li><code>ScheduledCourseController.php:464</code> llama a <code>$scheduledCourse-&gt;schedules()-&gt;forceDelete()</code> <span class="hl-red">fuera de una transacción</span>.</li>
-            <li><code>AperturasView.vue:372</code> recorta <code>sched.days</code> a <code>[sched.days[0]]</code>: editar cualquier curso del seeder (ej. Lunes y Miércoles) <span class="hl-red">destruye permanentemente el miércoles</span>.</li>
-            <li>En la tabla de <code>AperturasView.vue:1455</code>, el botón <strong>"Ingresar"</strong> está bloqueado para Secretaría (<code>!canManageAperturas</code>), impidiéndole ver el padrón de alumnos del curso o usar la barra de matrícula por DNI.</li>
+            <li><code>AperturasView.vue:372</code> aún recorta <code>sched.days</code> a 1 solo día en el formulario de edición (el backend ya soporta 1..7 días).</li>
+            <li>En la tabla de <code>AperturasView.vue:1455</code>, el botón <strong>"Ingresar"</strong> está bloqueado para Secretaría (<code>!canManageAperturas</code>), impidiéndole ver el padrón o matricular desde ahí.</li>
           </ul>
         </div>
       </div>
 
       <!-- DELETE /admin/cursos-aperturados/{scheduledCourse} -->
-      <div class="variant v-warn" data-status="warn" data-method="DELETE">
+      <div class="variant v-ok" data-status="ok" data-method="DELETE">
         <div class="v-top">
           <div class="v-route">
             <span class="m-badge m-delete">DELETE</span>
@@ -1695,14 +1690,14 @@
             <span class="v-action">ScheduledCourseController@destroy</span>
           </div>
           <div class="v-badges">
-            <span class="badge b-ok">Check Matrículas OK</span>
-            <span class="badge b-warn">No verifica attendances</span>
+            <span class="badge b-ok">Check Matrículas y Asistencias OK</span>
+            <span class="badge b-ok">DB::transaction</span>
           </div>
         </div>
-        <p class="v-desc">SoftDelete de horarios y apertura de curso. Bloquea si tiene <code>enrollments</code> (error key: <code>error</code>).</p>
+        <p class="v-desc">SoftDelete atómico de horarios y apertura de curso. Bloquea si existen <code>enrollments</code>, <code>attendances</code> u <code>originAttendances</code> (error key: <code>error</code>).</p>
         <div class="perm-box">
-          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin()</code> o <code>isCoordinador($scheduledCourse-&gt;branch_id)</code></div></div>
-          <div class="perm-item"><div class="p-lbl">Riesgo Integridad</div><div class="p-val"><span class="hl-orange">No verifica <code>attendances</code> / <code>originAttendances</code></span> ni usa <code>DB::transaction</code>.</div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green"><code>isAdmin()</code> o <code>isCoordinador($scheduledCourse-&gt;branch_id)</code></span></div></div>
+          <div class="perm-item"><div class="p-lbl">Integridad</div><div class="p-val">Bloquea si existen <code>enrollments</code>, <code>attendances</code> u <code>originAttendances</code></div></div>
         </div>
       </div>
     </div>
@@ -2342,9 +2337,9 @@
             <td>Cubre restricción exclusiva Admin, auto-desvinculación al cambiar módulo o marcar taller y bloqueo durante aperturas vigentes o matrículas en curso.</td>
           </tr>
           <tr>
-            <td><code>ScheduledCourseTest.php</code> (16 tests)</td>
+            <td><code>ScheduledCourseTest.php</code> (26 tests)</td>
             <td><code>GET /admin</code>, <code>GET /matriculas</code>, <code>GET /alumnos</code>, <code>POST/PUT/DELETE /cursos-aperturados</code>, <code>POST/DELETE /matriculas</code>, <code>POST/PUT /alumnos</code>, <code>GET /buscar-dni</code></td>
-            <td><span class="hl-red">0 tests</span> para <code>PUT /admin/matriculas/{id}/status</code>; faltan tests de persistencia de <code>notes</code>, re-matrícula tras <code>retirado/anulado</code> (hoy 500), aforo máximo, aula de otra sede, choque de horario, rollback de <code>User</code> huérfano en <code>storeStudent</code>, seguridad de <code>buscar-dni</code> y no-mutación en GET.</td>
+            <td>Cubre multi-día, aula ∈ sede, formato de hora, choques de aula/docente, protección de matrícula/aforo al editar y bloqueo por asistencias al borrar. Pendiente para fase Matrículas/Alumnos: <code>PUT /admin/matriculas/{id}/status</code>, <code>notes</code>, re-matrícula tras <code>retirado/anulado</code>, aforo en matrícula, transacción en <code>storeStudent</code> y seguridad de <code>buscar-dni</code>.</td>
           </tr>
           <tr class="row-purple">
             <td><strong>Asistencias</strong><br/><em>(Sin archivo de test)</em></td>

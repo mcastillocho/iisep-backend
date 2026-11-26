@@ -22,6 +22,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -343,28 +344,25 @@ class ScheduledCourseController extends Controller
         }
 
         $validated = $request->validate([
-            'course_id' => ['required', 'integer', 'exists:courses,id'],
+            'course_id' => ['required', 'integer', Rule::exists('courses', 'id')->whereNull('deleted_at')],
             'branch_id' => ['required', 'integer', Rule::exists('branches', 'id')->whereNull('deleted_at')->where('is_active', true)],
-            'classroom_id' => ['required', 'integer', 'exists:classrooms,id'],
-            'teacher_id' => ['nullable', 'integer', 'exists:teachers,id'],
+            'classroom_id' => ['required', 'integer', Rule::exists('classrooms', 'id')->where('branch_id', $branchId)->whereNull('deleted_at')],
+            'teacher_id' => ['nullable', 'integer', Rule::exists('teachers', 'id')->whereNull('deleted_at')],
             'start_date' => ['required', 'date'],
-            'end_date' => ['nullable', 'date'],
-            'days' => ['required', 'array', 'size:1'],
-            'days.*' => ['required', Rule::enum(DayOfWeek::class)],
-            'start_time' => ['required', 'string'],
-            'end_time' => ['required', 'string'],
+            'days' => ['required', 'array', 'min:1', 'max:7'],
+            'days.*' => ['required', 'distinct', Rule::enum(DayOfWeek::class)],
+            'start_time' => ['required', 'string', 'regex:/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/'],
+            'end_time' => ['required', 'string', 'regex:/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/'],
         ], [
-            'days.size' => 'Cada curso programado debe tener asignado exactamente 1 día de clase por semana.',
+            'classroom_id.exists' => 'El aula seleccionada no existe o no pertenece a la sede indicada.',
+            'days.min' => 'Debe seleccionar al menos 1 día de clase por semana.',
+            'days.*.distinct' => 'No se pueden repetir días de la semana en el mismo horario.',
+            'start_time.regex' => 'La hora de inicio debe tener formato válido HH:MM (ej. 08:00).',
+            'end_time.regex' => 'La hora de finalización debe tener formato válido HH:MM (ej. 10:00).',
         ]);
 
-        $startTime = str_pad(trim($validated['start_time']), 5, '0');
-        if (strlen($startTime) === 5) {
-            $startTime .= ':00';
-        }
-        $endTime = str_pad(trim($validated['end_time']), 5, '0');
-        if (strlen($endTime) === 5) {
-            $endTime .= ':00';
-        }
+        $startTime = $this->normalizeTime($validated['start_time']);
+        $endTime = $this->normalizeTime($validated['end_time']);
 
         if ($startTime >= $endTime) {
             return back()->withErrors([
@@ -372,29 +370,51 @@ class ScheduledCourseController extends Controller
             ]);
         }
 
-        // Cálculo seguro de fecha de fin según la duración curricular oficial del curso (evita inyecciones)
-        $course = Course::findOrFail($validated['course_id']);
+        // Cálculo seguro de fecha de fin según la duración curricular oficial del curso
+        $course = Course::findOrFail((int) $validated['course_id']);
         $durationWeeks = (int) ($course->duration_in_weeks ?: 4);
-        $startDate = Carbon::parse($validated['start_date'], 'America/Lima');
-        $calculatedEndDate = $startDate->copy()->addWeeks($durationWeeks)->toDateString();
+        $startDate = Carbon::parse($validated['start_date'], 'America/Lima')->toDateString();
+        $calculatedEndDate = Carbon::parse($startDate, 'America/Lima')->addWeeks($durationWeeks)->toDateString();
+        $days = array_values($validated['days']);
 
-        $scheduledCourse = ScheduledCourse::create([
-            'branch_id' => $validated['branch_id'],
-            'course_id' => $validated['course_id'],
-            'teacher_id' => $validated['teacher_id'] ?? null,
-            'start_date' => $validated['start_date'],
-            'end_date' => $calculatedEndDate,
-        ]);
+        if ($classroomConflict = $this->findClassroomConflict((int) $validated['classroom_id'], $days, $startTime, $endTime, $startDate, $calculatedEndDate)) {
+            $conflictCourse = $classroomConflict->scheduledCourse->course->name;
+            $conflictDay = $classroomConflict->day_of_week->label();
 
-        foreach ($validated['days'] as $dayVal) {
-            CourseSchedule::create([
-                'scheduled_course_id' => $scheduledCourse->id,
-                'classroom_id' => $validated['classroom_id'],
-                'day_of_week' => DayOfWeek::from($dayVal),
-                'start_time' => $startTime,
-                'end_time' => $endTime,
+            return back()->withErrors([
+                'classroom_id' => "Cruce de horario en el aula: ya está ocupada por \"{$conflictCourse}\" el día {$conflictDay} ({$this->formatShortTime($classroomConflict->start_time)} - {$this->formatShortTime($classroomConflict->end_time)}).",
             ]);
         }
+
+        $teacherId = ! empty($validated['teacher_id']) ? (int) $validated['teacher_id'] : null;
+        if ($teacherId !== null && ($teacherConflict = $this->findTeacherConflict($teacherId, $days, $startTime, $endTime, $startDate, $calculatedEndDate))) {
+            $conflictCourse = $teacherConflict->scheduledCourse->course->name;
+            $conflictDay = $teacherConflict->day_of_week->label();
+
+            return back()->withErrors([
+                'teacher_id' => "Cruce de horario del docente: ya dicta \"{$conflictCourse}\" el día {$conflictDay} ({$this->formatShortTime($teacherConflict->start_time)} - {$this->formatShortTime($teacherConflict->end_time)}).",
+            ]);
+        }
+
+        DB::transaction(function () use ($validated, $teacherId, $startDate, $calculatedEndDate, $days, $startTime, $endTime): void {
+            $scheduledCourse = ScheduledCourse::create([
+                'branch_id' => (int) $validated['branch_id'],
+                'course_id' => (int) $validated['course_id'],
+                'teacher_id' => $teacherId,
+                'start_date' => $startDate,
+                'end_date' => $calculatedEndDate,
+            ]);
+
+            foreach ($days as $dayVal) {
+                CourseSchedule::create([
+                    'scheduled_course_id' => $scheduledCourse->id,
+                    'classroom_id' => (int) $validated['classroom_id'],
+                    'day_of_week' => DayOfWeek::from($dayVal),
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                ]);
+            }
+        });
 
         return back()->with('success', 'Curso aperturado exitosamente en la sede y aula asignada.');
     }
@@ -417,28 +437,25 @@ class ScheduledCourseController extends Controller
         }
 
         $validated = $request->validate([
-            'course_id' => ['required', 'integer', 'exists:courses,id'],
+            'course_id' => ['required', 'integer', Rule::exists('courses', 'id')->whereNull('deleted_at')],
             'branch_id' => ['required', 'integer', Rule::exists('branches', 'id')->whereNull('deleted_at')->where('is_active', true)],
-            'classroom_id' => ['required', 'integer', 'exists:classrooms,id'],
-            'teacher_id' => ['nullable', 'integer', 'exists:teachers,id'],
+            'classroom_id' => ['required', 'integer', Rule::exists('classrooms', 'id')->where('branch_id', $newBranchId)->whereNull('deleted_at')],
+            'teacher_id' => ['nullable', 'integer', Rule::exists('teachers', 'id')->whereNull('deleted_at')],
             'start_date' => ['required', 'date'],
-            'end_date' => ['nullable', 'date'],
-            'days' => ['required', 'array', 'size:1'],
-            'days.*' => ['required', Rule::enum(DayOfWeek::class)],
-            'start_time' => ['required', 'string'],
-            'end_time' => ['required', 'string'],
+            'days' => ['required', 'array', 'min:1', 'max:7'],
+            'days.*' => ['required', 'distinct', Rule::enum(DayOfWeek::class)],
+            'start_time' => ['required', 'string', 'regex:/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/'],
+            'end_time' => ['required', 'string', 'regex:/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/'],
         ], [
-            'days.size' => 'Cada curso programado debe tener asignado exactamente 1 día de clase por semana.',
+            'classroom_id.exists' => 'El aula seleccionada no existe o no pertenece a la sede indicada.',
+            'days.min' => 'Debe seleccionar al menos 1 día de clase por semana.',
+            'days.*.distinct' => 'No se pueden repetir días de la semana en el mismo horario.',
+            'start_time.regex' => 'La hora de inicio debe tener formato válido HH:MM (ej. 08:00).',
+            'end_time.regex' => 'La hora de finalización debe tener formato válido HH:MM (ej. 10:00).',
         ]);
 
-        $startTime = str_pad(trim($validated['start_time']), 5, '0');
-        if (strlen($startTime) === 5) {
-            $startTime .= ':00';
-        }
-        $endTime = str_pad(trim($validated['end_time']), 5, '0');
-        if (strlen($endTime) === 5) {
-            $endTime .= ':00';
-        }
+        $startTime = $this->normalizeTime($validated['start_time']);
+        $endTime = $this->normalizeTime($validated['end_time']);
 
         if ($startTime >= $endTime) {
             return back()->withErrors([
@@ -446,39 +463,89 @@ class ScheduledCourseController extends Controller
             ]);
         }
 
-        // Cálculo seguro de fecha de fin según la duración curricular oficial del curso (evita inyecciones)
-        $course = Course::findOrFail($validated['course_id']);
+        $targetBranchId = (int) $validated['branch_id'];
+        $targetCourseId = (int) $validated['course_id'];
+        $targetClassroomId = (int) $validated['classroom_id'];
+
+        if ($scheduledCourse->enrollments()->exists()) {
+            if ($targetBranchId !== $scheduledCourse->branch_id) {
+                return back()->withErrors([
+                    'branch_id' => 'No es posible cambiar la sede de un curso aperturado que ya cuenta con alumnos matriculados.',
+                ]);
+            }
+
+            if ($targetCourseId !== $scheduledCourse->course_id) {
+                return back()->withErrors([
+                    'course_id' => 'No es posible cambiar el curso de una apertura que ya cuenta con alumnos matriculados.',
+                ]);
+            }
+
+            $newClassroom = Classroom::findOrFail($targetClassroomId);
+            $activeEnrollmentsCount = $scheduledCourse->enrollments()
+                ->whereIn('status', [EnrollmentStatus::ACTIVO->value, EnrollmentStatus::PREINSCRITO->value])
+                ->count();
+
+            if ($newClassroom->capacity !== null && $activeEnrollmentsCount > $newClassroom->capacity) {
+                return back()->withErrors([
+                    'classroom_id' => "El aula \"{$newClassroom->name}\" tiene aforo para {$newClassroom->capacity} alumnos, pero esta apertura ya cuenta con {$activeEnrollmentsCount} matrículas vigentes.",
+                ]);
+            }
+        }
+
+        // Cálculo seguro de fecha de fin según la duración curricular oficial del curso
+        $course = Course::findOrFail($targetCourseId);
         $durationWeeks = (int) ($course->duration_in_weeks ?: 4);
-        $startDate = Carbon::parse($validated['start_date'], 'America/Lima');
-        $calculatedEndDate = $startDate->copy()->addWeeks($durationWeeks)->toDateString();
+        $startDate = Carbon::parse($validated['start_date'], 'America/Lima')->toDateString();
+        $calculatedEndDate = Carbon::parse($startDate, 'America/Lima')->addWeeks($durationWeeks)->toDateString();
+        $days = array_values($validated['days']);
 
-        $scheduledCourse->update([
-            'branch_id' => $validated['branch_id'],
-            'course_id' => $validated['course_id'],
-            'teacher_id' => $validated['teacher_id'] ?? null,
-            'start_date' => $validated['start_date'],
-            'end_date' => $calculatedEndDate,
-        ]);
+        if ($classroomConflict = $this->findClassroomConflict($targetClassroomId, $days, $startTime, $endTime, $startDate, $calculatedEndDate, $scheduledCourse->id)) {
+            $conflictCourse = $classroomConflict->scheduledCourse->course->name;
+            $conflictDay = $classroomConflict->day_of_week->label();
 
-        // Recrear horarios del curso
-        $scheduledCourse->schedules()->forceDelete();
-
-        foreach ($validated['days'] as $dayVal) {
-            CourseSchedule::create([
-                'scheduled_course_id' => $scheduledCourse->id,
-                'classroom_id' => $validated['classroom_id'],
-                'day_of_week' => DayOfWeek::from($dayVal),
-                'start_time' => $startTime,
-                'end_time' => $endTime,
+            return back()->withErrors([
+                'classroom_id' => "Cruce de horario en el aula: ya está ocupada por \"{$conflictCourse}\" el día {$conflictDay} ({$this->formatShortTime($classroomConflict->start_time)} - {$this->formatShortTime($classroomConflict->end_time)}).",
             ]);
         }
+
+        $teacherId = ! empty($validated['teacher_id']) ? (int) $validated['teacher_id'] : null;
+        if ($teacherId !== null && ($teacherConflict = $this->findTeacherConflict($teacherId, $days, $startTime, $endTime, $startDate, $calculatedEndDate, $scheduledCourse->id))) {
+            $conflictCourse = $teacherConflict->scheduledCourse->course->name;
+            $conflictDay = $teacherConflict->day_of_week->label();
+
+            return back()->withErrors([
+                'teacher_id' => "Cruce de horario del docente: ya dicta \"{$conflictCourse}\" el día {$conflictDay} ({$this->formatShortTime($teacherConflict->start_time)} - {$this->formatShortTime($teacherConflict->end_time)}).",
+            ]);
+        }
+
+        DB::transaction(function () use ($scheduledCourse, $targetBranchId, $targetCourseId, $targetClassroomId, $teacherId, $startDate, $calculatedEndDate, $days, $startTime, $endTime): void {
+            $scheduledCourse->update([
+                'branch_id' => $targetBranchId,
+                'course_id' => $targetCourseId,
+                'teacher_id' => $teacherId,
+                'start_date' => $startDate,
+                'end_date' => $calculatedEndDate,
+            ]);
+
+            $scheduledCourse->schedules()->forceDelete();
+
+            foreach ($days as $dayVal) {
+                CourseSchedule::create([
+                    'scheduled_course_id' => $scheduledCourse->id,
+                    'classroom_id' => $targetClassroomId,
+                    'day_of_week' => DayOfWeek::from($dayVal),
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                ]);
+            }
+        });
 
         return back()->with('success', 'Apertura de curso y horario actualizados correctamente.');
     }
 
     /**
      * Elimina una apertura de curso y sus horarios asociados.
-     * Restricción: No se puede eliminar si ya cuenta con alumnos matriculados.
+     * Restricción: No se puede eliminar si cuenta con alumnos matriculados o registros de asistencia.
      */
     public function destroy(Request $request, ScheduledCourse $scheduledCourse): RedirectResponse
     {
@@ -497,10 +564,98 @@ class ScheduledCourseController extends Controller
             ]);
         }
 
-        $scheduledCourse->schedules()->delete();
-        $scheduledCourse->delete();
+        if ($scheduledCourse->attendances()->exists() || $scheduledCourse->originAttendances()->exists()) {
+            return back()->withErrors([
+                'error' => 'No es posible eliminar el curso aperturado porque cuenta con registros de asistencia asociados.',
+            ]);
+        }
+
+        DB::transaction(function () use ($scheduledCourse): void {
+            $scheduledCourse->schedules()->delete();
+            $scheduledCourse->delete();
+        });
 
         return back()->with('success', 'Apertura de curso eliminada del sistema.');
+    }
+
+    /**
+     * Normaliza una hora HH:MM o HH:MM:SS a formato HH:MM:SS.
+     */
+    protected function normalizeTime(string $time): string
+    {
+        $clean = trim($time);
+
+        return strlen($clean) === 5 ? $clean.':00' : $clean;
+    }
+
+    /**
+     * Formatea una hora HH:MM:SS a HH:MM para mensajes de validación.
+     */
+    protected function formatShortTime(string $time): string
+    {
+        return substr($time, 0, 5);
+    }
+
+    /**
+     * Busca si existe un cruce de horario para el aula en el rango de fechas, días y horas indicados.
+     *
+     * @param  list<string>  $days
+     */
+    protected function findClassroomConflict(
+        int $classroomId,
+        array $days,
+        string $startTime,
+        string $endTime,
+        string $startDate,
+        string $endDate,
+        ?int $ignoreScheduledCourseId = null,
+    ): ?CourseSchedule {
+        return CourseSchedule::query()
+            ->with(['scheduledCourse.course:id,name'])
+            ->where('classroom_id', $classroomId)
+            ->whereIn('day_of_week', $days)
+            ->where('start_time', '<', $endTime)
+            ->where('end_time', '>', $startTime)
+            ->whereHas('scheduledCourse', function ($q) use ($startDate, $endDate, $ignoreScheduledCourseId): void {
+                $q->whereDate('start_date', '<=', $endDate)
+                    ->whereDate('end_date', '>=', $startDate);
+
+                if ($ignoreScheduledCourseId !== null) {
+                    $q->where('id', '!=', $ignoreScheduledCourseId);
+                }
+            })
+            ->first();
+    }
+
+    /**
+     * Busca si existe un cruce de horario para el docente en cualquier sede dentro del rango indicado.
+     *
+     * @param  list<string>  $days
+     */
+    protected function findTeacherConflict(
+        int $teacherId,
+        array $days,
+        string $startTime,
+        string $endTime,
+        string $startDate,
+        string $endDate,
+        ?int $ignoreScheduledCourseId = null,
+    ): ?CourseSchedule {
+        return CourseSchedule::query()
+            ->with(['scheduledCourse.course:id,name'])
+            ->whereIn('day_of_week', $days)
+            ->where('start_time', '<', $endTime)
+            ->where('end_time', '>', $startTime)
+            ->whereHas('scheduledCourse', function ($q) use ($teacherId, $startDate, $endDate, $ignoreScheduledCourseId): void {
+                $q->where('teacher_id', $teacherId)
+                    ->whereDate('start_date', '<=', $endDate)
+                    ->whereDate('end_date', '>=', $startDate);
+
+                if ($ignoreScheduledCourseId !== null) {
+                    $q->where('id', '!=', $ignoreScheduledCourseId);
+                }
+            })
+            ->first();
     }
 
     /**

@@ -33,8 +33,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function (): void {
     Route::post('/alumnos', [ScheduledCourseController::class, 'storeStudent'])->name('admin.students.store');
     Route::put('/alumnos/{student}', [ScheduledCourseController::class, 'updateStudent'])->name('admin.students.update');
     Route::post('/cursos-aperturados', [ScheduledCourseController::class, 'store'])->name('admin.scheduled-courses.store');
-    Route::put('/cursos-aperturados/{scheduledCourse}', [ScheduledCourseController::class, 'update'])->name('admin.scheduled-courses.update');
-    Route::delete('/cursos-aperturados/{scheduledCourse}', [ScheduledCourseController::class, 'destroy'])->name('admin.scheduled-courses.destroy');
+    Route::put('/cursos-aperturados/{scheduledCourse}', [ScheduledCourseController::class, 'update'])->whereNumber('scheduledCourse')->name('admin.scheduled-courses.update');
+    Route::delete('/cursos-aperturados/{scheduledCourse}', [ScheduledCourseController::class, 'destroy'])->whereNumber('scheduledCourse')->name('admin.scheduled-courses.destroy');
     Route::post('/matriculas', [ScheduledCourseController::class, 'storeEnrollment'])->name('admin.enrollments.store');
     Route::put('/matriculas/{enrollment}/status', [ScheduledCourseController::class, 'updateEnrollmentStatus'])->name('admin.enrollments.status');
     Route::delete('/matriculas/{enrollment}', [ScheduledCourseController::class, 'destroyEnrollment'])->name('admin.enrollments.destroy');
