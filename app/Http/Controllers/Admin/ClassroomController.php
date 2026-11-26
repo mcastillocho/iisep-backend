@@ -31,6 +31,7 @@ class ClassroomController extends Controller
         $todayInPeru = Carbon::now('America/Lima')->toDateString();
 
         $schedules = $classroom->courseSchedules()
+            ->whereHas('scheduledCourse')
             ->with([
                 'scheduledCourse:id,course_id,teacher_id,start_date,end_date',
                 'scheduledCourse.course:id,name',
@@ -87,12 +88,24 @@ class ClassroomController extends Controller
             abort(403, 'Acceso denegado. Solo la Dirección General y la Coordinación de Sede pueden registrar aulas.');
         }
 
+        $effectiveBranchId = $staff->branch_id !== null
+            ? $staff->branch_id
+            : $targetBranchId;
+
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('classrooms', 'name')
+                    ->where('branch_id', $effectiveBranchId)
+                    ->whereNull('deleted_at'),
+            ],
             'branch_id' => ['required', 'integer', Rule::exists('branches', 'id')->whereNull('deleted_at')->where('is_active', true)],
             'capacity' => ['required', 'integer', 'min:1', 'max:500'],
         ], [
             'name.required' => 'El nombre del aula es obligatorio.',
+            'name.unique' => 'Ya existe un aula registrada con ese nombre en esta sede.',
             'branch_id.required' => 'La sede es obligatoria.',
             'capacity.required' => 'La capacidad es obligatoria.',
             'capacity.min' => 'La capacidad mínima es de 1 estudiante.',
@@ -105,7 +118,7 @@ class ClassroomController extends Controller
 
         $classroom = Classroom::create([
             'name' => trim($validated['name']),
-            'branch_id' => $validated['branch_id'],
+            'branch_id' => (int) $validated['branch_id'],
             'capacity' => (int) $validated['capacity'],
         ]);
 
@@ -142,13 +155,27 @@ class ClassroomController extends Controller
         }
 
         // Dirección General o Coordinación de Sede
+        $targetBranchId = ($staff->branch_id === null && $request->filled('branch_id'))
+            ? (int) $request->input('branch_id')
+            : $classroom->branch_id;
+
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('classrooms', 'name')
+                    ->where('branch_id', $targetBranchId)
+                    ->whereNull('deleted_at')
+                    ->ignore($classroom->id),
+            ],
             'capacity' => ['required', 'integer', 'min:1', 'max:500'],
             'branch_id' => ['sometimes', 'integer', Rule::exists('branches', 'id')->whereNull('deleted_at')->where('is_active', true)],
         ], [
             'name.required' => 'El nombre del aula es obligatorio.',
+            'name.unique' => 'Ya existe otra aula registrada con ese nombre en esta sede.',
             'capacity.required' => 'La capacidad es obligatoria.',
+            'capacity.min' => 'La capacidad mínima es de 1 estudiante.',
         ]);
 
         $updateData = [
@@ -156,9 +183,15 @@ class ClassroomController extends Controller
             'capacity' => (int) $validated['capacity'],
         ];
 
-        // Solo admin general puede transferir un aula a otra sede
-        if ($staff->branch_id === null && isset($validated['branch_id'])) {
-            $updateData['branch_id'] = $validated['branch_id'];
+        // Solo admin general puede transferir un aula a otra sede (siempre que no tenga horarios asociados)
+        if ($staff->branch_id === null && isset($validated['branch_id']) && (int) $validated['branch_id'] !== $classroom->branch_id) {
+            if ($classroom->courseSchedules()->exists()) {
+                return redirect()->back()->withErrors([
+                    'branch_id' => "No es posible transferir el aula \"{$classroom->name}\" a otra sede porque tiene horarios o cursos asociados.",
+                ]);
+            }
+
+            $updateData['branch_id'] = (int) $validated['branch_id'];
         }
 
         $classroom->update($updateData);

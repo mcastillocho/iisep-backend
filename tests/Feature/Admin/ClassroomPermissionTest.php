@@ -159,9 +159,8 @@ test('cannot delete classroom if it has course schedules programadas', function 
 
     $course = Course::create([
         'name' => 'Excel Avanzado',
-        'code' => 'EXC-01',
-        'duration_weeks' => 4,
-        'total_hours' => 20,
+        'duration_in_weeks' => 4,
+        'is_workshop' => false,
     ]);
 
     $scheduledCourse = ScheduledCourse::create([
@@ -239,4 +238,129 @@ test('staff of same branch and admin can fetch classroom schedules on demand', f
     $this->actingAs($secre2)
         ->getJson(route('admin.classrooms.schedules', $classroom))
         ->assertStatus(403);
+});
+
+test('creating a classroom with duplicate name in the same branch returns validation error while another branch allows it', function () {
+    $branch1 = Branch::create(['name' => 'Sede 1', 'code' => 'S1']);
+    $branch2 = Branch::create(['name' => 'Sede 2', 'code' => 'S2']);
+    $admin = createUserWithStaff('admin_dup_room', 'admin', null);
+
+    Classroom::create(['name' => 'Aula 101', 'branch_id' => $branch1->id, 'capacity' => 25]);
+
+    $this->actingAs($admin)->post(route('admin.classrooms.store'), [
+        'name' => 'Aula 101',
+        'branch_id' => $branch1->id,
+        'capacity' => 30,
+    ])->assertSessionHasErrors('name');
+
+    $this->actingAs($admin)->post(route('admin.classrooms.store'), [
+        'name' => 'Aula 101',
+        'branch_id' => $branch2->id,
+        'capacity' => 30,
+    ])->assertSessionHasNoErrors();
+});
+
+test('updating a classroom validates unique name per branch while allowing its own name', function () {
+    $branch = Branch::create(['name' => 'Sede Unica', 'code' => 'UNI']);
+    $admin = createUserWithStaff('admin_upd_dup', 'admin', null);
+
+    $room1 = Classroom::create(['name' => 'Aula A', 'branch_id' => $branch->id, 'capacity' => 20]);
+    $room2 = Classroom::create(['name' => 'Aula B', 'branch_id' => $branch->id, 'capacity' => 25]);
+
+    $this->actingAs($admin)->put(route('admin.classrooms.update', $room2), [
+        'name' => 'Aula A',
+        'capacity' => 25,
+    ])->assertSessionHasErrors('name');
+
+    $this->actingAs($admin)->put(route('admin.classrooms.update', $room2), [
+        'name' => 'Aula B',
+        'capacity' => 35,
+    ])->assertSessionHasNoErrors();
+
+    expect($room2->fresh()->capacity)->toBe(35);
+});
+
+test('deleted classroom name can be reused in the same branch thanks to partial unique index', function () {
+    $branch = Branch::create(['name' => 'Sede Reuso', 'code' => 'REU']);
+    $admin = createUserWithStaff('admin_reuse_room', 'admin', null);
+
+    $room = Classroom::create(['name' => 'Laboratorio 1', 'branch_id' => $branch->id, 'capacity' => 20]);
+
+    $this->actingAs($admin)->delete(route('admin.classrooms.destroy', $room))->assertSessionHasNoErrors();
+
+    $this->actingAs($admin)->post(route('admin.classrooms.store'), [
+        'name' => 'Laboratorio 1',
+        'branch_id' => $branch->id,
+        'capacity' => 28,
+    ])->assertSessionHasNoErrors();
+
+    expect(Classroom::where('branch_id', $branch->id)->where('name', 'Laboratorio 1')->count())->toBe(1);
+});
+
+test('admin cannot transfer a classroom with schedules to another branch but can transfer an empty one', function () {
+    $branch1 = Branch::create(['name' => 'Sede Origen', 'code' => 'ORI']);
+    $branch2 = Branch::create(['name' => 'Sede Destino', 'code' => 'DES']);
+    $admin = createUserWithStaff('admin_transfer', 'admin', null);
+
+    $busyRoom = Classroom::create(['name' => 'Aula Ocupada', 'branch_id' => $branch1->id, 'capacity' => 25]);
+    $freeRoom = Classroom::create(['name' => 'Aula Libre', 'branch_id' => $branch1->id, 'capacity' => 25]);
+
+    $course = Course::create(['name' => 'Redes', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+    $sc = ScheduledCourse::create([
+        'branch_id' => $branch1->id,
+        'course_id' => $course->id,
+        'start_date' => now()->toDateString(),
+        'end_date' => now()->addWeeks(4)->toDateString(),
+    ]);
+    CourseSchedule::create([
+        'scheduled_course_id' => $sc->id,
+        'classroom_id' => $busyRoom->id,
+        'day_of_week' => DayOfWeek::LUNES,
+        'start_time' => '09:00:00',
+        'end_time' => '11:00:00',
+    ]);
+
+    // Transfer of busy room is blocked
+    $this->actingAs($admin)->put(route('admin.classrooms.update', $busyRoom), [
+        'name' => 'Aula Ocupada',
+        'capacity' => 25,
+        'branch_id' => $branch2->id,
+    ])->assertSessionHasErrors('branch_id');
+    expect($busyRoom->fresh()->branch_id)->toBe($branch1->id);
+
+    // Transfer of empty room succeeds
+    $this->actingAs($admin)->put(route('admin.classrooms.update', $freeRoom), [
+        'name' => 'Aula Libre',
+        'capacity' => 25,
+        'branch_id' => $branch2->id,
+    ])->assertSessionHasNoErrors();
+    expect($freeRoom->fresh()->branch_id)->toBe($branch2->id);
+});
+
+test('classroom schedules endpoint ignores soft-deleted scheduled courses', function () {
+    $branch = Branch::create(['name' => 'Sede Horarios', 'code' => 'HOR']);
+    $admin = createUserWithStaff('admin_sched_del', 'admin', null);
+    $classroom = Classroom::create(['name' => 'Aula 202', 'branch_id' => $branch->id, 'capacity' => 20]);
+
+    $course = Course::create(['name' => 'Diseño', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+    $sc = ScheduledCourse::create([
+        'branch_id' => $branch->id,
+        'course_id' => $course->id,
+        'start_date' => now()->toDateString(),
+        'end_date' => now()->addWeeks(4)->toDateString(),
+    ]);
+    CourseSchedule::create([
+        'scheduled_course_id' => $sc->id,
+        'classroom_id' => $classroom->id,
+        'day_of_week' => DayOfWeek::JUEVES,
+        'start_time' => '15:00:00',
+        'end_time' => '17:00:00',
+    ]);
+
+    $sc->delete();
+
+    $this->actingAs($admin)
+        ->getJson(route('admin.classrooms.schedules', $classroom))
+        ->assertOk()
+        ->assertJsonCount(0, 'schedules');
 });

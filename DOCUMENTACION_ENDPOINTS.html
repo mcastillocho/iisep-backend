@@ -417,9 +417,8 @@
       <div class="alert-card a-orange">
         <h3><span class="badge b-bug">BD-02</span> Errores 500 SQL no controlados por Índices Únicos + SoftDeletes</h3>
         <p><strong>1) Re-matrícula tras retiro/anulación:</strong> <code>enrollments</code> tiene <code>UNIQUE (scheduled_course_id, student_id) WHERE deleted_at IS NULL</code>, pero <code>storeEnrollment:663</code> excluye estados <code>retirado</code> y <code>anulado</code> en el check previo → al re-matricular <span class="hl-red">explota con Error 500 SQL</span>.</p>
-        <p><strong>2) Aulas duplicadas:</strong> <code>classrooms</code> tiene <code>UNIQUE (branch_id, name)</code> (sin <code>WHERE deleted_at IS NULL</code>), pero <code>ClassroomController::store/update</code> <span class="hl-red">NO valida unicidad</span> → Error 500 SQL.</p>
-        <p><strong>3) Usuarios/Sedes soft-deleted:</strong> <code>users.username</code>, <code>uq_user_document</code>, <code>branches.name/code</code> y <code>uq_daily_attendance</code> no son índices parciales; re-registrar un DNI o aula soft-deleted lanza Error 500.</p>
-        <p><span class="ref">ClassroomController.php:28, 83</span> <span class="ref">ScheduledCourseController.php:661, 838</span></p>
+        <p><strong>2) Usuarios/Asistencias soft-deleted:</strong> <code>users.username</code>, <code>uq_user_document</code> y <code>uq_daily_attendance</code> no son índices parciales; re-registrar un DNI soft-deleted lanza Error 500.</p>
+        <p><span class="ref">ScheduledCourseController.php:661, 838</span></p>
       </div>
 
       <!-- BD 3 -->
@@ -1110,7 +1109,7 @@
       </div>
 
       <!-- POST /admin/aulas -->
-      <div class="variant v-crit" data-status="crit" data-method="POST">
+      <div class="variant v-ok" data-status="ok" data-method="POST">
         <div class="v-top">
           <div class="v-route">
             <span class="m-badge m-post">POST</span>
@@ -1119,11 +1118,11 @@
             <span class="v-action">ClassroomController@store</span>
           </div>
           <div class="v-badges">
-            <span class="badge b-bug">ERROR 500 Nombre Duplicado</span>
             <span class="badge b-ok">Auth: Admin / Coord Sede</span>
+            <span class="badge b-ok">Unique Parcial por Sede</span>
           </div>
         </div>
-        <p class="v-desc">Registra un nuevo ambiente físico (<code>classrooms</code>) en una sede.</p>
+        <p class="v-desc">Registra un nuevo ambiente físico (<code>classrooms</code>) en una sede activa.</p>
         <div class="perm-box">
           <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green"><code>isAdmin()</code> o <code>isCoordinador($targetBranchId)</code></span></div></div>
           <div class="perm-item"><div class="p-lbl">Visibilidad UI</div><div class="p-val"><code>v-if="canCreateClassroom"</code> (Admin/Coord)</div></div>
@@ -1133,9 +1132,9 @@
           <table>
             <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
             <tbody>
-              <tr class="row-red"><td><code>name</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:255</code> — <span class="hl-red">FALTA <code>Rule::unique('classrooms')-&gt;where('branch_id', ...)</code></span> → Error 500 SQL!</td></tr>
-              <tr><td><code>branch_id</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|exists:branches,id</code> (forzado al del Coord si no es Admin)</td></tr>
-              <tr><td><code>capacity</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|min:1|max:500</code> (en BD es nullable, pero backend exige ≥ 1)</td></tr>
+              <tr><td><code>name</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:255</code> + <code>Rule::unique('classrooms', 'name')-&gt;where('branch_id', ...)-&gt;whereNull('deleted_at')</code></td></tr>
+              <tr><td><code>branch_id</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer</code> + <code>Rule::exists('branches', 'id')-&gt;whereNull('deleted_at')-&gt;where('is_active', true)</code> (forzado al del Coord)</td></tr>
+              <tr><td><code>capacity</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|min:1|max:500</code></td></tr>
             </tbody>
           </table>
         </div>
@@ -1148,13 +1147,13 @@
   "capacity": 30
 }</pre></div>
             <div class="io-col"><h4>Response</h4><pre>// Éxito: HTTP 302 Redirect Back + flash success
-// Nombre repetido en misma sede: ❌ HTTP 500 SQLSTATE[23505] uq_branch_classroom_name!</pre></div>
+// Nombre repetido en misma sede: HTTP 302 + errors.name (validación controlada)</pre></div>
           </div>
         </details>
       </div>
 
       <!-- PUT /admin/aulas/{classroom} -->
-      <div class="variant v-crit" data-status="crit" data-method="PUT">
+      <div class="variant v-ok" data-status="ok" data-method="PUT">
         <div class="v-top">
           <div class="v-route">
             <span class="m-badge m-put">PUT</span>
@@ -1163,11 +1162,11 @@
             <span class="v-action">ClassroomController@update</span>
           </div>
           <div class="v-badges">
-            <span class="badge b-bug">ERROR 500 Nombre Duplicado</span>
-            <span class="badge b-warn">Transferencia sede sin validar horarios</span>
+            <span class="badge b-ok">Unique por Sede Destino</span>
+            <span class="badge b-ok">Bloqueo Transferencia con Horarios</span>
           </div>
         </div>
-        <p class="v-desc">Edita un aula. Admin edita <code>name, capacity, branch_id</code>; Coord edita <code>name, capacity</code>; Secretaría solo <code>capacity</code>.</p>
+        <p class="v-desc">Edita un aula. Admin edita <code>name, capacity, branch_id</code> (si no tiene horarios asociados); Coord edita <code>name, capacity</code>; Secretaría solo <code>capacity</code>.</p>
         <div class="perm-box">
           <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin()</code>, <code>isCoordinador($room-&gt;branch_id)</code>, <code>isSecretaria($room-&gt;branch_id)</code></div></div>
           <div class="perm-item"><div class="p-lbl">Visibilidad UI</div><div class="p-val"><code>canEditClassroom(room)</code> — deshabilita <code>name/branch_id</code> para Secretaría</div></div>
@@ -1177,10 +1176,10 @@
           <table>
             <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
             <tbody>
-              <tr><td><code>classroom</code></td><td>Path</td><td>int (ID)</td><td><strong>Sí</strong></td><td>Route Model Binding <code>Classroom</code></td></tr>
-              <tr class="row-red"><td><code>name</code></td><td>Body</td><td>string</td><td>Admin/Coord</td><td><code>required|string|max:255</code> — <span class="hl-red">Sin regla <code>unique</code> por sede</span> (Error 500 SQL). Ignorado para Secretaría.</td></tr>
+              <tr><td><code>classroom</code></td><td>Path</td><td>int (ID)</td><td><strong>Sí</strong></td><td>Route Model Binding <code>Classroom</code> (<code>whereNumber('classroom')</code>)</td></tr>
+              <tr><td><code>name</code></td><td>Body</td><td>string</td><td>Admin/Coord</td><td><code>required|string|max:255</code> + <code>Rule::unique('classrooms', 'name')-&gt;where('branch_id', $targetBranchId)-&gt;whereNull('deleted_at')-&gt;ignore($classroom-&gt;id)</code> (ignorado para Secretaría)</td></tr>
               <tr><td><code>capacity</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|min:1|max:500</code></td></tr>
-              <tr class="row-orange"><td><code>branch_id</code></td><td>Body</td><td>int</td><td>No (solo Admin)</td><td><code>sometimes|integer|exists:branches,id</code> — <span class="hl-orange">Si el aula tiene horarios activos, al cambiar sede deja cursos apuntando al aula de otra sede!</span></td></tr>
+              <tr><td><code>branch_id</code></td><td>Body</td><td>int</td><td>No (solo Admin)</td><td><code>sometimes|integer</code> + sede activa; bloquea con <code>errors.branch_id</code> si el aula tiene <code>courseSchedules</code> asociados</td></tr>
             </tbody>
           </table>
         </div>
@@ -1192,13 +1191,14 @@
   "branch_id": 1,
   "capacity": 28
 }</pre></div>
-            <div class="io-col"><h4>Response</h4><pre>// HTTP 302 Redirect Back + flash success</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// HTTP 302 Redirect Back + flash success
+// Nombre duplicado: errors.name | Transferencia con horarios: errors.branch_id</pre></div>
           </div>
         </details>
       </div>
 
       <!-- DELETE /admin/aulas/{classroom} -->
-      <div class="variant v-warn" data-status="warn" data-method="DELETE">
+      <div class="variant v-ok" data-status="ok" data-method="DELETE">
         <div class="v-top">
           <div class="v-route">
             <span class="m-badge m-delete">DELETE</span>
@@ -1208,14 +1208,14 @@
           </div>
           <div class="v-badges">
             <span class="badge b-ok">Auth: Admin / Coord Sede</span>
-            <span class="badge b-warn">SoftDelete bloquea reutilizar nombre</span>
+            <span class="badge b-ok">Permite Reutilizar Nombre (Unique Parcial)</span>
           </div>
         </div>
-        <p class="v-desc">Eliminación lógica (SoftDelete) de un aula siempre que no tenga <code>courseSchedules</code> activos.</p>
+        <p class="v-desc">Eliminación lógica (SoftDelete) de un aula siempre que no tenga <code>courseSchedules</code> asociados. El índice único parcial <code>uq_branch_classroom_name</code> excluye registros eliminados.</p>
         <div class="perm-box">
           <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green"><code>isAdmin()</code> o <code>isCoordinador($classroom-&gt;branch_id)</code></span></div></div>
           <div class="perm-item"><div class="p-lbl">Validación Integridad</div><div class="p-val">Bloquea si <code>$classroom-&gt;courseSchedules()-&gt;exists()</code></div></div>
-          <div class="perm-item"><div class="p-lbl">Riesgo BD</div><div class="p-val"><span class="hl-orange">Índice <code>uq_branch_classroom_name</code> no excluye <code>deleted_at IS NOT NULL</code></span></div></div>
+          <div class="perm-item"><div class="p-lbl">Índice BD</div><div class="p-val"><span class="hl-green"><code>uq_branch_classroom_name (branch_id, name) WHERE deleted_at IS NULL</code></span></div></div>
         </div>
       </div>
     </div>
@@ -2267,9 +2267,9 @@
             <td>Faltan tests para <code>GET /admin</code> (props intactas) y denegación a Secretaría en <code>PUT</code>.</td>
           </tr>
           <tr>
-            <td><code>ClassroomPermissionTest.php</code> (9 tests)</td>
+            <td><code>ClassroomPermissionTest.php</code> (14 tests)</td>
             <td><code>GET /admin/aulas/{classroom}/horarios</code>, <code>POST/PUT/DELETE /admin/aulas</code></td>
-            <td>Faltan tests de nombre duplicado en misma sede (hoy da 500!), transferencia de aula con horarios activos. <span class="hl-orange">Bug en test línea 160:</span> usa columnas inexistentes (<code>code</code>, <code>duration_weeks</code>, <code>total_hours</code>) en <code>Course::create</code>.</td>
+            <td>Cubre permisos por rol/sede, nombres duplicados, reutilización tras SoftDelete, bloqueo de transferencia con horarios y exclusión de cursos eliminados.</td>
           </tr>
           <tr>
             <td><code>CareerTest.php</code> (9 tests)</td>

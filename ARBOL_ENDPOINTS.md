@@ -56,20 +56,19 @@
 │
 ├── 📁 /admin/aulas (Aulas / Ambientes Físicos — ClassroomController)
 │   ├── GET  /admin/aulas/{classroom}/horarios       🟢 [auth + Admin o Staff de esa sede] Consulta JSON bajo demanda de horarios del aula (modal "Ver Disponibilidad").
-│   │   ├── {classroom}      (path, int, req)        — ID del aula (whereNumber).
+│   │   ├── {classroom}      (path, int, req)        — ID del aula (whereNumber). Ignora cursos programados eliminados.
 │   │   └── ↳ Recibe JSON: { classroom_id, classroom_name, schedules[{id,course_name,teacher_name,day_of_week,start_time,end_time,start_date,end_date,status}] }.
-│   ├── POST /admin/aulas                            🟠 [auth + Admin o Coord de esa sede] Crea nueva aula.
-│   │   ├── name             (body, string, req)     — Nombre del aula (max:255). 🟠 SIN validación unique por sede → ERROR 500 SQL!
-│   │   ├── branch_id        (body, int, req)        — ID de sede (exists:branches,id; forzado a sede del Coord).
-│   │   └── capacity         (body, int, req)        — Aforo/vacantes (1..500; en BD es nullable pero backend exige required).
-│   ├── PUT  /admin/aulas/{classroom}                🟠 [auth + Admin / Coord sede / Secre sede] Edita un aula.
-│   │   ├── {classroom}      (path, int, req)        — ID del aula.
-│   │   ├── name             (body, string, Adm/Crd) — Nombre del aula (ignorado para Secre). 🟠 SIN unique → ERROR 500 SQL!
+│   ├── POST /admin/aulas                            🟢 [auth + Admin o Coord de esa sede] Crea nueva aula.
+│   │   ├── name             (body, string, req)     — Nombre único por sede entre aulas activas (max:255; índice único parcial WHERE deleted_at IS NULL).
+│   │   ├── branch_id        (body, int, req)        — ID de sede activa (exists whereNull deleted_at & is_active=true; forzado a sede del Coord).
+│   │   └── capacity         (body, int, req)        — Aforo/vacantes (1..500).
+│   ├── PUT  /admin/aulas/{classroom}                🟢 [auth + Admin / Coord sede / Secre sede] Edita un aula.
+│   │   ├── {classroom}      (path, int, req)        — ID del aula (whereNumber).
+│   │   ├── name             (body, string, Adm/Crd) — Nombre único por sede destino entre aulas activas (ignorado para Secre).
 │   │   ├── capacity         (body, int, req)        — Aforo (1..500). Único campo editable por Secretaría.
-│   │   └── branch_id        (body, int, solo Admin) — Transferir aula a otra sede. 🟡 No valida si tiene horarios activos en la sede vieja.
-│   └── DELETE /admin/aulas/{classroom}              🟡 [auth + Admin o Coord de esa sede] SoftDelete de aula.
-│       ├── {classroom}      (path, int, req)        — ID del aula (bloquea si existen courseSchedules).
-│       └── 🟠 Índice uq_branch_classroom_name no excluye deleted_at → impide recrear aula con el mismo nombre.
+│   │   └── branch_id        (body, int, solo Admin) — Transferir aula a otra sede activa (bloqueado si tiene horarios asociados).
+│   └── DELETE /admin/aulas/{classroom}              🟢 [auth + Admin o Coord de esa sede] SoftDelete de aula.
+│       └── {classroom}      (path, int, req)        — ID del aula (bloquea si existen courseSchedules; permite reutilizar nombre gracias al índice único parcial).
 │
 ├── 📁 /admin/oferta-academica (Catálogo Curricular — AcademicOfferController)
 │   ├── GET  /admin/oferta-academica                 🔴 [auth — FALTA isStaff()] Carga branches, careers, allModulesPool y coursesList.
