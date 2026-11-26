@@ -31,12 +31,11 @@
 │
 ├── 📁 /admin/sedes (Sedes — BranchController)
 │   ├── GET  /admin/sedes                            🟢 [auth + Staff (Admin ve resumen; personal de sede redirige a /admin/sedes/{branch})] Resumen liviano de sedes.
-│   │   ├── ↳ Recibe props: branches[{id,name,code,address,phone,classrooms_count,total_capacity,classrooms[{id,branch_id,name,capacity}]}], inactiveBranches[{id,name,code,address,phone,deleted_at,restorable_classrooms_count}], selectedBranch:null, classrooms:[], totalClassroomsCount, initialEditing:false.
-│   │   └── 🟡 Sidebar aún usa contadores mock para carreras/módulos/cursos/matrículas.
+│   │   └── ↳ Recibe props: branches[{id,name,code,address,phone,classrooms_count,total_capacity,classrooms[{id,branch_id,name,capacity}]}], inactiveBranches[{id,name,code,address,phone,deleted_at,restorable_classrooms_count}], selectedBranch:null, classrooms:[], initialEditing:false.
 │   ├── GET  /admin/sedes/{branch}                   🟢 [auth + Admin o Staff de esa sede] Detalle de sede y gestión de sus aulas.
 │   │   ├── {branch}         (path, int, req)        — ID de la sede (whereNumber).
 │   │   ├── ?edit            (query, bool, opc)      — Si es true/1 abre el formulario de edición de la sede al cargar.
-│   │   └── ↳ Recibe props: branches[{id,name,code,address,phone}], selectedBranch, classrooms[{id,branch_id,branch_name,name,capacity,schedules_count}], totalClassroomsCount, initialEditing.
+│   │   └── ↳ Recibe props: branches[{id,name,code,address,phone}], selectedBranch, classrooms[{id,branch_id,branch_name,name,capacity,schedules_count}], initialEditing.
 │   ├── POST /admin/sedes                            🟢 [auth + Admin (branch_id=null)] Registra nueva sede física → redirige a /admin/sedes.
 │   │   ├── name             (body, string, req)     — Nombre único entre sedes activas (max:255; índice único parcial WHERE deleted_at IS NULL).
 │   │   ├── code             (body, string, opc)     — Código único entre sedes activas (max:50); si va vacío se autogenera de 3 letras.

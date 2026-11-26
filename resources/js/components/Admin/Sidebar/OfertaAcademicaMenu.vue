@@ -6,12 +6,9 @@ type CurricularTab = 'carreras' | 'modulos' | 'talleres';
 interface Props {
     activeMainTab: string;
     activeCurricularTab: CurricularTab;
-    careersCount: number;
-    modulesCount: number;
-    coursesCount: number;
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 const emit = defineEmits<{
     (e: 'select-curricular', tab: CurricularTab): void;
@@ -90,10 +87,6 @@ function selectTab(tab: CurricularTab) {
                 ]"
             >
                 <span>Carreras</span>
-                <span
-                    class="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600"
-                    >{{ careersCount }}</span
-                >
             </button>
 
             <!-- Módulos -->
@@ -108,10 +101,6 @@ function selectTab(tab: CurricularTab) {
                 ]"
             >
                 <span>Módulos</span>
-                <span
-                    class="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600"
-                    >{{ modulesCount }}</span
-                >
             </button>
 
             <!-- Talleres -->
@@ -126,10 +115,6 @@ function selectTab(tab: CurricularTab) {
                 ]"
             >
                 <span>Talleres</span>
-                <span
-                    class="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600"
-                    >{{ coursesCount }}</span
-                >
             </button>
         </div>
     </div>

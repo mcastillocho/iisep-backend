@@ -122,8 +122,6 @@ class BranchController extends Controller
             ->values()
             ->all();
 
-        $totalClassroomsCount = array_sum(array_column($branches, 'classrooms_count'));
-
         $inactiveBranches = Branch::onlyTrashed()
             ->select(['id', 'name', 'code', 'address', 'phone', 'deleted_at'])
             ->withCount([
@@ -148,7 +146,6 @@ class BranchController extends Controller
             'inactiveBranches' => $inactiveBranches,
             'selectedBranch' => null,
             'classrooms' => [],
-            'totalClassroomsCount' => $totalClassroomsCount,
             'initialEditing' => false,
         ]);
     }
@@ -197,10 +194,6 @@ class BranchController extends Controller
             ->values()
             ->all();
 
-        $totalClassroomsCount = $staff->isAdmin()
-            ? Classroom::query()->whereHas('branch')->count()
-            : count($classrooms);
-
         return Inertia::render('Admin/SedesAulas', [
             'branches' => $branches,
             'selectedBranch' => [
@@ -211,7 +204,6 @@ class BranchController extends Controller
                 'phone' => $branch->phone ?? '',
             ],
             'classrooms' => $classrooms,
-            'totalClassroomsCount' => $totalClassroomsCount,
             'initialEditing' => $request->boolean('edit'),
         ]);
     }

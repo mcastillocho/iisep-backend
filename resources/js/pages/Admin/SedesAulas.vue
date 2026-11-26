@@ -11,7 +11,6 @@ interface Props {
     branches?: Branch[];
     selectedBranch?: Branch | null;
     classrooms?: Classroom[];
-    totalClassroomsCount?: number;
     initialEditing?: boolean;
 }
 
@@ -21,9 +20,6 @@ const props = defineProps<Props>();
 const branches = computed<Branch[]>(() => props.branches ?? []);
 const selectedBranch = computed<Branch | null>(() => props.selectedBranch ?? null);
 const classrooms = computed<Classroom[]>(() => props.classrooms ?? []);
-const totalClassroomsCount = computed<number>(
-    () => props.totalClassroomsCount ?? classrooms.value.length,
-);
 
 type CurricularTab = 'carreras' | 'modulos' | 'talleres';
 const activeCurricularTab = ref<CurricularTab>('carreras');
@@ -158,11 +154,6 @@ function triggerToast(message: string) {
             v-model:selected-branch-id="selectedBranchId"
             v-model:is-mobile-open="isMobileSidebarOpen"
             :branches="branches"
-            :classrooms-count="totalClassroomsCount"
-            :careers-count="3"
-            :modules-count="5"
-            :courses-count="5"
-            :enrollments-count="4"
             @update:active-main-tab="handleMainTabChange"
         />
 

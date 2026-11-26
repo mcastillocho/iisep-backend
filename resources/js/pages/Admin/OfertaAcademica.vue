@@ -140,11 +140,6 @@ function triggerToast(message: string) {
             v-model:selected-branch-id="selectedBranchId"
             v-model:is-mobile-open="isMobileSidebarOpen"
             :branches="branches"
-            :classrooms-count="4"
-            :careers-count="careers.length"
-            :modules-count="allModulesPool.length"
-            :courses-count="coursesList.length"
-            :enrollments-count="4"
             @update:active-main-tab="handleMainTabChange"
         />
 

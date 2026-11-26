@@ -12,7 +12,6 @@ import MatriculasView, {
     StudentRecord,
     TeacherItem,
 } from '../../components/Admin/Pages/MatriculasView.vue';
-import { isStudentInBranch } from '../../utils/studentBranchFilter';
 import Sidebar from '../../components/Admin/Sidebar/Sidebar.vue';
 
 interface Props {
@@ -53,20 +52,6 @@ const canViewAllBranches = computed(() => userStaffBranchId.value === null);
 const selectedBranchId = ref<number | 'all'>(
     userStaffBranchId.value !== null ? userStaffBranchId.value : 'all',
 );
-
-// Conteo reactivo según la sede seleccionada
-const currentBranchStudents = computed(() => {
-    const list = props.students || [];
-    return list.filter((student) => isStudentInBranch(student, selectedBranchId.value, list));
-});
-
-const currentBranchStudentsCount = computed(() => currentBranchStudents.value.length);
-
-const currentBranchScheduledCoursesCount = computed(() => {
-    if (selectedBranchId.value === 'all') return props.scheduledCourses.length;
-    const branchStr = String(selectedBranchId.value);
-    return props.scheduledCourses.filter((sc) => String(sc.branch_id) === branchStr).length;
-});
 
 function handleMainTabChange(tab: string) {
     if (tab === 'curricular') {
@@ -169,13 +154,6 @@ function triggerToast(message: string) {
             v-model:selected-branch-id="selectedBranchId"
             v-model:is-mobile-open="isMobileSidebarOpen"
             :branches="props.branches"
-            :classrooms-count="props.classrooms.length"
-            :careers-count="3"
-            :modules-count="5"
-            :courses-count="props.coursesList.length"
-            :enrollments-count="props.enrollments.length"
-            :students-count="currentBranchStudentsCount"
-            :scheduled-courses-count="currentBranchScheduledCoursesCount"
             @update:active-main-tab="handleMainTabChange"
         />
 

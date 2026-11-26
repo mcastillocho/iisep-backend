@@ -6,9 +6,9 @@ import OfertaAcademicaMenu from './OfertaAcademicaMenu.vue';
 interface Branch {
     id: number;
     name: string;
-    code: string;
-    address: string;
-    phone: string;
+    code?: string;
+    address?: string;
+    phone?: string;
 }
 
 type MainTab =
@@ -26,17 +26,10 @@ interface Props {
     activeCurricularTab: CurricularTab;
     selectedBranchId: number | 'all';
     branches: Branch[];
-    classroomsCount: number;
-    careersCount: number;
-    modulesCount: number;
-    coursesCount: number;
-    enrollmentsCount: number;
-    studentsCount?: number;
-    scheduledCoursesCount?: number;
     isMobileOpen: boolean;
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 const emit = defineEmits<{
     (e: 'update:activeMainTab', tab: MainTab): void;
@@ -110,14 +103,14 @@ function handleLogout() {
             isMobileOpen
                 ? 'translate-x-0'
                 : '-translate-x-full md:translate-x-0',
-            'fixed inset-y-0 top-0 left-0 z-50 flex h-screen w-72 shrink-0 flex-col justify-between border-r border-slate-200 bg-white shadow-xs transition-transform duration-200 ease-in-out md:sticky md:w-80',
+            'fixed inset-y-0 top-0 left-0 z-50 flex h-screen w-64 shrink-0 flex-col justify-between border-r border-slate-200 bg-white shadow-xs transition-transform duration-200 ease-in-out md:sticky md:w-64',
         ]"
     >
         <!-- Contenedor scrollable independiente del menú -->
         <div class="flex flex-1 flex-col overflow-y-auto">
             <!-- Brand Header -->
             <div
-                class="sticky top-0 z-10 flex shrink-0 items-center gap-3.5 border-b border-slate-100 bg-white p-6"
+                class="sticky top-0 z-10 flex shrink-0 items-center gap-3 border-b border-slate-100 bg-white p-5"
             >
                 <div
                     class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2e8b57] font-black text-white shadow-md shadow-emerald-700/20"
@@ -178,14 +171,6 @@ function handleLogout() {
                                 </svg>
                                 <span>Asistencias</span>
                             </div>
-                            <span
-                                class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black tracking-wide text-[#2e8b57] uppercase"
-                            >
-                                <span
-                                    class="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2e8b57]"
-                                ></span>
-                                En vivo
-                            </span>
                         </button>
                     </div>
                 </div>
@@ -225,11 +210,6 @@ function handleLogout() {
                                 </svg>
                                 <span>Alumnos &amp; Apoderados</span>
                             </div>
-                            <span
-                                class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-[#2e8b57]"
-                            >
-                                {{ studentsCount ?? enrollmentsCount }}
-                            </span>
                         </button>
                     </div>
                 </div>
@@ -269,20 +249,12 @@ function handleLogout() {
                                 </svg>
                                 <span>Apertura de Cursos</span>
                             </div>
-                            <span
-                                class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600"
-                            >
-                                {{ scheduledCoursesCount ?? 4 }}
-                            </span>
                         </button>
 
                         <!-- 2. Oferta Académica (Carreras / Módulos / Talleres) -->
                         <OfertaAcademicaMenu
                             :active-main-tab="activeMainTab"
                             :active-curricular-tab="activeCurricularTab"
-                            :careers-count="careersCount"
-                            :modules-count="modulesCount"
-                            :courses-count="coursesCount"
                             @select-curricular="handleCurricularTabSelect"
                         />
                     </div>
@@ -358,11 +330,6 @@ function handleLogout() {
                                 ]"
                             >
                                 <span>Todas las Sedes</span>
-                                <span
-                                    class="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600"
-                                >
-                                    {{ classroomsCount }} aulas
-                                </span>
                             </button>
                             <button
                                 v-for="branch in branches"
@@ -377,11 +344,6 @@ function handleLogout() {
                                 ]"
                             >
                                 <span class="truncate">{{ branch.name }}</span>
-                                <span
-                                    class="rounded bg-emerald-50 px-2 py-0.5 text-xs font-bold text-[#2e8b57]"
-                                >
-                                    {{ branch.code }}
-                                </span>
                             </button>
                         </div>
                     </div>
