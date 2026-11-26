@@ -315,7 +315,7 @@
     </div>
 
     <div class="kpi-grid">
-      <div class="kpi k-green"><div class="num">38</div><div class="lbl">Endpoints Registrados (37 web + /up)</div></div>
+      <div class="kpi k-green"><div class="num">40</div><div class="lbl">Endpoints Registrados (39 web + /up)</div></div>
       <div class="kpi k-red"><div class="num">10</div><div class="lbl">Riesgos Críticos de Seguridad</div></div>
       <div class="kpi k-orange"><div class="num">11</div><div class="lbl">Riesgos de BD / Error 500 / Pérdida de Datos</div></div>
       <div class="kpi k-purple"><div class="num">10</div><div class="lbl">Botones / Formularios Sin Endpoint o Rotos</div></div>
@@ -540,14 +540,14 @@
   <section id="sec-endpoints">
     <div class="sec-header">
       <h2><span class="sec-num">3</span> Catálogo Profundo de Endpoints (Principales, Variantes, Parámetros, Permisos y Payloads)</h2>
-      <span id="visible-counter" class="badge b-gray">Mostrando 37 variantes (38 rutas)</span>
+      <span id="visible-counter" class="badge b-gray">Mostrando 39 variantes (40 rutas)</span>
     </div>
 
     <!-- Barra de Filtros Interactivos -->
     <div class="toolbar">
       <input type="text" id="searchInput" class="search-input" placeholder="Buscar por ruta (/admin/matriculas), método (POST), controlador, campo (notes, guardian) o hallazgo..." oninput="filterEndpoints()" />
       <div class="filter-pills">
-        <button class="fpill active" data-filter="all" onclick="setStatusFilter('all', this)">Todos (37)</button>
+        <button class="fpill active" data-filter="all" onclick="setStatusFilter('all', this)">Todos (39)</button>
         <button class="fpill f-crit" data-filter="crit" onclick="setStatusFilter('crit', this)">Críticos / Rotos</button>
         <button class="fpill f-warn" data-filter="warn" onclick="setStatusFilter('warn', this)">Riesgos / Inconsistencias</button>
         <button class="fpill" data-filter="miss" onclick="setStatusFilter('miss', this)">Mock / Desconectados</button>
@@ -1229,11 +1229,11 @@
           <h3>Endpoint Principal 4: Oferta Académica (<code>/admin/oferta-academica</code>, <code>/carreras</code>, <code>/modulos</code>, <code>/talleres</code>)</h3>
           <div class="g-sub">Controladores: <code>AcademicOfferController</code>, <code>CareerController</code>, <code>ModuleController</code>, <code>WorkshopController</code></div>
         </div>
-        <span class="badge b-warn">Campo description faltante en UI &bull; Sin filtro sede en Coord</span>
+        <span class="badge b-ok">Escritura exclusiva Admin General &bull; Filtros de asignables en backend</span>
       </div>
 
       <!-- GET /admin/oferta-academica -->
-      <div class="variant v-crit" data-status="crit" data-method="GET">
+      <div class="variant v-ok" data-status="ok" data-method="GET">
         <div class="v-top">
           <div class="v-route">
             <span class="m-badge m-get">GET</span>
@@ -1242,14 +1242,15 @@
             <span class="v-action">AcademicOfferController@index</span>
           </div>
           <div class="v-badges">
-            <span class="badge b-crit">Sin check isStaff()</span>
+            <span class="badge b-ok">Auth: Staff (403 a no-staff)</span>
+            <span class="badge b-ok">Incluye assignableCourses</span>
           </div>
         </div>
-        <p class="v-desc">Carga el catálogo curricular completo (<code>branches</code>, <code>careers</code>, <code>allModulesPool</code>, <code>coursesList</code>).</p>
+        <p class="v-desc">Carga el catálogo curricular completo (<code>branches</code> activas, <code>careers</code>, <code>allModulesPool</code>, <code>coursesList</code> y <code>assignableCourses</code> prefiltrados).</p>
         <div class="perm-box">
-          <div class="perm-item"><div class="p-lbl">Middleware Real</div><div class="p-val"><span class="hl-red">Solo <code>auth</code></span></div></div>
-          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val">Solo filtra <code>branches</code> por sede; carreras/módulos/cursos son globales</div></div>
-          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Staff (lectura), Nivel 3–4 (edición)</div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green">Requiere <code>$staff</code> (HTTP 403 si no es personal administrativo)</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Filtro Territorial</div><div class="p-val">Filtra <code>branches</code> por sede del staff; catálogo curricular institucional compartido</div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado</div><div class="p-val">Staff (lectura), Nivel 4 Admin General (escritura)</div></div>
         </div>
         <details>
           <summary>Estructura de Datos (Inertia Props)</summary>
@@ -1272,14 +1273,37 @@
     "id", "module_id", "module_name", "name", "description",
     "duration_in_weeks", "is_workshop",
     "has_scheduled_courses": true, "scheduled_courses_count": 2
-  }]
+  }],
+  "assignableCourses": [{ "id", "name", "duration_in_weeks" }]
 }</pre></div>
           </div>
         </details>
       </div>
 
-      <!-- POST & PUT /admin/carreras -->
-      <div class="variant v-warn" data-status="warn" data-method="POST">
+      <!-- GET /admin/carreras/modulos-asignables -->
+      <div class="variant v-ok" data-status="ok" data-method="GET">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-get">GET</span>
+            <span class="v-uri">/admin/carreras/modulos-asignables</span>
+            <span class="v-name">admin.careers.assignable-modules</span>
+            <span class="v-action">CareerController@assignableModules</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-ok">Auth: Solo Admin (branch_id=null)</span>
+            <span class="badge b-ok">JSON Prefiltrado</span>
+          </div>
+        </div>
+        <p class="v-desc">Devuelve en JSON los módulos activos disponibles para vincular a una carrera (permite módulos compartidos entre carreras; si se pasa <code>?career_id</code>, excluye únicamente los ya asignados a esa carrera).</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green">Solo <code>$staff-&gt;isAdmin()</code> (HTTP 403 a Coord/Secre/No-staff)</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Query opcional <code>?career_id</code> (int, carrera activa)</div></div>
+          <div class="perm-item"><div class="p-lbl">Response</div><div class="p-val"><code>{ "modules": [{ "id", "name", "duration_in_weeks" }] }</code></div></div>
+        </div>
+      </div>
+
+      <!-- POST /admin/carreras -->
+      <div class="variant v-ok" data-status="ok" data-method="POST">
         <div class="v-top">
           <div class="v-route">
             <span class="m-badge m-post">POST</span>
@@ -1288,35 +1312,35 @@
             <span class="v-action">CareerController@store</span>
           </div>
           <div class="v-badges">
+            <span class="badge b-ok">Auth: Solo Admin (Nivel 4)</span>
+            <span class="badge b-ok">DB::transaction + Unique</span>
             <span class="badge b-warn">Sin input description en UI</span>
-            <span class="badge b-warn">Sin DB::transaction</span>
-            <span class="badge b-warn">Coord edita global</span>
           </div>
         </div>
-        <p class="v-desc">Crea una carrera técnica y sincroniza sus pivotes <code>career_module</code> (con <code>order</code>) y <code>branch_career</code>.</p>
+        <p class="v-desc">Crea una carrera técnica y sincroniza sus pivotes <code>career_module</code> (con <code>order</code>) y <code>branch_career</code> en transacción.</p>
         <div class="perm-box">
-          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin() || isCoordinador()</code> (sin validar sede)</div></div>
-          <div class="perm-item"><div class="p-lbl">Visibilidad UI</div><div class="p-val"><code>canManageCareers</code> (Admin / Coord)</div></div>
-          <div class="perm-item"><div class="p-lbl">Permiso Esperado (Doc)</div><div class="p-val"><span class="hl-orange">Nivel 4 Dirección General</span> (Planes MINEDU)</div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green">Solo <code>$staff-&gt;isAdmin()</code> (HTTP 403 a Coord/Secre/No-staff)</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Integridad</div><div class="p-val"><code>unique</code> entre activas, <code>modules.*.id</code> únicos/activos, sedes activas, suma automática de duración si se omite</div></div>
+          <div class="perm-item"><div class="p-lbl">Permiso Esperado (Doc)</div><div class="p-val">Nivel 4 Dirección General — Coincide</div></div>
         </div>
         <div class="tbl-wrap">
           <table>
             <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
             <tbody>
-              <tr><td><code>name</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:255</code> (falta <code>unique</code>)</td></tr>
-              <tr class="row-orange"><td><code>description</code></td><td>Body</td><td>string</td><td>No</td><td><code>nullable|string|max:1000</code> — <span class="hl-orange">NO EXISTE CAMPO EN FORMULARIO VUE (<code>OfertaAcademicaView.vue:722-755</code>)!</span></td></tr>
-              <tr><td><code>duration_in_weeks</code></td><td>Body</td><td>int</td><td>No</td><td><code>nullable|integer|min:1|max:200</code> (se envía <code>48</code> si hay 0 módulos, aunque UI muestre <code>0</code>)</td></tr>
-              <tr><td><code>modules</code></td><td>Body</td><td>array</td><td>No</td><td><code>nullable|array</code> con <code>modules.*.id (exists:modules,id)</code> y <code>modules.*.order (int)</code></td></tr>
-              <tr><td><code>available_branch_ids</code> / <code>branch_ids</code></td><td>Body</td><td>int[]</td><td>No</td><td><code>nullable|array</code> de <code>exists:branches,id</code> (parámetro duplicado; UI envía <code>available_branch_ids</code>)</td></tr>
+              <tr><td><code>name</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:255</code> + <code>Rule::unique('careers', 'name')-&gt;whereNull('deleted_at')</code></td></tr>
+              <tr class="row-orange"><td><code>description</code></td><td>Body</td><td>string</td><td>No</td><td><code>nullable|string|max:1000</code> — <span class="hl-orange">Pendiente agregar campo en formulario Vue (<code>OfertaAcademicaView.vue</code>)</span></td></tr>
+              <tr><td><code>duration_in_weeks</code></td><td>Body</td><td>int</td><td>No</td><td><code>nullable|integer|min:1|max:200</code> (si se omite y hay módulos, suma <code>modules.duration_in_weeks</code>)</td></tr>
+              <tr><td><code>modules</code></td><td>Body</td><td>array</td><td>No</td><td><code>nullable|array</code> con <code>modules.*.id (distinct, exists activos)</code> y <code>modules.*.order (int ≥ 1)</code></td></tr>
+              <tr><td><code>available_branch_ids</code> / <code>branch_ids</code></td><td>Body</td><td>int[]</td><td>No</td><td><code>nullable|array</code> de sedes activas (<code>whereNull('deleted_at')</code> + <code>is_active=true</code>)</td></tr>
             </tbody>
           </table>
         </div>
         <details>
           <summary>Estructura de Datos (Request &amp; Response)</summary>
           <div class="io-grid">
-            <div class="io-col"><h4>Request Body (enviado por OfertaAcademicaView.vue)</h4><pre>{
+            <div class="io-col"><h4>Request Body</h4><pre>{
   "name": "Computación e Informática",
-  "description": null,              // ⚠️ siempre vacío al crear desde UI!
+  "description": "Carrera técnica profesional",
   "duration_in_weeks": 24,
   "available_branch_ids": [1, 2],
   "modules": [
@@ -1324,13 +1348,14 @@
     { "id": 2, "order": 2 }
   ]
 }</pre></div>
-            <div class="io-col"><h4>Response</h4><pre>// HTTP 302 Redirect Back + flash success</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// HTTP 302 Redirect Back + flash success
+// HTTP 403 si no es Admin General</pre></div>
           </div>
         </details>
       </div>
 
       <!-- PUT /admin/carreras/{career} -->
-      <div class="variant v-warn" data-status="warn" data-method="PUT">
+      <div class="variant v-ok" data-status="ok" data-method="PUT">
         <div class="v-top">
           <div class="v-route">
             <span class="m-badge m-put">PUT</span>
@@ -1339,20 +1364,19 @@
             <span class="v-action">CareerController@update</span>
           </div>
           <div class="v-badges">
-            <span class="badge b-warn">Sin input description en UI</span>
-            <span class="badge b-warn">Coord puede alterar otras sedes</span>
+            <span class="badge b-ok">Auth: Solo Admin (Nivel 4)</span>
+            <span class="badge b-ok">DB::transaction + Unique</span>
           </div>
         </div>
-        <p class="v-desc">Actualiza una carrera técnica y hace <code>sync()</code> completo de <code>modules</code> y <code>branches</code> (si vienen en el payload).</p>
+        <p class="v-desc">Actualiza una carrera técnica y hace <code>sync()</code> completo de <code>modules</code> y <code>branches</code> activos en transacción.</p>
         <div class="perm-box">
-          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin() || isCoordinador()</code> (cualquier sede)</div></div>
-          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Path <code>{career}</code> + mismo Body que <code>POST /admin/carreras</code></div></div>
-          <div class="perm-item"><div class="p-lbl">Riesgo</div><div class="p-val"><span class="hl-orange">Coord de Comas puede quitar/agregar otras sedes</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green">Solo <code>$staff-&gt;isAdmin()</code></span></div></div>
+          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Path <code>{career}</code> (<code>whereNumber</code>) + mismo Body que <code>POST /admin/carreras</code></div></div>
         </div>
       </div>
 
       <!-- DELETE /admin/carreras/{career} -->
-      <div class="variant v-warn" data-status="warn" data-method="DELETE">
+      <div class="variant v-ok" data-status="ok" data-method="DELETE">
         <div class="v-top">
           <div class="v-route">
             <span class="m-badge m-delete">DELETE</span>
@@ -1361,20 +1385,42 @@
             <span class="v-action">CareerController@destroy</span>
           </div>
           <div class="v-badges">
-            <span class="badge b-ok">Check studentCareers</span>
-            <span class="badge b-warn">Coord borra carrera global</span>
+            <span class="badge b-ok">Auth: Solo Admin (Nivel 4)</span>
+            <span class="badge b-ok">Check studentCareers + Detach Pivotes</span>
           </div>
         </div>
-        <p class="v-desc">SoftDelete de carrera. Bloquea si existen registros en <code>student_careers</code>.</p>
+        <p class="v-desc">SoftDelete de carrera en transacción. Bloquea únicamente si tiene alumnos registrados en <code>student_careers</code>; desvincula <code>career_module</code> y <code>branch_career</code> sin afectar módulos compartidos.</p>
         <div class="perm-box">
-          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin() || isCoordinador()</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green">Solo <code>$staff-&gt;isAdmin()</code></span></div></div>
           <div class="perm-item"><div class="p-lbl">Validación Integridad</div><div class="p-val"><code>$career-&gt;studentCareers()-&gt;exists()</code> (Error key: <code>error</code>)</div></div>
-          <div class="perm-item"><div class="p-lbl">Observación</div><div class="p-val">Como <code>storeEnrollment</code> nunca crea <code>student_careers</code>, una carrera con alumnos matriculados en sus cursos SÍ podría eliminarse si no se creó admisión en <code>student_careers</code>!</div></div>
+          <div class="perm-item"><div class="p-lbl">Nota Matrículas</div><div class="p-val">Pendiente conectar creación de <code>student_careers</code> en el módulo de Matrículas.</div></div>
+        </div>
+      </div>
+
+      <!-- GET /admin/modulos/cursos-asignables -->
+      <div class="variant v-ok" data-status="ok" data-method="GET">
+        <div class="v-top">
+          <div class="v-route">
+            <span class="m-badge m-get">GET</span>
+            <span class="v-uri">/admin/modulos/cursos-asignables</span>
+            <span class="v-name">admin.modules.assignable-courses</span>
+            <span class="v-action">ModuleController@assignableCourses</span>
+          </div>
+          <div class="v-badges">
+            <span class="badge b-ok">Auth: Solo Admin (Nivel 4)</span>
+            <span class="badge b-ok">Excluye Talleres y Otros Módulos</span>
+          </div>
+        </div>
+        <p class="v-desc">Devuelve en JSON únicamente los cursos asignables a un módulo: excluye talleres libres (<code>is_workshop = true</code>) y cursos que ya pertenecen a otro módulo. Con <code>?module_id</code> incluye los cursos propios de ese módulo.</p>
+        <div class="perm-box">
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green">Solo <code>$staff-&gt;isAdmin()</code> (HTTP 403 a Coord/Secre/No-staff)</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Query opcional <code>?module_id</code> (int, módulo activo)</div></div>
+          <div class="perm-item"><div class="p-lbl">Response</div><div class="p-val"><code>{ "courses": [{ "id", "name", "duration_in_weeks", "module_id" }] }</code></div></div>
         </div>
       </div>
 
       <!-- POST /admin/modulos -->
-      <div class="variant v-warn" data-status="warn" data-method="POST">
+      <div class="variant v-ok" data-status="ok" data-method="POST">
         <div class="v-top">
           <div class="v-route">
             <span class="m-badge m-post">POST</span>
@@ -1383,24 +1429,23 @@
             <span class="v-action">ModuleController@store</span>
           </div>
           <div class="v-badges">
-            <span class="badge b-warn">Robo silencioso de cursos</span>
-            <span class="badge b-warn">Sin DB::transaction</span>
+            <span class="badge b-ok">Auth: Solo Admin (Nivel 4)</span>
+            <span class="badge b-ok">Bloquea Robo de Cursos y Talleres</span>
           </div>
         </div>
-        <p class="v-desc">Crea un módulo formativo y reasigna <code>courses.module_id</code> para los <code>course_ids</code> recibidos.</p>
+        <p class="v-desc">Crea un módulo formativo y vincula <code>course_ids</code> en transacción, validando que ningún curso sea taller libre ni pertenezca ya a otro módulo.</p>
         <div class="perm-box">
-          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin() || isCoordinador()</code></div></div>
-          <div class="perm-item"><div class="p-lbl">Visibilidad UI</div><div class="p-val"><code>canManageModules</code> (Admin / Coord)</div></div>
-          <div class="perm-item"><div class="p-lbl">Riesgo Integridad</div><div class="p-val"><span class="hl-orange">Si un curso ya pertenecía a otro módulo, se sobreescribe su <code>module_id</code> sin aviso</span></div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green">Solo <code>$staff-&gt;isAdmin()</code></span></div></div>
+          <div class="perm-item"><div class="p-lbl">Integridad</div><div class="p-val">Rechaza con <code>errors.course_ids</code> si algún curso tiene <code>is_workshop=true</code> o <code>module_id != null</code></div></div>
         </div>
         <div class="tbl-wrap">
           <table>
             <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas</th></tr></thead>
             <tbody>
-              <tr><td><code>name</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:255</code></td></tr>
+              <tr><td><code>name</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:255</code> + <code>Rule::unique('modules', 'name')-&gt;whereNull('deleted_at')</code></td></tr>
               <tr><td><code>description</code></td><td>Body</td><td>string</td><td>No</td><td><code>nullable|string|max:1000</code></td></tr>
               <tr><td><code>duration_in_weeks</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|min:1|max:52</code></td></tr>
-              <tr class="row-orange"><td><code>course_ids</code></td><td>Body</td><td>int[]</td><td>No</td><td><code>nullable|array</code>, <code>course_ids.* =&gt; exists:courses,id</code> (no verifica si ya tiene otro <code>module_id</code>)</td></tr>
+              <tr><td><code>course_ids</code></td><td>Body</td><td>int[]</td><td>No</td><td><code>nullable|array</code>, <code>distinct</code>, cursos activos no-taller y sin otro <code>module_id</code></td></tr>
             </tbody>
           </table>
         </div>
@@ -1413,13 +1458,14 @@
   "duration_in_weeks": 8,
   "course_ids": [1, 2]
 }</pre></div>
-            <div class="io-col"><h4>Response</h4><pre>// HTTP 302 Redirect Back + flash success</pre></div>
+            <div class="io-col"><h4>Response</h4><pre>// HTTP 302 Redirect Back + flash success
+// Curso en otro módulo o taller: errors.course_ids</pre></div>
           </div>
         </details>
       </div>
 
       <!-- PUT /admin/modulos/{module} -->
-      <div class="variant v-warn" data-status="warn" data-method="PUT">
+      <div class="variant v-ok" data-status="ok" data-method="PUT">
         <div class="v-top">
           <div class="v-route">
             <span class="m-badge m-put">PUT</span>
@@ -1428,15 +1474,14 @@
             <span class="v-action">ModuleController@update</span>
           </div>
           <div class="v-badges">
-            <span class="badge b-warn">Cursos huérfanos al quitar</span>
-            <span class="badge b-warn">Desincroniza duración carrera</span>
+            <span class="badge b-ok">Auth: Solo Admin (Nivel 4)</span>
+            <span class="badge b-ok">DB::transaction + Anti-colisión</span>
           </div>
         </div>
-        <p class="v-desc">Actualiza módulo y sincroniza <code>courses.module_id</code> (pone <code>null</code> en los removidos y asigna el módulo a los incluidos).</p>
+        <p class="v-desc">Actualiza módulo y sincroniza <code>courses.module_id</code> en transacción (libera los removidos, bloquea talleres y cursos asignados a otros módulos).</p>
         <div class="perm-box">
-          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin() || isCoordinador()</code></div></div>
-          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Path <code>{module}</code> + mismo Body que <code>POST /admin/modulos</code></div></div>
-          <div class="perm-item"><div class="p-lbl">Inconsistencia</div><div class="p-val">Al cambiar <code>duration_in_weeks</code> no recalcula <code>careers.duration_in_weeks</code>.</div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green">Solo <code>$staff-&gt;isAdmin()</code></span></div></div>
+          <div class="perm-item"><div class="p-lbl">Parámetros</div><div class="p-val">Path <code>{module}</code> (<code>whereNumber</code>) + mismo Body que <code>POST /admin/modulos</code></div></div>
         </div>
       </div>
 
@@ -1449,17 +1494,20 @@
             <span class="v-name">admin.modules.destroy</span>
             <span class="v-action">ModuleController@destroy</span>
           </div>
-          <div class="v-badges"><span class="badge b-ok">Check Dependencias OK</span></div>
+          <div class="v-badges">
+            <span class="badge b-ok">Auth: Solo Admin (Nivel 4)</span>
+            <span class="badge b-ok">Check Dependencias OK</span>
+          </div>
         </div>
         <p class="v-desc">SoftDelete del módulo solo si no tiene <code>courses</code>, <code>careers</code> ni <code>enrollments</code> asociados.</p>
         <div class="perm-box">
-          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin() || isCoordinador()</code></div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green">Solo <code>$staff-&gt;isAdmin()</code></span></div></div>
           <div class="perm-item"><div class="p-lbl">Integridad</div><div class="p-val">Bloquea si <code>courses() || careers() || enrollments()</code> existen</div></div>
         </div>
       </div>
 
       <!-- POST /admin/talleres -->
-      <div class="variant v-warn" data-status="warn" data-method="POST">
+      <div class="variant v-ok" data-status="ok" data-method="POST">
         <div class="v-top">
           <div class="v-route">
             <span class="m-badge m-post">POST</span>
@@ -1468,23 +1516,24 @@
             <span class="v-action">WorkshopController@store</span>
           </div>
           <div class="v-badges">
-            <span class="badge b-warn">Permite estado mixto is_workshop + module_id</span>
+            <span class="badge b-ok">Auth: Solo Admin (Nivel 4)</span>
+            <span class="badge b-ok">Coherencia is_workshop / module_id</span>
           </div>
         </div>
-        <p class="v-desc">Crea un registro en <code>courses</code> (puede ser Taller libre <code>is_workshop=true</code> o Curso modular <code>is_workshop=false</code>).</p>
+        <p class="v-desc">Crea un registro en <code>courses</code> (Taller libre <code>is_workshop=true</code> sin módulo, o Curso modular <code>is_workshop=false</code>).</p>
         <div class="perm-box">
-          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><code>isAdmin() || isCoordinador()</code></div></div>
-          <div class="perm-item"><div class="p-lbl">Visibilidad UI</div><div class="p-val"><code>canManageWorkshops</code> (Admin / Coord)</div></div>
+          <div class="perm-item"><div class="p-lbl">Autorización Backend</div><div class="p-val"><span class="hl-green">Solo <code>$staff-&gt;isAdmin()</code></span></div></div>
+          <div class="perm-item"><div class="p-lbl">Integridad</div><div class="p-val">Si <code>is_workshop=true</code> desvincula automáticamente <code>module_id=null</code>; valida nombre único entre activos</div></div>
         </div>
         <div class="tbl-wrap">
           <table>
             <thead><tr><th>Parámetro</th><th>Ubicación</th><th>Tipo</th><th>Requerido</th><th>Reglas &amp; Notas</th></tr></thead>
             <tbody>
-              <tr><td><code>name</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:255</code></td></tr>
+              <tr><td><code>name</code></td><td>Body</td><td>string</td><td><strong>Sí</strong></td><td><code>required|string|max:255</code> + <code>Rule::unique('courses', 'name')-&gt;whereNull('deleted_at')</code></td></tr>
               <tr><td><code>description</code></td><td>Body</td><td>string</td><td>No</td><td><code>nullable|string|max:1000</code></td></tr>
               <tr><td><code>duration_in_weeks</code></td><td>Body</td><td>int</td><td><strong>Sí</strong></td><td><code>required|integer|min:1|max:52</code></td></tr>
-              <tr><td><code>module_id</code></td><td>Body</td><td>int|null</td><td>No</td><td><code>nullable|integer|exists:modules,id</code></td></tr>
-              <tr class="row-orange"><td><code>is_workshop</code></td><td>Body</td><td>bool</td><td>No</td><td><code>nullable|boolean</code> — Si se omite, se infiere <code>empty(module_id)</code>. Pero si se envían ambos, permite <code>is_workshop=true</code> con <code>module_id</code> asignado!</td></tr>
+              <tr><td><code>module_id</code></td><td>Body</td><td>int|null</td><td>No</td><td><code>nullable|integer</code> + módulo activo (<code>whereNull('deleted_at')</code>); se fuerza a <code>null</code> si <code>is_workshop=true</code></td></tr>
+              <tr><td><code>is_workshop</code></td><td>Body</td><td>bool</td><td>No</td><td><code>nullable|boolean</code> — Si se omite, se infiere <code>module_id === null</code></td></tr>
             </tbody>
           </table>
         </div>
@@ -1512,9 +1561,12 @@
             <span class="v-name">admin.workshops.update</span>
             <span class="v-action">WorkshopController@update</span>
           </div>
-          <div class="v-badges"><span class="badge b-ok">OK (Auth Coord/Admin)</span></div>
+          <div class="v-badges">
+            <span class="badge b-ok">Auth: Solo Admin (Nivel 4)</span>
+            <span class="badge b-ok">Auto-desvinculación + Protección Ciclo Activo</span>
+          </div>
         </div>
-        <p class="v-desc">Actualiza curso/taller en tabla <code>courses</code>. Mismo payload que <code>POST /admin/talleres</code>.</p>
+        <p class="v-desc">Actualiza curso/taller en tabla <code>courses</code>. Permite cambiar directamente de módulo (desvincula del anterior) y si pasa a taller práctico (<code>is_workshop=true</code>) desvincula automáticamente <code>module_id=null</code>. Bloquea cambios de módulo/tipo si existen aperturas vigentes o matrículas en curso.</p>
       </div>
 
       <!-- DELETE /admin/talleres/{course} -->
@@ -1526,7 +1578,10 @@
             <span class="v-name">admin.workshops.destroy</span>
             <span class="v-action">WorkshopController@destroy</span>
           </div>
-          <div class="v-badges"><span class="badge b-ok">Check Dependencias OK</span></div>
+          <div class="v-badges">
+            <span class="badge b-ok">Auth: Solo Admin (Nivel 4)</span>
+            <span class="badge b-ok">Check Dependencias OK</span>
+          </div>
         </div>
         <p class="v-desc">SoftDelete del curso/taller solo si <code>!$course-&gt;scheduledCourses()-&gt;exists()</code> (error key: <code>workshop</code>).</p>
       </div>
@@ -2272,19 +2327,19 @@
             <td>Cubre permisos por rol/sede, nombres duplicados, reutilización tras SoftDelete, bloqueo de transferencia con horarios y exclusión de cursos eliminados.</td>
           </tr>
           <tr>
-            <td><code>CareerTest.php</code> (9 tests)</td>
-            <td><code>POST/PUT/DELETE /admin/carreras</code></td>
-            <td>Falta test de <code>GET /admin/oferta-academica</code>, restricción por sede de <code>coord</code> y persistencia de <code>description</code>.</td>
+            <td><code>CareerTest.php</code> (8 tests)</td>
+            <td><code>GET /admin/oferta-academica</code>, <code>GET /admin/carreras/modulos-asignables</code>, <code>POST/PUT/DELETE /admin/carreras</code></td>
+            <td>Cubre bloqueo no-staff, restricción exclusiva Admin, módulos compartidos, nombres duplicados y baja sin afectar módulos compartidos.</td>
           </tr>
           <tr>
-            <td><code>ModuleTest.php</code> (10 tests)</td>
-            <td><code>POST/PUT/DELETE /admin/modulos</code></td>
-            <td>Falta test de colisión al asignar un curso ya perteneciente a otro módulo y validación con matrículas activas en <code>destroy</code>.</td>
+            <td><code>ModuleTest.php</code> (8 tests)</td>
+            <td><code>GET /admin/modulos/cursos-asignables</code>, <code>POST/PUT/DELETE /admin/modulos</code></td>
+            <td>Cubre restricción exclusiva Admin, bloqueo de robo de cursos y talleres, y filtro de cursos asignables.</td>
           </tr>
           <tr>
-            <td><code>WorkshopTest.php</code> (8 tests)</td>
+            <td><code>WorkshopTest.php</code> (6 tests)</td>
             <td><code>POST/PUT/DELETE /admin/talleres</code></td>
-            <td>Falta test de coherencia entre <code>is_workshop</code> y <code>module_id</code>.</td>
+            <td>Cubre restricción exclusiva Admin, auto-desvinculación al cambiar módulo o marcar taller y bloqueo durante aperturas vigentes o matrículas en curso.</td>
           </tr>
           <tr>
             <td><code>ScheduledCourseTest.php</code> (16 tests)</td>

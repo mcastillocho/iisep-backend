@@ -42,15 +42,17 @@ Route::middleware(['auth'])->prefix('admin')->group(function (): void {
 
     // Oferta Académica, Carreras, Módulos y Talleres
     Route::get('/oferta-academica', [AcademicOfferController::class, 'index'])->name('admin.oferta-academica');
+    Route::get('/carreras/modulos-asignables', [CareerController::class, 'assignableModules'])->name('admin.careers.assignable-modules');
     Route::post('/carreras', [CareerController::class, 'store'])->name('admin.careers.store');
-    Route::put('/carreras/{career}', [CareerController::class, 'update'])->name('admin.careers.update');
-    Route::delete('/carreras/{career}', [CareerController::class, 'destroy'])->name('admin.careers.destroy');
+    Route::put('/carreras/{career}', [CareerController::class, 'update'])->whereNumber('career')->name('admin.careers.update');
+    Route::delete('/carreras/{career}', [CareerController::class, 'destroy'])->whereNumber('career')->name('admin.careers.destroy');
+    Route::get('/modulos/cursos-asignables', [ModuleController::class, 'assignableCourses'])->name('admin.modules.assignable-courses');
     Route::post('/modulos', [ModuleController::class, 'store'])->name('admin.modules.store');
-    Route::put('/modulos/{module}', [ModuleController::class, 'update'])->name('admin.modules.update');
-    Route::delete('/modulos/{module}', [ModuleController::class, 'destroy'])->name('admin.modules.destroy');
+    Route::put('/modulos/{module}', [ModuleController::class, 'update'])->whereNumber('module')->name('admin.modules.update');
+    Route::delete('/modulos/{module}', [ModuleController::class, 'destroy'])->whereNumber('module')->name('admin.modules.destroy');
     Route::post('/talleres', [WorkshopController::class, 'store'])->name('admin.workshops.store');
-    Route::put('/talleres/{course}', [WorkshopController::class, 'update'])->name('admin.workshops.update');
-    Route::delete('/talleres/{course}', [WorkshopController::class, 'destroy'])->name('admin.workshops.destroy');
+    Route::put('/talleres/{course}', [WorkshopController::class, 'update'])->whereNumber('course')->name('admin.workshops.update');
+    Route::delete('/talleres/{course}', [WorkshopController::class, 'destroy'])->whereNumber('course')->name('admin.workshops.destroy');
 
     // Sedes y Aulas
     Route::get('/sedes', [BranchController::class, 'index'])->name('admin.sedes.index');

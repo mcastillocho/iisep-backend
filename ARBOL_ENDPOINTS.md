@@ -71,42 +71,47 @@
 │       └── {classroom}      (path, int, req)        — ID del aula (bloquea si existen courseSchedules; permite reutilizar nombre gracias al índice único parcial).
 │
 ├── 📁 /admin/oferta-academica (Catálogo Curricular — AcademicOfferController)
-│   ├── GET  /admin/oferta-academica                 🔴 [auth — FALTA isStaff()] Carga branches, careers, allModulesPool y coursesList.
+│   ├── GET  /admin/oferta-academica                 🟢 [auth + Staff] Carga branches activas, careers, allModulesPool, coursesList y assignableCourses (cursos no-taller sin módulo).
 │   │
-│   ├── 📁 /admin/carreras (CareerController)
-│   │   ├── POST /admin/carreras                     🟡 [auth + Admin o Coord (global)] Crea carrera técnica + pivotes.
-│   │   │   ├── name                 (body, string, req)     — Nombre de la carrera (max:255, sin unique).
+│   ├── 📁 /admin/carreras (CareerController — exclusivo Admin General / Nivel 4)
+│   │   ├── GET  /admin/carreras/modulos-asignables  🟢 [auth + Admin (branch_id=null)] JSON de módulos activos asignables (permite módulos compartidos entre carreras).
+│   │   │   ├── ?career_id           (query, int, opc)       — Si se envía, excluye únicamente los módulos ya vinculados a esa carrera.
+│   │   │   └── ↳ Recibe JSON: { modules[{id, name, duration_in_weeks}] }.
+│   │   ├── POST /admin/carreras                     🟢 [auth + Admin (branch_id=null)] Crea carrera técnica + pivotes en transacción.
+│   │   │   ├── name                 (body, string, req)     — Nombre único entre carreras activas (max:255).
 │   │   │   ├── description          (body, string, opc)     — Descripción (max:1000). 🟣 FALTA este campo en el formulario Vue!
-│   │   │   ├── duration_in_weeks    (body, int, opc)        — Semanas totales (1..200; UI manda 48 si hay 0 módulos).
-│   │   │   ├── modules[]            (body, array, opc)      — Lista de objetos { id (exists:modules), order (int) } → tabla career_module.
-│   │   │   └── available_branch_ids (body, int[], opc)      — IDs de sedes habilitadas (también acepta alias branch_ids) → tabla branch_career.
-│   │   ├── PUT  /admin/carreras/{career}            🟡 [auth + Admin o Coord (global)] Actualiza carrera y hace sync() de módulos/sedes.
-│   │   │   ├── {career}             (path, int, req)        — ID de la carrera + mismos campos del body que POST.
-│   │   │   └── 🔴 Un Coord de una sede puede alterar/quitar sedes de otra sede en una carrera global (doc dice Nivel 4).
-│   │   └── DELETE /admin/carreras/{career}          🟡 [auth + Admin o Coord (global)] SoftDelete de carrera.
-│   │       └── {career}             (path, int, req)        — Bloquea solo si hay student_careers (pero hoy nunca se crean student_careers).
+│   │   │   ├── duration_in_weeks    (body, int, opc)        — Semanas totales (1..200; si se omite y hay módulos, se suma automáticamente).
+│   │   │   ├── modules[]            (body, array, opc)      — Lista de objetos { id (distinct, exists activos), order (int ≥ 1) } → tabla career_module.
+│   │   │   └── available_branch_ids (body, int[], opc)      — IDs de sedes activas (también acepta alias branch_ids) → tabla branch_career.
+│   │   ├── PUT  /admin/carreras/{career}            🟢 [auth + Admin (branch_id=null)] Actualiza carrera y hace sync() de módulos/sedes en transacción.
+│   │   │   └── {career}             (path, int, req)        — ID de la carrera (whereNumber) + mismos campos del body que POST.
+│   │   └── DELETE /admin/carreras/{career}          🟢 [auth + Admin (branch_id=null)] SoftDelete de carrera (desvincula career_module y branch_career sin afectar módulos compartidos).
+│   │       └── {career}             (path, int, req)        — Bloquea únicamente si hay alumnos en student_careers (whereNumber).
 │   │
-│   ├── 📁 /admin/modulos (ModuleController)
-│   │   ├── POST /admin/modulos                      🟡 [auth + Admin o Coord (global)] Crea módulo y vincula cursos.
-│   │   │   ├── name                 (body, string, req)     — Nombre del módulo (max:255).
+│   ├── 📁 /admin/modulos (ModuleController — exclusivo Admin General / Nivel 4)
+│   │   ├── GET  /admin/modulos/cursos-asignables    🟢 [auth + Admin (branch_id=null)] JSON prefiltrado de cursos asignables (excluye talleres y cursos de otros módulos).
+│   │   │   ├── ?module_id           (query, int, opc)       — Si se envía, incluye también los cursos que ya pertenecen a ese módulo.
+│   │   │   └── ↳ Recibe JSON: { courses[{id, name, duration_in_weeks, module_id}] }.
+│   │   ├── POST /admin/modulos                      🟢 [auth + Admin (branch_id=null)] Crea módulo y vincula cursos en transacción.
+│   │   │   ├── name                 (body, string, req)     — Nombre único entre módulos activos (max:255).
 │   │   │   ├── description          (body, string, opc)     — Descripción/competencias (max:1000).
 │   │   │   ├── duration_in_weeks    (body, int, req)        — Duración en semanas (1..52).
-│   │   │   └── course_ids[]         (body, int[], opc)      — IDs de cursos (exists:courses). 🟠 Si el curso era de otro módulo, se lo roba sin aviso!
-│   │   ├── PUT  /admin/modulos/{module}             🟡 [auth + Admin o Coord (global)] Actualiza módulo y sincroniza course_ids[].
-│   │   │   ├── {module}             (path, int, req)        — ID del módulo + mismos campos del body que POST.
+│   │   │   └── course_ids[]         (body, int[], opc)      — IDs de cursos activos (bloquea si alguno ya pertenece a otro módulo o si es taller libre).
+│   │   ├── PUT  /admin/modulos/{module}             🟢 [auth + Admin (branch_id=null)] Actualiza módulo y sincroniza course_ids[] en transacción.
+│   │   │   ├── {module}             (path, int, req)        — ID del módulo (whereNumber) + mismos campos del body que POST (bloquea robo de cursos y talleres).
 │   │   │   └── 🟡 No recalcula careers.duration_in_weeks; cursos desasignados quedan con module_id=null.
-│   │   └── DELETE /admin/modulos/{module}           🟢 [auth + Admin o Coord] SoftDelete (bloquea si tiene courses, careers o enrollments).
-│   │       └── {module}             (path, int, req)        — ID del módulo.
+│   │   └── DELETE /admin/modulos/{module}           🟢 [auth + Admin (branch_id=null)] SoftDelete (bloquea si tiene courses, careers o enrollments).
+│   │       └── {module}             (path, int, req)        — ID del módulo (whereNumber).
 │   │
-│   └── 📁 /admin/talleres (WorkshopController — gestiona tabla courses completa)
-│       ├── POST /admin/talleres                     🟡 [auth + Admin o Coord (global)] Crea curso modular o taller libre.
-│       │   ├── name                 (body, string, req)     — Nombre del curso o taller (max:255).
+│   └── 📁 /admin/talleres (WorkshopController — gestiona tabla courses; exclusivo Admin General / Nivel 4)
+│       ├── POST /admin/talleres                     🟢 [auth + Admin (branch_id=null)] Crea curso modular o taller libre.
+│       │   ├── name                 (body, string, req)     — Nombre único entre cursos/talleres activos (max:255).
 │       │   ├── description          (body, string, opc)     — Temario/descripción (max:1000).
 │       │   ├── duration_in_weeks    (body, int, req)        — Duración en semanas (1..52).
-│       │   ├── module_id            (body, int|null, opc)   — ID del módulo al que pertenece (exists:modules).
-│       │   └── is_workshop          (body, bool, opc)       — true=Taller libre / false=Curso. 🟡 Permite is_workshop=true + module_id a la vez.
-│       ├── PUT  /admin/talleres/{course}            🟢 [auth + Admin o Coord] Actualiza curso/taller ({course} + mismo body).
-│       └── DELETE /admin/talleres/{course}          🟢 [auth + Admin o Coord] SoftDelete (bloquea si tiene scheduledCourses).
+│       │   ├── module_id            (body, int|null, opc)   — ID de módulo activo (si is_workshop=true, se desvincula automáticamente a null).
+│       │   └── is_workshop          (body, bool, opc)       — true=Taller libre (fuerza module_id=null) / false=Curso modular.
+│       ├── PUT  /admin/talleres/{course}            🟢 [auth + Admin (branch_id=null)] Actualiza curso/taller ({course} whereNumber). Reasigna módulo directamente o desvincula si pasa a taller, bloqueando cambios de módulo/tipo si tiene aperturas vigentes o matrículas en curso.
+│       └── DELETE /admin/talleres/{course}          🟢 [auth + Admin (branch_id=null)] SoftDelete (bloquea si tiene scheduledCourses; whereNumber).
 │
 ├── 📁 /admin/cursos-aperturados (Aperturas y Horarios — ScheduledCourseController)
 │   ├── POST /admin/cursos-aperturados               🟠 [auth + Admin o Coord de esa sede] Crea apertura (ScheduledCourse + CourseSchedule).

@@ -33,223 +33,182 @@ function createModuleStaffUser(string $username, string $position, ?int $branchI
     return $user;
 }
 
-test('director general can create a module', function () {
+test('director general can create and update a module', function () {
     $admin = createModuleStaffUser('admin_user', 'admin', null);
 
-    $response = $this->actingAs($admin)->post(route('admin.modules.store'), [
+    $this->actingAs($admin)->post(route('admin.modules.store'), [
         'name' => 'Ofimática y Gestión Digital',
         'duration_in_weeks' => 8,
         'description' => 'Herramientas de productividad de oficina.',
-    ]);
+    ])->assertSessionHasNoErrors();
 
-    $response->assertSessionHasNoErrors();
-    $this->assertDatabaseHas('modules', [
-        'name' => 'Ofimática y Gestión Digital',
-        'duration_in_weeks' => 8,
-    ]);
+    $module = Module::where('name', 'Ofimática y Gestión Digital')->firstOrFail();
+
+    $this->actingAs($admin)->put(route('admin.modules.update', $module), [
+        'name' => 'Ofimática Avanzada',
+        'duration_in_weeks' => 10,
+        'description' => 'Hojas de cálculo y automatización.',
+    ])->assertSessionHasNoErrors();
+
+    expect($module->fresh()->name)->toBe('Ofimática Avanzada');
+    expect($module->fresh()->duration_in_weeks)->toBe(10);
 });
 
-test('branch coordinator can create a module', function () {
+test('branch coordinator and secretary cannot manage modules or query assignable courses', function () {
     $branch = Branch::create(['name' => 'Sede Los Olivos', 'code' => 'LOS']);
     $coord = createModuleStaffUser('coord_user', 'coord', $branch->id);
-
-    $response = $this->actingAs($coord)->post(route('admin.modules.store'), [
-        'name' => 'Desarrollo Backend y APIs',
-        'duration_in_weeks' => 12,
-        'description' => 'Arquitectura de servidores y base de datos.',
-    ]);
-
-    $response->assertSessionHasNoErrors();
-    $this->assertDatabaseHas('modules', [
-        'name' => 'Desarrollo Backend y APIs',
-        'duration_in_weeks' => 12,
-    ]);
-});
-
-test('branch secretary cannot create a module', function () {
-    $branch = Branch::create(['name' => 'Sede Breña', 'code' => 'BRE']);
     $secre = createModuleStaffUser('secre_user', 'secre', $branch->id);
+    $module = Module::create(['name' => 'Diseño Gráfico', 'duration_in_weeks' => 10]);
 
-    $response = $this->actingAs($secre)->post(route('admin.modules.store'), [
-        'name' => 'Módulo No Autorizado',
-        'duration_in_weeks' => 6,
-    ]);
+    foreach ([$coord, $secre] as $user) {
+        $this->actingAs($user)->post(route('admin.modules.store'), [
+            'name' => 'Módulo No Autorizado',
+            'duration_in_weeks' => 6,
+        ])->assertForbidden();
 
-    $response->assertForbidden();
+        $this->actingAs($user)->put(route('admin.modules.update', $module), [
+            'name' => 'Diseño Gráfico Modificado',
+            'duration_in_weeks' => 10,
+        ])->assertForbidden();
+
+        $this->actingAs($user)->delete(route('admin.modules.destroy', $module))
+            ->assertForbidden();
+
+        $this->actingAs($user)->getJson(route('admin.modules.assignable-courses'))
+            ->assertForbidden();
+    }
 });
 
-test('branch coordinator can update a module', function () {
-    $branch = Branch::create(['name' => 'Sede Surco', 'code' => 'SUR']);
-    $coord = createModuleStaffUser('coord_user2', 'coord', $branch->id);
-
-    $module = Module::create([
-        'name' => 'Marketing Básico',
-        'duration_in_weeks' => 6,
-        'description' => 'Fundamentos de ventas.',
-    ]);
-
-    $response = $this->actingAs($coord)->put(route('admin.modules.update', $module), [
-        'name' => 'Marketing Digital y Redes Sociales',
-        'duration_in_weeks' => 8,
-        'description' => 'Campañas publicitarias, métricas y branding.',
-    ]);
-
-    $response->assertSessionHasNoErrors();
-    $this->assertDatabaseHas('modules', [
-        'id' => $module->id,
-        'name' => 'Marketing Digital y Redes Sociales',
-        'duration_in_weeks' => 8,
-    ]);
-});
-
-test('branch secretary cannot update a module', function () {
-    $branch = Branch::create(['name' => 'Sede Callao', 'code' => 'CAL']);
-    $secre = createModuleStaffUser('secre_user2', 'secre', $branch->id);
-
-    $module = Module::create([
-        'name' => 'Diseño Gráfico',
-        'duration_in_weeks' => 10,
-    ]);
-
-    $response = $this->actingAs($secre)->put(route('admin.modules.update', $module), [
-        'name' => 'Diseño Gráfico Modificado',
-        'duration_in_weeks' => 10,
-    ]);
-
-    $response->assertForbidden();
-});
-
-test('cannot delete a module if it has assigned courses', function () {
+test('cannot delete a module if it has assigned courses or linked careers', function () {
     $admin = createModuleStaffUser('admin_user2', 'admin', null);
 
-    $module = Module::create([
-        'name' => 'Computación e Informática I',
-        'duration_in_weeks' => 8,
-    ]);
-
+    $moduleWithCourse = Module::create(['name' => 'Computación I', 'duration_in_weeks' => 8]);
     Course::create([
-        'module_id' => $module->id,
+        'module_id' => $moduleWithCourse->id,
         'name' => 'Excel Avanzado',
         'duration_in_weeks' => 4,
         'is_workshop' => false,
     ]);
 
-    $response = $this->actingAs($admin)->delete(route('admin.modules.destroy', $module));
+    $this->actingAs($admin)->delete(route('admin.modules.destroy', $moduleWithCourse))
+        ->assertSessionHasErrors(['error']);
+    $this->assertDatabaseHas('modules', ['id' => $moduleWithCourse->id, 'deleted_at' => null]);
 
-    $response->assertSessionHasErrors(['error']);
-    $this->assertDatabaseHas('modules', [
-        'id' => $module->id,
-        'deleted_at' => null,
-    ]);
-});
+    $moduleWithCareer = Module::create(['name' => 'Administración y Gestión', 'duration_in_weeks' => 10]);
+    $career = Career::create(['name' => 'Administración Bancaria']);
+    $moduleWithCareer->careers()->attach($career->id, ['order' => 1]);
 
-test('cannot delete a module if it is linked to a career', function () {
-    $admin = createModuleStaffUser('admin_user3', 'admin', null);
-
-    $module = Module::create([
-        'name' => 'Administración y Gestión',
-        'duration_in_weeks' => 10,
-    ]);
-
-    $career = Career::create([
-        'name' => 'Administración Bancaria',
-    ]);
-
-    $module->careers()->attach($career->id, ['order' => 1]);
-
-    $response = $this->actingAs($admin)->delete(route('admin.modules.destroy', $module));
-
-    $response->assertSessionHasErrors(['error']);
-    $this->assertDatabaseHas('modules', [
-        'id' => $module->id,
-        'deleted_at' => null,
-    ]);
+    $this->actingAs($admin)->delete(route('admin.modules.destroy', $moduleWithCareer))
+        ->assertSessionHasErrors(['error']);
+    $this->assertDatabaseHas('modules', ['id' => $moduleWithCareer->id, 'deleted_at' => null]);
 });
 
 test('can delete a module without dependencies', function () {
     $admin = createModuleStaffUser('admin_user4', 'admin', null);
+    $module = Module::create(['name' => 'Módulo Sin Uso', 'duration_in_weeks' => 4]);
 
-    $module = Module::create([
-        'name' => 'Módulo Sin Uso',
-        'duration_in_weeks' => 4,
-    ]);
-
-    $response = $this->actingAs($admin)->delete(route('admin.modules.destroy', $module));
-
-    $response->assertSessionHasNoErrors();
-    $this->assertSoftDeleted('modules', [
-        'id' => $module->id,
-    ]);
+    $this->actingAs($admin)->delete(route('admin.modules.destroy', $module))
+        ->assertSessionHasNoErrors();
+    $this->assertSoftDeleted('modules', ['id' => $module->id]);
 });
 
-test('can create a module and assign courses', function () {
+test('can create a module and assign unassigned non-workshop courses', function () {
     $admin = createModuleStaffUser('admin_user5', 'admin', null);
 
-    $course1 = Course::create([
-        'name' => 'Introducción a Algoritmos',
-        'duration_in_weeks' => 4,
-        'is_workshop' => false,
-    ]);
-    $course2 = Course::create([
-        'name' => 'Estructura de Datos',
-        'duration_in_weeks' => 4,
-        'is_workshop' => false,
-    ]);
+    $course1 = Course::create(['name' => 'Introducción a Algoritmos', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+    $course2 = Course::create(['name' => 'Estructura de Datos', 'duration_in_weeks' => 4, 'is_workshop' => false]);
 
-    $response = $this->actingAs($admin)->post(route('admin.modules.store'), [
+    $this->actingAs($admin)->post(route('admin.modules.store'), [
         'name' => 'Fundamentos de Programación',
         'duration_in_weeks' => 8,
         'course_ids' => [$course1->id, $course2->id],
-    ]);
+    ])->assertSessionHasNoErrors();
 
-    $response->assertSessionHasNoErrors();
-    $module = Module::where('name', 'Fundamentos de Programación')->first();
-    expect($module)->not->toBeNull();
+    $module = Module::where('name', 'Fundamentos de Programación')->firstOrFail();
 
-    $this->assertDatabaseHas('courses', [
-        'id' => $course1->id,
-        'module_id' => $module->id,
-    ]);
-    $this->assertDatabaseHas('courses', [
-        'id' => $course2->id,
-        'module_id' => $module->id,
-    ]);
+    $this->assertDatabaseHas('courses', ['id' => $course1->id, 'module_id' => $module->id]);
+    $this->assertDatabaseHas('courses', ['id' => $course2->id, 'module_id' => $module->id]);
+});
+
+test('cannot assign a course that already belongs to another module or a free workshop', function () {
+    $admin = createModuleStaffUser('admin_block_steal', 'admin', null);
+
+    $moduleA = Module::create(['name' => 'Módulo A', 'duration_in_weeks' => 8]);
+    $moduleB = Module::create(['name' => 'Módulo B', 'duration_in_weeks' => 8]);
+    $courseInA = Course::create(['module_id' => $moduleA->id, 'name' => 'Curso Exclusivo A', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+    $workshop = Course::create(['module_id' => null, 'name' => 'Taller Libre de Fotografía', 'duration_in_weeks' => 4, 'is_workshop' => true]);
+
+    // Store blocked when trying to steal courseInA
+    $this->actingAs($admin)->post(route('admin.modules.store'), [
+        'name' => 'Módulo Nuevo',
+        'duration_in_weeks' => 8,
+        'course_ids' => [$courseInA->id],
+    ])->assertSessionHasErrors('course_ids');
+    expect($courseInA->fresh()->module_id)->toBe($moduleA->id);
+
+    // Store blocked when trying to attach a workshop
+    $this->actingAs($admin)->post(route('admin.modules.store'), [
+        'name' => 'Módulo Nuevo Con Taller',
+        'duration_in_weeks' => 8,
+        'course_ids' => [$workshop->id],
+    ])->assertSessionHasErrors('course_ids');
+    expect($workshop->fresh()->module_id)->toBeNull();
+
+    // Update of moduleB blocked when trying to steal courseInA or attach workshop
+    $this->actingAs($admin)->put(route('admin.modules.update', $moduleB), [
+        'name' => 'Módulo B',
+        'duration_in_weeks' => 8,
+        'course_ids' => [$courseInA->id],
+    ])->assertSessionHasErrors('course_ids');
+    expect($courseInA->fresh()->module_id)->toBe($moduleA->id);
+
+    $this->actingAs($admin)->put(route('admin.modules.update', $moduleB), [
+        'name' => 'Módulo B',
+        'duration_in_weeks' => 8,
+        'course_ids' => [$workshop->id],
+    ])->assertSessionHasErrors('course_ids');
 });
 
 test('can update a module and sync course_ids (assign and unassign)', function () {
     $admin = createModuleStaffUser('admin_user6', 'admin', null);
+    $module = Module::create(['name' => 'Módulo Base', 'duration_in_weeks' => 8]);
 
-    $module = Module::create([
-        'name' => 'Módulo Base',
-        'duration_in_weeks' => 8,
-    ]);
+    $course1 = Course::create(['module_id' => $module->id, 'name' => 'Curso 1', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+    $course2 = Course::create(['module_id' => null, 'name' => 'Curso 2', 'duration_in_weeks' => 4, 'is_workshop' => false]);
 
-    $course1 = Course::create([
-        'module_id' => $module->id,
-        'name' => 'Curso 1',
-        'duration_in_weeks' => 4,
-    ]);
-    $course2 = Course::create([
-        'module_id' => null,
-        'name' => 'Curso 2',
-        'duration_in_weeks' => 4,
-    ]);
-
-    // Update with course2 only (unassigning course1)
-    $response = $this->actingAs($admin)->put(route('admin.modules.update', $module), [
+    $this->actingAs($admin)->put(route('admin.modules.update', $module), [
         'name' => 'Módulo Base Actualizado',
         'duration_in_weeks' => 8,
         'course_ids' => [$course2->id],
-    ]);
+    ])->assertSessionHasNoErrors();
 
-    $response->assertSessionHasNoErrors();
+    $this->assertDatabaseHas('courses', ['id' => $course1->id, 'module_id' => null]);
+    $this->assertDatabaseHas('courses', ['id' => $course2->id, 'module_id' => $module->id]);
+});
 
-    $this->assertDatabaseHas('courses', [
-        'id' => $course1->id,
-        'module_id' => null,
-    ]);
-    $this->assertDatabaseHas('courses', [
-        'id' => $course2->id,
-        'module_id' => $module->id,
-    ]);
+test('assignableCourses returns only non-workshop courses not assigned to other modules', function () {
+    $admin = createModuleStaffUser('admin_assignable', 'admin', null);
+    $module1 = Module::create(['name' => 'Módulo 1', 'duration_in_weeks' => 8]);
+    $module2 = Module::create(['name' => 'Módulo 2', 'duration_in_weeks' => 8]);
+
+    $freeCourse = Course::create(['module_id' => null, 'name' => 'Curso Libre', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+    $mod1Course = Course::create(['module_id' => $module1->id, 'name' => 'Curso de Mod 1', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+    Course::create(['module_id' => $module2->id, 'name' => 'Curso de Mod 2', 'duration_in_weeks' => 4, 'is_workshop' => false]);
+    Course::create(['module_id' => null, 'name' => 'Taller Independiente', 'duration_in_weeks' => 4, 'is_workshop' => true]);
+
+    // New module: only freeCourse
+    $this->actingAs($admin)
+        ->getJson(route('admin.modules.assignable-courses'))
+        ->assertOk()
+        ->assertJsonCount(1, 'courses')
+        ->assertJsonPath('courses.0.id', $freeCourse->id);
+
+    // Editing module1: freeCourse + mod1Course (excludes mod2Course and workshop)
+    $response = $this->actingAs($admin)
+        ->getJson(route('admin.modules.assignable-courses', ['module_id' => $module1->id]))
+        ->assertOk()
+        ->assertJsonCount(2, 'courses');
+
+    $ids = collect($response->json('courses'))->pluck('id')->all();
+    expect($ids)->toEqualCanonicalizing([$freeCourse->id, $mod1Course->id]);
 });
