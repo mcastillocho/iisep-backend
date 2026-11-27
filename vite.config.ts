@@ -49,6 +49,7 @@ export default defineConfig({
             'public/**',
             'bootstrap/ssr/**',
             'tailwind.config.js',
+            'frontend/**',
             'resources/js/actions/**',
             'resources/js/components/ui/*',
             'resources/js/routes/**',
@@ -68,6 +69,7 @@ export default defineConfig({
         htmlWhitespaceSensitivity: 'css',
         ignorePatterns: [
             '.github/**',
+            'frontend/**',
             'composer.json',
             'resources/js/components/ui/*',
             'resources/views/mail/*',
